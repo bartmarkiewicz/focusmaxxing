@@ -42,10 +42,13 @@ class NotificationService {
     required String taskGoal,
     required String formattedTimeRemaining,
     required bool isPaused,
+    int? targetEndTimeEpochMs,
   }) async {
     final title = isPaused
         ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
         : '🚀 $formattedTimeRemaining Remaining';
+
+    final useNativeChronometer = !isPaused && targetEndTimeEpochMs != null;
 
     final androidDetails = AndroidNotificationDetails(
       timerChannelId,
@@ -57,7 +60,9 @@ class NotificationService {
       autoCancel: false,
       onlyAlertOnce: true,
       showWhen: true,
-      usesChronometer: false,
+      when: useNativeChronometer ? targetEndTimeEpochMs : null,
+      usesChronometer: useNativeChronometer,
+      chronometerCountDown: useNativeChronometer,
       subText: isPaused ? 'Paused' : 'Active Focus',
     );
 
