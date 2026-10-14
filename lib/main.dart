@@ -1,48 +1,179 @@
+import 'dart:io';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/notifications/notification_service.dart';
+import 'package:focusmaxxing/core/theme/app_theme.dart';
+import 'package:focusmaxxing/features/backlog/data/datasources/backlog_local_data_source.dart';
+import 'package:focusmaxxing/features/backlog/data/repositories/backlog_repository_impl.dart';
+import 'package:focusmaxxing/features/backlog/domain/usecases/add_backlog_task_usecase.dart';
+import 'package:focusmaxxing/features/backlog/domain/usecases/delete_backlog_task_usecase.dart';
+import 'package:focusmaxxing/features/backlog/domain/usecases/get_pending_tasks_usecase.dart';
+import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
+import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
+import 'package:focusmaxxing/features/insights/data/repositories/insights_repository_impl.dart';
+import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
+import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
+import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
+import 'package:focusmaxxing/features/timer/data/datasources/session_local_data_source.dart';
+import 'package:focusmaxxing/features/timer/data/repositories/session_repository_impl.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
+import 'package:focusmaxxing/main_scaffold.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const FocusmaxxingApp());
+
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
+  final notificationService = NotificationService();
+  await notificationService.init();
+
+  final sharedPreferences = await SharedPreferences.getInstance();
+
+  final sessionLocalDataSource = SessionLocalDataSource();
+  final backlogLocalDataSource = BacklogLocalDataSource();
+
+  final sessionRepository =
+      SessionRepositoryImpl(localDataSource: sessionLocalDataSource);
+  final backlogRepository =
+      BacklogRepositoryImpl(localDataSource: backlogLocalDataSource);
+  final insightsRepository =
+      InsightsRepositoryImpl(localDataSource: sessionLocalDataSource);
+
+  final markTaskCompletedUseCase =
+      MarkTaskCompletedUseCase(backlogRepository);
+
+  final timerNotifier = TimerNotifier(
+    startSessionUseCase: StartSessionUseCase(sessionRepository),
+    completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+    cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+    notificationService: notificationService,
+    markTaskCompletedUseCase: markTaskCompletedUseCase,
+    prefs: sharedPreferences,
+  );
+
+  final backlogNotifier = BacklogNotifier(
+    getPendingTasksUseCase: GetPendingTasksUseCase(backlogRepository),
+    addBacklogTaskUseCase: AddBacklogTaskUseCase(backlogRepository),
+    deleteBacklogTaskUseCase: DeleteBacklogTaskUseCase(backlogRepository),
+    markTaskCompletedUseCase: markTaskCompletedUseCase,
+  );
+
+  final insightsNotifier = InsightsNotifier(
+    getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepository),
+    getRecentSessionsUseCase: GetRecentSessionsUseCase(insightsRepository),
+    notificationService: notificationService,
+    sharedPreferences: sharedPreferences,
+  );
+
+  runApp(
+    FocusmaxxingApp(
+      timerNotifier: timerNotifier,
+      backlogNotifier: backlogNotifier,
+      insightsNotifier: insightsNotifier,
+    ),
+  );
 }
 
 class FocusmaxxingApp extends StatelessWidget {
-  const FocusmaxxingApp({super.key});
+  final TimerNotifier? timerNotifier;
+  final BacklogNotifier? backlogNotifier;
+  final InsightsNotifier? insightsNotifier;
+
+  const FocusmaxxingApp({
+    super.key,
+    this.timerNotifier,
+    this.backlogNotifier,
+    this.insightsNotifier,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final colorScheme = darkDynamic ??
-            ColorScheme.fromSeed(
-              seedColor: const Color(0xFF00E676),
-              brightness: Brightness.dark,
-            );
+    return MultiProvider(
+      providers: [
+        if (timerNotifier != null)
+          ChangeNotifierProvider<TimerNotifier>.value(value: timerNotifier!)
+        else
+          ChangeNotifierProvider<TimerNotifier>(
+            create: (_) => _createDefaultTimerNotifier(),
+          ),
+        if (backlogNotifier != null)
+          ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier!)
+        else
+          ChangeNotifierProvider<BacklogNotifier>(
+            create: (_) => _createDefaultBacklogNotifier(),
+          ),
+        if (insightsNotifier != null)
+          ChangeNotifierProvider<InsightsNotifier>.value(
+              value: insightsNotifier!)
+        else
+          ChangeNotifierProvider<InsightsNotifier>(
+            create: (_) => _createDefaultInsightsNotifier(),
+          ),
+      ],
+      child: DynamicColorBuilder(
+        builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+          return MaterialApp(
+            title: 'Focusmaxxing',
+            debugShowCheckedModeBanner: false,
+            themeMode: ThemeMode.dark,
+            theme: AppTheme.buildDarkTheme(darkDynamic),
+            darkTheme: AppTheme.buildDarkTheme(darkDynamic),
+            home: const MainScaffold(),
+          );
+        },
+      ),
+    );
+  }
 
-        return MaterialApp(
-          title: 'Focusmaxxing',
-          debugShowCheckedModeBanner: false,
-          themeMode: ThemeMode.dark,
-          theme: ThemeData(
-            useMaterial3: true,
-            brightness: Brightness.dark,
-            colorScheme: colorScheme,
-            scaffoldBackgroundColor: const Color(0xFF090A0D),
-          ),
-          home: const Scaffold(
-            body: Center(
-              child: Text(
-                'Focusmaxxing',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFF4F6FB),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  static TimerNotifier _createDefaultTimerNotifier() {
+    final sessionDataSource = SessionLocalDataSource();
+    final backlogDataSource = BacklogLocalDataSource();
+    final sessionRepo =
+        SessionRepositoryImpl(localDataSource: sessionDataSource);
+    final backlogRepo =
+        BacklogRepositoryImpl(localDataSource: backlogDataSource);
+
+    return TimerNotifier(
+      startSessionUseCase: StartSessionUseCase(sessionRepo),
+      completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
+      cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+      notificationService: NotificationService(),
+      markTaskCompletedUseCase: MarkTaskCompletedUseCase(backlogRepo),
+    );
+  }
+
+  static BacklogNotifier _createDefaultBacklogNotifier() {
+    final backlogDataSource = BacklogLocalDataSource();
+    final backlogRepo =
+        BacklogRepositoryImpl(localDataSource: backlogDataSource);
+
+    return BacklogNotifier(
+      getPendingTasksUseCase: GetPendingTasksUseCase(backlogRepo),
+      addBacklogTaskUseCase: AddBacklogTaskUseCase(backlogRepo),
+      deleteBacklogTaskUseCase: DeleteBacklogTaskUseCase(backlogRepo),
+      markTaskCompletedUseCase: MarkTaskCompletedUseCase(backlogRepo),
+    );
+  }
+
+  static InsightsNotifier _createDefaultInsightsNotifier() {
+    final sessionDataSource = SessionLocalDataSource();
+    final insightsRepo =
+        InsightsRepositoryImpl(localDataSource: sessionDataSource);
+
+    return InsightsNotifier(
+      getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepo),
+      getRecentSessionsUseCase: GetRecentSessionsUseCase(insightsRepo),
+      notificationService: NotificationService(),
     );
   }
 }

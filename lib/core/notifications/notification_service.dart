@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -21,8 +23,18 @@ class NotificationService {
       : _notificationsPlugin =
             notificationsPlugin ?? FlutterLocalNotificationsPlugin();
 
+  bool get isSupportedPlatform =>
+      !kIsWeb &&
+      (Platform.isAndroid ||
+          Platform.isIOS ||
+          Platform.isMacOS);
+
   Future<void> init() async {
     if (_isInitialized) return;
+    if (!isSupportedPlatform) {
+      _isInitialized = true;
+      return;
+    }
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -44,6 +56,8 @@ class NotificationService {
     required bool isPaused,
     int? targetEndTimeEpochMs,
   }) async {
+    if (!isSupportedPlatform) return;
+
     final title = isPaused
         ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
         : '🚀 $formattedTimeRemaining Remaining';
@@ -84,10 +98,44 @@ class NotificationService {
   }
 
   Future<void> cancelTimerNotification() async {
+    if (!isSupportedPlatform) return;
     await _notificationsPlugin.cancel(ongoingNotificationId);
   }
 
+  Future<void> scheduleDailyReminder({
+    required int hour,
+    required int minute,
+    String title = 'Time to Lock In 🚀',
+    String body = 'Start your daily focus block and crush your goals.',
+  }) async {
+    if (!isSupportedPlatform) return;
+    await cancelDailyReminder();
+
+    const androidDetails = AndroidNotificationDetails(
+      reminderChannelId,
+      reminderChannelName,
+      channelDescription: reminderChannelDescription,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _notificationsPlugin.periodicallyShow(
+      dailyReminderNotificationId,
+      title,
+      body,
+      RepeatInterval.daily,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
   Future<void> cancelDailyReminder() async {
+    if (!isSupportedPlatform) return;
     await _notificationsPlugin.cancel(dailyReminderNotificationId);
   }
 }

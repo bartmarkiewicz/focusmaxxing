@@ -35,6 +35,15 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
     }
   }
 
+  @override
+  void dispose() {
+    if (_touchStartTime != null) {
+      _touchStartTime = null;
+      widget.onHoldEnd();
+    }
+    super.dispose();
+  }
+
   void _handleTapDown(TapDownDetails _) {
     _touchStartTime = DateTime.now();
     HapticFeedback.selectionClick();
@@ -51,11 +60,10 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
 
   void _evaluateRelease() {
     final startTime = _touchStartTime;
+    if (startTime == null) return;
     _touchStartTime = null;
 
-    final holdDurationMs = startTime != null
-        ? DateTime.now().difference(startTime).inMilliseconds
-        : 0;
+    final holdDurationMs = DateTime.now().difference(startTime).inMilliseconds;
 
     widget.onHoldEnd();
 

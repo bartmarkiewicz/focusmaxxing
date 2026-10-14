@@ -12,6 +12,7 @@ abstract class ISessionLocalDataSource {
   );
   Future<List<SessionModel>> getSessionsForDateRange(int startMs, int endMs);
   Future<List<SessionModel>> getAllSessions({int limit = 100});
+  Future<List<int>> getCompletedFocusSessionStartTimes();
 }
 
 class SessionLocalDataSource implements ISessionLocalDataSource {
@@ -94,6 +95,26 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
       return results.map((row) => SessionModel.fromMap(row)).toList();
     } on Exception catch (e) {
       throw DatabaseException('Failed to query all sessions: $e');
+    }
+  }
+
+  @override
+  Future<List<int>> getCompletedFocusSessionStartTimes() async {
+    try {
+      final db = await _db;
+      final results = await db.query(
+        DatabaseHelper.tableSessions,
+        columns: ['start_time_epoch_ms'],
+        where: 'session_type = ? AND status = ?',
+        whereArgs: ['FOCUS', 'LOCKED_IN'],
+        orderBy: 'start_time_epoch_ms DESC',
+      );
+      return results
+          .map((row) => row['start_time_epoch_ms'] as int)
+          .toList();
+    } on Exception catch (e) {
+      throw DatabaseException(
+          'Failed to query completed session timestamps: $e');
     }
   }
 }

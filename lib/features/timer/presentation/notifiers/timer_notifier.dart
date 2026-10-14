@@ -198,10 +198,18 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void releaseHoldToCancel() {
+    final startTime = _cancelHoldStartTime;
     _cancelHoldTimer?.cancel();
     _cancelHoldTimer = null;
     _cancelHoldStartTime = null;
-    if (_cancelHoldProgress < 1.0) {
+
+    if (startTime != null &&
+        DateTime.now().difference(startTime).inMilliseconds >= cancelHoldTotalMs) {
+      unawaited(cancelSession());
+      return;
+    }
+
+    if (_cancelHoldProgress > 0.0 && _cancelHoldProgress < 1.0) {
       _cancelHoldProgress = 0.0;
       notifyListeners();
     }

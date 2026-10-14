@@ -164,13 +164,18 @@ void main() {
       expect(notifier.status, TimerStatus.running);
     });
 
-    test('releaseHoldToCancel resets progress to 0.0 without side effects', () {
-      notifier.setTaskGoal('Goal');
-      notifier.pause(); // not running so no-op
+    test('releaseHoldToCancel resets progress to 0.0 without side effects', () async {
+      await notifier.startFocusSession('Goal');
+      notifier.pause();
+      expect(notifier.status, TimerStatus.paused);
 
-      // simulate paused state
-      notifier.startHoldToCancel(); // no-op since not paused
+      notifier.startHoldToCancel();
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(notifier.cancelHoldProgress, greaterThan(0.0));
+
+      notifier.releaseHoldToCancel();
       expect(notifier.cancelHoldProgress, 0.0);
+      expect(notifier.status, TimerStatus.paused);
     });
 
     test('cancelSession updates session to CANCELLED and resets to idle', () async {
