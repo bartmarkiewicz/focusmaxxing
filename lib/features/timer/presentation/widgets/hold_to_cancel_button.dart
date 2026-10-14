@@ -39,7 +39,9 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   void dispose() {
     if (_touchStartTime != null) {
       _touchStartTime = null;
-      widget.onHoldEnd();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onHoldEnd();
+      });
     }
     super.dispose();
   }
