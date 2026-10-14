@@ -97,9 +97,10 @@ lib/
   * Handled via `flutter_local_notifications` on Android.
   * Channel: `focusmaxxing_ongoing_timer` (`importance: High`, `ongoing: true`, `onlyAlertOnce: true`).
   * Displays: User's 1-sentence goal and countdown chronometer.
-* **Anti-Impulse 5-Second Hold-to-Cancel:**
-  * Cancel action requires a continuous 5-second `GestureDetector.onLongPress` / ticker hold.
-  * Cancelling marks the session as `DERAILED` in SQLite and releases native shields.
+* **Anti-Impulse 5-Second Hold-to-Cancel (Two-Step Barrier):**
+  * Tapping Pause while running reveals the Resume and Hold-to-Cancel buttons.
+  * Cancel action requires a continuous 5-second `GestureDetector.onLongPress` hold with progressive haptic feedback.
+  * Cancelling marks the session as `CANCELLED` in SQLite and releases native shields (differentiated from full sessions marked `DERAILED`).
 
 ---
 

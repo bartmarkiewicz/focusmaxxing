@@ -29,8 +29,9 @@ Instead of relying on fragile willpower against algorithmically optimized social
 * **Tab 1: Timer (Default Landing Screen):**
   * Opens immediately upon app launch.
   * Prominent countdown dial and active 1-sentence task anchor.
-  * Start button / Pause button / **Hold-to-Cancel (5-second hold)** button.
-  * Ambient soundscape toggle icon (Brown noise, 40Hz, Rain).
+  * Fast 1-tap duration preset pills (`15m`, `25m`, `45m`, `60m`, `Custom`).
+  * Sacred minimalist UI: Zero ambient audio controls or settings clutter on the main screen (audio is managed in Settings).
+  * State transitions: Start button (Idle) -> Pause button only (Running) -> Resume and **Hold-to-Cancel (5-second hold)** button (Paused, two-step barrier).
   * **Header Quick-Action:** Subtle icon opening the **Backlog Sheet** (keeps task planning completely out of the way until requested).
 * **Tab 2: Shield (Brainrot App Blocker):**
   * Permission status banner (Contextual prompt for Usage Access & Draw-Over-Apps).
@@ -40,8 +41,8 @@ Instead of relying on fragile willpower against algorithmically optimized social
 * **Tab 3: Insights & Settings:**
   * Daily Summary (total locked-in focus minutes today, sessions completed).
   * Current Streak Counter (master toggle on/off for guilt prevention; optional "Include Weekends" toggle—OFF by default so weekends are exempt).
-  * Chronological session history log (Timestamp, 1-sentence goal, duration, `[ Locked In 🚀 ]` vs `[ Derailed 💀 ]`).
-  * Settings section: Custom timer intervals, daily focus reminder notifications (OFF by default, configurable time), alert sounds/vibrations, and Lifetime Pro restore/purchase.
+  * Chronological session history log (Timestamp, 1-sentence goal, duration, `[ Locked In 🚀 ]`, `[ Derailed 💀 ]`, or `[ Cancelled ]`).
+  * Settings section: Custom timer intervals, ambient audio soundscape selection, daily focus reminder notifications (OFF by default, configurable time), alert sounds/vibrations, and Lifetime Pro restore/purchase.
 
 ### 2.2 Unobtrusive Task Backlog (Swipe-Up Sheet / Header Modal)
 * Accessible on-demand from the Timer screen header icon.
@@ -56,15 +57,15 @@ Instead of relying on fragile willpower against algorithmically optimized social
 ### 3.1 ADHD Task Initiation: "The One-Sentence Lock-In"
 * **Initiation Flow:**
   1. Tapping **Start** opens a focused micro-prompt: *"What ONE thing are you locking in on?"*
-  2. Input field (max 60 characters) with 1-tap chips to reuse the last 3 recent goals or pull from the Backlog.
+  2. Input field (max 60 characters) with a 1-tap `[ ⚡ Deep Work ]` quick-flow chip for immediate flow, plus recent-goal chips and Backlog task pickers.
   3. Tapping **"Lock In"** begins the timer immediately.
 * **Persistent Anchor:**
   * The goal is displayed prominently beneath the countdown clock.
   * The goal is pinned in the persistent Android notification drawer.
 * **Session Completion:**
-  * On timer completion, audio chime sounds and a 1-tap dialog appears:
+  * On timer completion, audio chime sounds and a 1-tap dialog appears (clock paused until acknowledged):
     * `[ Locked In 🚀 ]` (Counts toward streak & completed focus total)
-    * `[ Derailed 💀 ]` (Logs session as incomplete/derailed)
+    * `[ Derailed 💀 ]` (Logs full session as distracted/derailed)
 
 ### 3.2 The Brainrot Shield & Hard Lock Interception
 * **Hard Lock Overlay:**
@@ -74,8 +75,9 @@ Instead of relying on fragile willpower against algorithmically optimized social
     * Displays the remaining focus time countdown.
     * **Zero Emergency Bypass:** No "snooze" or "emergency pass" button. The overlay provides only one action: `[ Return to Focusmaxxing ]`, which immediately minimizes the blocked app and returns the user to the active timer.
 * **In-App Cancellation Strictness:**
-  * To prevent impulsive dopamine quits, the Cancel button inside Focusmaxxing requires a **5-Second Continuous Press-and-Hold** to terminate an active session early.
-  * Terminating early releases the app block but marks the session as `Derailed 💀` in local logs.
+  * Two-step friction barrier: While running, only Pause is visible. Tapping Pause reveals Resume and the Cancel button.
+  * The Cancel button requires a **5-Second Continuous Press-and-Hold** to terminate an active session early.
+  * Terminating early releases the app block and logs the session as `CANCELLED` in local metrics (differentiated from full sessions marked `DERAILED 💀`).
 
 ### 3.3 The Restorative Break Guard
 * When a focus session completes, the app transitions into the configured rest period (default: 5 minutes).
@@ -85,8 +87,8 @@ Instead of relying on fragile willpower against algorithmically optimized social
   * The app plays a completion alert chime.
   * Feeds remain blocked until the user returns to Focusmaxxing and taps `[ Lock In ]` for the next focus session, closing the "wait out the clock to scroll" loophole.
 
-### 3.4 Ambient Audio Soundscapes
-* Built-in, high-efficiency, offline audio loops:
+### 3.4 Ambient Audio Soundscapes (Configured in Settings)
+* Managed exclusively within Tab 3 Settings to preserve the Timer screen as a sacred, distraction-free space:
   * High-density Brown Noise (muffles background household noise).
   * 40Hz Gamma Isochronic / Binaural Tones (cognitive focus stimulation).
   * Rain on Canvas.

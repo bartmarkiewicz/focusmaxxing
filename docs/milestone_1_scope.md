@@ -176,7 +176,7 @@ lib/
    * **Hold-to-Cancel Logic:**
      * Manages `double cancelHoldProgress` (0.0 to 1.0) over a 5000ms duration.
      * If released before 5000ms: resets progress to 0.0 with zero state side-effects.
-     * If held for full 5000ms: triggers cancellation usecase, marks session `DERAILED`, dismisses notification, and returns to `idle`.
+     * If held for full 5000ms: triggers cancellation usecase, marks session `CANCELLED` in SQLite, dismisses notification, and returns to `idle`.
    * **Notifications:** Calls `NotificationService.showOngoingTimer(...)` on start, updates on pause/resume, and cancels on complete.
 2. **`BacklogNotifier`:**
    * Loads pending tasks on initialization.
@@ -190,17 +190,20 @@ lib/
 
 #### B. Widgets & Screens
 * **`TimerPage`:**
-  * Central circular countdown dial (`TimerDialWidget`) showing remaining `MM:SS` and active task goal anchor.
-  * Start button (idle) -> Pause/Resume buttons + `HoldToCancelButton` (running).
+  * Central circular countdown dial (`TimerDialWidget`) with smooth sweeping arc and illuminated leading tip dot (`●`).
+  * Duration preset pills (`15m`, `25m`, `45m`, `60m`, `Custom`) directly beneath the dial for 1-tap selection.
+  * Sacred minimalist screen: Zero ambient audio controls (audio is configured in Settings).
+  * State transitions: Start button (Idle) -> Pause button only (Running) -> Resume and `HoldToCancelButton` (Paused, two-step barrier).
 * **`GoalInputDialog`:**
   * Clean Material 3 modal sheet with auto-focused text field (max 60 chars).
-  * Horizontal chip list displaying recent 3 goals for 1-tap reuse.
+  * 1-tap `[ ⚡ Deep Work ]` quick-flow chip + horizontal chip list of recent 3 goals.
   * Primary button: `[ Lock In ]`.
 * **`HoldToCancelButton`:**
+  * Visible only when timer is paused (two-step barrier).
   * Custom animated button wrapped in `GestureDetector(onLongPressStart, onLongPressEnd)`.
-  * Renders a circular fill or progress bar tracking the 5-second hold.
+  * Renders a circular fill or progress bar tracking the 5-second hold with progressive haptic rumble.
 * **`SessionCheckInDialog`:**
-  * Non-dismissible barrier dialog:
+  * Non-dismissible barrier dialog (clock paused on this screen so break is not lost):
     * `[ Locked In 🚀 ]` (status: `LOCKED_IN`)
     * `[ Derailed 💀 ]` (status: `DERAILED`)
 * **`BacklogModalSheet`:**
