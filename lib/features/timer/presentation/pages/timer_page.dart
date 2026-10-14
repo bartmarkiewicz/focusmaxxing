@@ -49,7 +49,11 @@ class _TimerPageState extends State<TimerPage> {
   void _handleTimerStatusChange() {
     final notifier = _timerNotifier;
     if (notifier != null && notifier.status == TimerStatus.completed && !_isCheckingIn) {
-      _triggerCheckIn(notifier);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _timerNotifier?.status == TimerStatus.completed && !_isCheckingIn) {
+          _triggerCheckIn(notifier);
+        }
+      });
     }
   }
 
