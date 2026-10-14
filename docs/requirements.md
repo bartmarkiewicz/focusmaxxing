@@ -1,10 +1,10 @@
 # Focusmaxxing - Product Requirements Document (PRD)
 
 **Document Version:** 3.1.0  
-**Status:** Approved Specification (Post-Grilling Finalization)  
+**Status:** Approved Specification  
 **Target Platforms:** Android (Primary, Phase 1), iOS (Phase 2 via Screen Time API)  
-**Architecture:** Flutter with `provider` + `ChangeNotifier` & SQLite (`sqflite`)  
-**Positioning:** The Anti-Brainrot App Blocker & ADHD "Lock-In" Engine.
+**Positioning:** The Anti-Brainrot App Blocker & ADHD "Lock-In" Engine  
+**Technical Companion:** See [technical_scoping.md](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/technical_scoping.md) for engineering architecture, database schemas, and native Android implementation.
 
 ---
 
@@ -12,12 +12,12 @@
 
 **Focusmaxxing** is a fast, high-conviction productivity app that fuses **ADHD task initiation (micro-commitments)** with **hard OS-level distraction blocking (The Brainrot Shield)**.
 
-Instead of relying on fragile willpower against algorithmically optimized social media feeds, Focusmaxxing physically intercepts distracting apps during focus blocks and rest periods, replacing compulsive doomscrolling with strict focus enforcement, gentle cognitive anchoring, and zero-friction break protection.
+Instead of relying on fragile willpower against algorithmically optimized social media feeds, Focusmaxxing physically intercepts distracting apps during focus blocks and rest periods, replacing compulsive doomscrolling with strict focus enforcement, cognitive anchoring, and zero-friction break protection.
 
-### 1.1 Core Principles
-1. **Active Shielding Over Passive Nagging:** Real distraction defense requires OS-level app interception. When locked in, blocked apps are physically unusable.
+### 1.1 Core Product Principles
+1. **Active Shielding Over Passive Nagging:** Real distraction defense requires active OS-level intervention. When locked in, blocked apps are physically unusable.
 2. **Zero Survey Slop (Anti-Fatigue):** No 1–5 bureaucratic ratings. Only a 1-sentence task initiation before starting, and a 1-tap celebratory binary check-in when done (`[ Locked In 🚀 ]` vs `[ Derailed 💀 ]`).
-3. **Restorative Break Guard:** Prevents the "5-minute break turning into a 45-minute TikTok vortex" by keeping blocked apps locked through rest periods until the user explicitly locks in on the next focus session.
+3. **Restorative Break Guard:** Prevents 5-minute Pomodoro breaks from turning into 45-minute doomscroll sessions by keeping blocked apps locked through rest periods until the user explicitly locks in on the next focus session.
 4. **Uncluttered 3-Tab Hierarchy:** Instant launch directly into the Timer. Secondary tools (like the task backlog) stay tucked away so they never distract from the immediate focus task.
 5. **Fair, One-Time Commercial Model:** Free forever tier (up to 2 blocked apps) + single **One-Time Lifetime Pro Unlock** ($9.99 flat, one-and-done). Zero subscriptions, zero microtransactions, and 100% offline privacy.
 
@@ -62,15 +62,12 @@ Instead of relying on fragile willpower against algorithmically optimized social
   * The goal is displayed prominently beneath the countdown clock.
   * The goal is pinned in the persistent Android notification drawer.
 * **Session Completion:**
-  * No complex surveys. On timer completion, audio chime sounds and a 1-tap dialog appears:
+  * On timer completion, audio chime sounds and a 1-tap dialog appears:
     * `[ Locked In 🚀 ]` (Counts toward streak & completed focus total)
     * `[ Derailed 💀 ]` (Logs session as incomplete/derailed)
 
 ### 3.2 The Brainrot Shield & Hard Lock Interception
-* **Detection Engine:**
-  * Android `UsageStatsManager` polling foreground package events via a lightweight background service (~500ms response time).
-  * 100% compliant with Google Play Store policies (no prohibited Accessibility Service abuse or invasive Device Admin requirements).
-* **Hard Lock Overlay (`SYSTEM_ALERT_WINDOW`):**
+* **Hard Lock Overlay:**
   * When a blocked app moves to the foreground during a session:
     * Focusmaxxing immediately displays a full-screen, high-contrast overlay.
     * Shows the user's active goal: *"You are locked in on: [Goal]"*.
@@ -93,13 +90,13 @@ Instead of relying on fragile willpower against algorithmically optimized social
   * High-density Brown Noise (muffles background household noise).
   * 40Hz Gamma Isochronic / Binaural Tones (cognitive focus stimulation).
   * Rain on Canvas.
-* **Audio Mixing:** Soundscapes mix seamlessly with other active audio streams (e.g. allows brown noise to play simultaneously over a user's Spotify playlist without interrupting playback). Continues playing when the screen is locked.
+* **Audio Mixing:** Soundscapes mix seamlessly with other active audio streams (e.g., allows brown noise to play simultaneously over a user's Spotify playlist without interrupting playback). Continues playing when the screen is locked.
 
 ---
 
-## 4. Monetization & Commercial Architecture
+## 4. Monetization Strategy: Free Tier + Single One-Time Purchase
 
-Focusmaxxing eliminates recurring subscriptions and microtransactions in favor of an ethical, high-conversion commercial model:
+Focusmaxxing eliminates recurring subscriptions and predatory microtransactions in favor of an ethical, high-conversion commercial model:
 
 ### 4.1 Tier Breakdown
 
@@ -108,65 +105,31 @@ Focusmaxxing eliminates recurring subscriptions and microtransactions in favor o
 | **Free Tier** | **$0** (Free Forever) | • Unlimited Pomodoro & custom focus timers<br>• 1-Sentence Task Initiation & persistent notification anchor<br>• **Brainrot Shield for up to 2 apps** (e.g., Instagram & TikTok)<br>• Zero-Override Hard Lock overlay<br>• Restorative Break Guard (blocks apps during rest periods)<br>• 5-Second Hold-to-Cancel safety valve<br>• Local 7-Day Session History & Streaks<br>• Unobtrusive Backlog scratchpad<br>• Zero ads, zero telemetry, 100% offline |
 | **Lifetime Pro Unlock** | **$9.99 flat** (One-Time Purchase) | • **Unlimited Blocked Apps** (all social feeds, games, and custom apps)<br>• **All Neurodivergent Ambient Audio Loops** (Brown noise, 40Hz, Rain)<br>• **Scheduled Auto-Shield** (auto-lock designated apps during set work hours)<br>• Home Screen & Lock Screen quick-launch widgets<br>• Family Library support & permanent ownership |
 
-### 4.2 Billing Implementation
-* Native platform billing via `in_app_purchase` for a single non-consumable product ID: `focusmaxxing_lifetime_pro`.
-* Offline receipt verification and standard 1-tap "Restore Purchase" support.
-* Zero third-party revenue tracking dependencies (no RevenueCat, no external auth servers).
-
 ---
 
-## 5. Technical Architecture & Permissions (Android)
+## 5. User Stories & Acceptance Criteria
 
-### 5.1 Tech Stack
-* **Framework:** Flutter (Targeting Android SDK 34+ / Dart 3.x).
-* **State Management:** `provider` with `ChangeNotifier` service controllers (`TimerController`, `ShieldController`, `TaskController`).
-* **Database:** SQLite via `sqflite` for relational session logs, backlog items, and shield configurations.
-* **Audio Engine:** `just_audio` / `audio_session` configured for background audio mixing.
+### US-1: Instant Start with Goal Anchor
+* *As a user with executive dysfunction,* I want to start a session with a single sentence commitment so that I avoid task initiation paralysis.
+* **Acceptance Criteria:**
+  * Tapping Start prompts for a goal (defaulting to previous or empty).
+  * Starting begins the timer immediately with goal pinned under the timer and in notifications.
 
-### 5.2 Android Native Permissions & Services
-1. **`PACKAGE_USAGE_STATS` (Usage Access):**
-   * Contextual permission prompt leading directly to `Settings.ACTION_USAGE_ACCESS_SETTINGS`.
-   * Checks foreground app events during active sessions.
-2. **`SYSTEM_ALERT_WINDOW` (Draw Over Other Apps):**
-   * Contextual prompt leading to `Settings.ACTION_MANAGE_OVERLAY_PERMISSION`.
-   * Launches the Hard Lock full-screen overlay instantly when a blocked package is detected.
-3. **`FOREGROUND_SERVICE` & `POST_NOTIFICATIONS`:**
-   * Keeps timer precision intact and displays persistent live countdown with the 1-sentence goal.
-4. **Contextual Onboarding Flow:**
-   * Zero upfront permission walls. Users land immediately on the Timer on first launch.
-   * Permissions are contextually requested only when the user adds apps to the Shield tab or starts their first shielded focus block, accompanied by clear visual instructions.
+### US-2: Hard App Interception
+* *As an easily distracted user,* I want my social apps to be blocked when I'm working so that I cannot unconsciously doomscroll.
+* **Acceptance Criteria:**
+  * Launching a blocked package displays the full-screen overlay within 500ms.
+  * Tapping `[ Return to Focusmaxxing ]` navigates back to Focusmaxxing.
+  * No bypass or snooze option is visible on the overlay.
 
----
+### US-3: Protected Rest Break
+* *As a user who falls into break traps,* I want social media to stay blocked during my breaks so that I actually rest.
+* **Acceptance Criteria:**
+  * Break mode keeps shielded apps blocked.
+  * Expired break keeps shielded apps blocked until the user starts the next focus block.
 
-## 6. Implementation Roadmap
-
-```
-+-----------------------------------------------------------------------------------+
-| Milestone 1: Core Loop & ADHD Task Anchor (MVP)                                   |
-| - Setup Flutter architecture with `provider` and SQLite (`sqflite`)               |
-| - 3-Tab navigation skeleton + Header Backlog bottom sheet                         |
-| - 1-Sentence Task Initiation dialog with recent goal chips                        |
-| - Wall-clock accurate Pomodoro timer with persistent Android notification         |
-| - 5-Second Hold-to-Cancel logic + Binary check-in [Locked In 🚀 / Derailed 💀]     |
-| - Local session history database and daily streak tracking                        |
-+-----------------------------------------------------------------------------------+
-                                          |
-                                          v
-+-----------------------------------------------------------------------------------+
-| Milestone 2: The Brainrot Shield Engine                                           |
-| - Native Android Kotlin service: UsageStats listener + System Alert Window overlay|
-| - Shield Tab: Curated presets (Instagram, TikTok, X, Reddit) + installed app picker|
-| - Hard Lock Overlay with 0-override policy and 'Return to Focus' action           |
-| - Restorative Break Guard: persistent app blocking through 5m rest periods        |
-| - Lock enforcement until next session starts (anti-doomscroll transition)         |
-+-----------------------------------------------------------------------------------+
-                                          |
-                                          v
-+-----------------------------------------------------------------------------------+
-| Milestone 3: Audio, Lifetime Pro Billing & Launch Polish                          |
-| - Bundled offline audio loops (Brown noise, 40Hz) with audio mixing               |
-| - Single One-Time Lifetime Pro Unlock ($9.99 non-consumable via `in_app_purchase`)|
-| - Free tier 2-app cap vs. Pro unlimited app shielding                             |
-| - High-contrast "Lock In" dark mode visual polish and release build verification  |
-+-----------------------------------------------------------------------------------+
-```
+### US-4: Anti-Impulse Cancellation
+* *As an impulsive user,* I do not want to be able to accidentally or impulsively cancel a session to access social media.
+* **Acceptance Criteria:**
+  * A tap on Cancel does not stop the session; it shows a prompt to hold for 5 seconds.
+  * Holding for 5 full seconds cancels the session and marks it as `Derailed 💀`.
