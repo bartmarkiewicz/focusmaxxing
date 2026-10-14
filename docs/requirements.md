@@ -16,7 +16,7 @@
 3. **Compassionate Productivity (ADHD-Friendly):** The app stays simple and low-pressure. Streaks are strictly optional and can be toggled off completely to prevent guilt spirals.
 4. **Actionable Reflection:** Quick 1-tap ratings (1–5) after focus sessions and rest periods to help users observe patterns in their focus and downtime.
 5. **Session Intelligence:** Captures session metrics, pause habits, and ratings locally for personal insight.
-6. **100% Account-Free & Private:** Zero logins, zero email requests, and zero telemetry. All session data resides strictly on the user's device with offline data export.
+6. **100% Account-Free & Private:** Zero logins, zero email requests, and zero telemetry. All session data resides strictly on the user's device.
 7. **Fair, User-First Commercial Model:** Freemium app with a single **One-Time Lifetime Pro Unlock** via native platform billing (no recurring subscriptions, no third-party revenue middlemen).
 
 ---
@@ -38,7 +38,7 @@
   * Auto-advance toggles (`Auto-start Breaks`, `Auto-start Work`).
   * Streaks configuration (Master ON/OFF toggle, daily target, weekend/rest-day exemptions).
   * Sound and alert preferences (alert tones, vibration, volume).
-  * Data management (Export to CSV/JSON, clear history).
+  * Data management (Clear history / reset data).
   * One-Time Lifetime Pro Unlock status and purchase action.
 
 ### 2.2 First-Time User Experience (Zero Onboarding)
@@ -166,7 +166,7 @@ Focusmaxxing implements a clean, transparent **One-Time Lifetime Pro Unlock** di
 ### 5.2 Lifetime Pro Unlock (One-Time Purchase)
 * **Purchase Type:** Single non-consumable in-app purchase (e.g., $9.99 or equivalent local pricing).
 * **Pro Features:**
-  1. **Unlimited Historical Analytics & Deep Trends:** Lifetime history, weekly/monthly trendlines, correlation insights between rest habits and focus scores, and CSV data export.
+  1. **Unlimited Historical Analytics & Deep Trends:** Lifetime history, weekly/monthly trendlines, and correlation insights between rest habits and focus scores.
   2. **Custom Audio & Ambient Soundscapes:** Built-in ambient background noise (brown noise, white noise, rain, lofi focus beats) and custom alarm chime sets.
   3. **Home Screen & Lock Screen Widgets:** 1-tap quick start widgets and live glanceable progress dials.
   4. **Pro Supporter Badge & Themes:** Custom aesthetic variants and exclusive app icons.
@@ -191,7 +191,7 @@ Focusmaxxing implements a clean, transparent **One-Time Lifetime Pro Unlock** di
 | - Configurable durations, pause/aborted session logging, and auto-advance toggles |
 | - Optional streak system with rest-day exemptions and master toggle               |
 | - Daily Summary + 7-day session log & Anti-Brainrot score                         |
-| - Local offline storage with manual CSV/JSON export                               |
+| - Local offline storage and session history                                       |
 | - Native Google Play Billing integration for One-Time Lifetime Pro unlock         |
 +-----------------------------------------------------------------------------------+
                                           |
