@@ -1,206 +1,172 @@
 # Focusmaxxing - Product Requirements Document (PRD)
 
-**Document Version:** 2.1.0  
-**Status:** Approved Specification  
-**Target Platforms:** Android (Primary), iOS (Cross-platform)  
+**Document Version:** 3.1.0  
+**Status:** Approved Specification (Post-Grilling Finalization)  
+**Target Platforms:** Android (Primary, Phase 1), iOS (Phase 2 via Screen Time API)  
+**Architecture:** Flutter with `provider` + `ChangeNotifier` & SQLite (`sqflite`)  
+**Positioning:** The Anti-Brainrot App Blocker & ADHD "Lock-In" Engine.
 
 ---
 
 ## 1. Executive Summary & Vision
 
-**Focusmaxxing** is a fast, minimal, distraction-free productivity app designed to help users—particularly those managing ADHD, executive dysfunction, or heavy digital distractions—get straight into deep work without friction and protect them from falling into "brainrot" traps during rest periods.
+**Focusmaxxing** is a fast, high-conviction productivity app that fuses **ADHD task initiation (micro-commitments)** with **hard OS-level distraction blocking (The Brainrot Shield)**.
 
-### Core Philosophy
-1. **Zero Cognitive Friction:** Instant app launch directly into the timer. Minimum clicks to start a session (launch -> tap Start).
-2. **Anti-Brainrot Break Hygiene:** Rest periods actively encourage restorative breaks (reading, walking, breathing, hydrating) over high-stimulus digital dopamine loops (Instagram Reels, TikTok, YouTube Shorts).
-3. **Compassionate Productivity (ADHD-Friendly):** The app stays simple and low-pressure. Streaks are strictly optional and can be toggled off completely to prevent guilt spirals.
-4. **Actionable Reflection:** Quick 1-tap ratings (1–5) after focus sessions and rest periods to help users observe patterns in their focus and downtime.
-5. **Session Intelligence:** Captures session metrics, pause habits, and ratings locally for personal insight.
-6. **100% Account-Free & Private:** Zero logins, zero email requests, and zero telemetry. All session data resides strictly on the user's device.
-7. **Fair, User-First Commercial Model:** Freemium app with a single **One-Time Lifetime Pro Unlock** via native platform billing (no recurring subscriptions, no third-party revenue middlemen).
+Instead of relying on fragile willpower against algorithmically optimized social media feeds, Focusmaxxing physically intercepts distracting apps during focus blocks and rest periods, replacing compulsive doomscrolling with strict focus enforcement, gentle cognitive anchoring, and zero-friction break protection.
+
+### 1.1 Core Principles
+1. **Active Shielding Over Passive Nagging:** Real distraction defense requires OS-level app interception. When locked in, blocked apps are physically unusable.
+2. **Zero Survey Slop (Anti-Fatigue):** No 1–5 bureaucratic ratings. Only a 1-sentence task initiation before starting, and a 1-tap celebratory binary check-in when done (`[ Locked In 🚀 ]` vs `[ Derailed 💀 ]`).
+3. **Restorative Break Guard:** Prevents the "5-minute break turning into a 45-minute TikTok vortex" by keeping blocked apps locked through rest periods until the user explicitly locks in on the next focus session.
+4. **Uncluttered 3-Tab Hierarchy:** Instant launch directly into the Timer. Secondary tools (like the task backlog) stay tucked away so they never distract from the immediate focus task.
+5. **Fair, One-Time Commercial Model:** Free forever tier (up to 2 blocked apps) + single **One-Time Lifetime Pro Unlock** ($9.99 flat, one-and-done). Zero subscriptions, zero microtransactions, and 100% offline privacy.
 
 ---
 
-## 2. Navigation & User Experience (UX) Architecture
+## 2. Screen Hierarchy & Navigation Architecture
 
-### 2.1 Screen Hierarchy: 3-Tab Bottom Navigation Bar
+### 2.1 3-Tab Bottom Navigation
 * **Tab 1: Timer (Default Landing Screen):**
   * Opens immediately upon app launch.
-  * Displays single configured focus duration, prominent Start button, and optional ambient sound toggle.
-  * Strictly single duration shown on screen to eliminate decision fatigue; duration adjustments are made in Settings.
-* **Tab 2: Insights:**
-  * Daily Summary Card (today's total focus hours/minutes).
-  * Average Productivity Score (1–5 focus rating average).
-  * Anti-Brainrot Score (average rest quality rating showing restorative vs. brainrot breaks).
-  * Chronological session history log for the rolling 7-day period.
-* **Tab 3: Settings:**
-  * Durations configuration (Focus, Short Break, Long Break, Long Break Interval).
-  * Auto-advance toggles (`Auto-start Breaks`, `Auto-start Work`).
-  * Streaks configuration (Master ON/OFF toggle, daily target, weekend/rest-day exemptions).
-  * Sound and alert preferences (alert tones, vibration, volume).
-  * Data management (Clear history / reset data).
-  * One-Time Lifetime Pro Unlock status and purchase action.
+  * Prominent countdown dial and active 1-sentence task anchor.
+  * Start button / Pause button / **Hold-to-Cancel (5-second hold)** button.
+  * Ambient soundscape toggle icon (Brown noise, 40Hz, Rain).
+  * **Header Quick-Action:** Subtle icon opening the **Backlog Sheet** (keeps task planning completely out of the way until requested).
+* **Tab 2: Shield (Brainrot App Blocker):**
+  * Permission status banner (Contextual prompt for Usage Access & Draw-Over-Apps).
+  * **Curated Quick-Shield Presets:** 1-tap toggle cards for detected social feeds (Instagram, TikTok, Twitter/X, Reddit, YouTube Shorts, Mobile Games).
+  * Searchable list of all installed user applications (system apps excluded by default).
+  * Free tier limit indicator (2 apps selected) with Lifetime Pro upgrade prompt for unlimited shielding.
+* **Tab 3: Insights & Settings:**
+  * Daily Summary (total locked-in focus minutes today, sessions completed).
+  * Current Streak Counter (toggleable on/off for ADHD guilt prevention).
+  * Chronological session history log (Timestamp, 1-sentence goal, duration, `[ Locked In 🚀 ]` vs `[ Derailed 💀 ]`).
+  * Settings section: Custom timer intervals (Focus, Short Break, Long Break), alert sounds/vibrations, and Lifetime Pro restore/purchase.
 
-### 2.2 First-Time User Experience (Zero Onboarding)
-* **Zero Onboarding Screens:** No tutorial carousels or setup wizards. The user lands directly on the Timer on their first launch.
-* **Contextual Permissions:** Notification and exact alarm permissions are requested contextually only when the user taps "Start" for the first time, explaining clearly why alarms are required.
+### 2.2 Unobtrusive Task Backlog (Swipe-Up Sheet / Header Modal)
+* Accessible on-demand from the Timer screen header icon.
+* A clean, distraction-free scratchpad for queuing upcoming tasks.
+* Tapping any task instantly populates the 1-Sentence Goal field on the Timer screen and dismisses the sheet.
+* Completed tasks are checked off automatically when sessions finish.
 
 ---
 
 ## 3. Core Functional Requirements
 
-### 3.1 Instant-Start Pomodoro Timer
-* **Minimum-Click Launch:**
-  * Opening the app immediately presents the Timer screen.
-  * Tapping **Start** begins the focus session with zero intermediate steps.
-* **Timer States:**
-  * **Idle:** Clean countdown display showing configured focus duration (default: 25:00), primary Start button, and ambient audio toggle icon.
-  * **Running (Focus):** Distraction-free countdown, Pause button, and Reset/Cancel button.
-  * **Paused:** Displays paused state, tracks individual pause events and cumulative paused time.
-  * **Completed:** Triggers completion chime/beep and immediately reveals the 1-Tap Quick Rating Bar.
-* **Lifecycle & Crash Recovery (Wall-Clock Target Sync):**
-  * The timer calculates progress against an absolute completion timestamp (`targetEndTime = now + duration`).
-  * If the app is minimized, closed, killed by the operating system, or if the device restarts, reopening the app seamlessly calculates and displays the exact remaining time or the completion state.
-* **In-Session Audio & Soundscapes:**
-  * Silent by default during active focus.
-  * Optional ambient soundscape toggle directly on the timer screen (e.g., calming brown noise, rain, or lofi audio).
+### 3.1 ADHD Task Initiation: "The One-Sentence Lock-In"
+* **Initiation Flow:**
+  1. Tapping **Start** opens a focused micro-prompt: *"What ONE thing are you locking in on?"*
+  2. Input field (max 60 characters) with 1-tap chips to reuse the last 3 recent goals or pull from the Backlog.
+  3. Tapping **"Lock In"** begins the timer immediately.
+* **Persistent Anchor:**
+  * The goal is displayed prominently beneath the countdown clock.
+  * The goal is pinned in the persistent Android notification drawer.
+* **Session Completion:**
+  * No complex surveys. On timer completion, audio chime sounds and a 1-tap dialog appears:
+    * `[ Locked In 🚀 ]` (Counts toward streak & completed focus total)
+    * `[ Derailed 💀 ]` (Logs session as incomplete/derailed)
 
-### 3.2 Post-Focus Productivity Reflection
-* **1-Tap Quick Rating Bar:**
-  * Appears immediately upon timer completion (scale 1 to 5):
-    * `1` - Very low focus / heavily distracted
-    * `2` - Low focus / struggled to maintain momentum
-    * `3` - Moderate focus / acceptable output
-    * `4` - High focus / solid deep work
-    * `5` - Peak flow state / maximum output
-  * **Interaction:** A single tap on any number instantly logs the rating and advances to the rest period (zero extra "Submit" button required). Includes an optional skip button.
+### 3.2 The Brainrot Shield & Hard Lock Interception
+* **Detection Engine:**
+  * Android `UsageStatsManager` polling foreground package events via a lightweight background service (~500ms response time).
+  * 100% compliant with Google Play Store policies (no prohibited Accessibility Service abuse or invasive Device Admin requirements).
+* **Hard Lock Overlay (`SYSTEM_ALERT_WINDOW`):**
+  * When a blocked app moves to the foreground during a session:
+    * Focusmaxxing immediately displays a full-screen, high-contrast overlay.
+    * Shows the user's active goal: *"You are locked in on: [Goal]"*.
+    * Displays the remaining focus time countdown.
+    * **Zero Emergency Bypass:** No "snooze" or "emergency pass" button. The overlay provides only one action: `[ Return to Focusmaxxing ]`, which immediately minimizes the blocked app and returns the user to the active timer.
+* **In-App Cancellation Strictness:**
+  * To prevent impulsive dopamine quits, the Cancel button inside Focusmaxxing requires a **5-Second Continuous Press-and-Hold** to terminate an active session early.
+  * Terminating early releases the app block but marks the session as `Derailed 💀` in local logs.
 
-### 3.3 Rest Period & Anti-Brainrot System
-* **Rest Period Initiation:**
-  * Default duration: 5 minutes (configurable).
-  * Calming visual transition indicating break mode.
-* **Anti-Brainrot Restorative Action Cards:**
-  * Displays randomized, actionable, screen-free restorative suggestions:
-    * *"Step away from the screen."*
-    * *"Take a 5-minute walk or do a quick stretch."*
-    * *"Drink a glass of water or tea."*
-    * *"Read a few pages of a physical book."*
-* **Gentle Background Nudge:**
-  * If the user sends the app to the background during a rest period, sends a gentle reminder notification nudging them to avoid passive doomscrolling on social media feeds.
-* **Early Break Completion ("I'm Ready to Focus"):**
-  * Users can tap a prominent button to end their rest period early if they feel recharged.
-  * Logs the actual break duration taken, prompts for the 1–5 rest quality rating, and readies the next focus session.
-* **End-of-Rest Urgency Alert:**
-  * High-priority notification with a distinct, urgent chime urging the user that break time is over and it is time to return to work.
-  * **60-Second Gentle Repeat:** If the alert is not acknowledged or the app is not opened within 60 seconds, plays a gentle follow-up reminder chime to prevent drifting into prolonged distraction.
-* **Rest Quality Reflection:**
-  * 1-tap rating evaluating break restorative value (1 to 5):
-    * `1` - Brainrot doomscrolling (left feeling more depleted)
-    * `2` - High-stimulus digital distraction (news, messaging, socials)
-    * `3` - Passive rest (sitting idly, snacking)
-    * `4` - Restorative physical break (walked, stretched, hydrated)
-    * `5` - Deep restorative reset (fully unplugged, relaxed, refreshed)
+### 3.3 The Restorative Break Guard
+* When a focus session completes, the app transitions into the configured rest period (default: 5 minutes).
+* **Break Shielding:** The Brainrot Shield **remains actively enforced** during the break period. Social media and doomscroll feeds stay blocked to ensure rest is genuinely restorative (stretching, water, screen break).
+* **The Anti-Doomscroll Transition:**
+  * When the 5-minute break timer reaches `00:00`, **blocked apps remain locked**.
+  * The app plays a completion alert chime.
+  * Feeds remain blocked until the user returns to Focusmaxxing and taps `[ Lock In ]` for the next focus session, closing the "wait out the clock to scroll" loophole.
 
-### 3.4 Notifications, Audio & Alerts
-* **Audio Alerts:**
-  * Focus Completed: Distinct, rewarding completion chime/beep.
-  * Rest Ended: Crisp, urgent chime urging the user to resume focus (with 60-second gentle repeat if unacknowledged).
-  * Configurable volume and silent/vibrate toggles.
-* **System Notifications:**
-  * Exact alarm scheduling ensuring alerts fire reliably even when device is locked or in battery-saver/Doze mode.
-  * Ongoing persistent notification with live remaining countdown during active sessions.
-
-### 3.5 Configuration & Settings
-* **Durations (Fully Customizable):**
-  * Focus block length (default: 25m; adjustable).
-  * Short rest duration (default: 5m; adjustable).
-  * Long rest duration & frequency (e.g., 15–30m after every 4 focus blocks).
-* **Transition Automation (User-Configurable):**
-  * Toggle: `Auto-start Breaks` (ON/OFF).
-  * Toggle: `Auto-start Work` (ON/OFF).
-* **Optional Streaks Feature:**
-  * **Master Toggle (ON/OFF):** Can be completely disabled. When disabled, all streak counters, fire icons, and daily reminders are hidden from the UI to avoid shame-based demotivation.
-  * **Flexible Criteria:** When enabled, users configure their daily target (e.g., 1, 2, or 4 completed Pomodoros), with built-in optional weekend/rest-day exemptions so scheduled off-days never break the streak.
-* **Pauses & Early Cancellations:**
-  * If a session is canceled early: actual elapsed focus minutes are credited toward daily totals, pause counts and cumulative pause duration are logged, and the session is marked with an `Aborted` flag (no productivity rating requested).
-
-### 3.6 Metrics & Usage Insights
-* **Session Records (Stored Locally):**
-  * Timestamp (start time, completion time).
-  * Session type (Focus, Short Break, Long Break).
-  * Target duration vs. actual elapsed duration.
-  * Completion status (`Completed` vs. `Aborted`).
-  * Number of pauses and cumulative pause duration.
-  * Productivity rating (1–5) for focus sessions.
-  * Rest quality rating (1–5) for break sessions.
-* **Phase 1 Insights Dashboard:**
-  * **Daily Summary Card:** Total focus hours/minutes completed today.
-  * **Productivity Average:** Average focus rating (1–5) for the current day.
-  * **Anti-Brainrot Score:** Average rest quality rating (1–5) highlighting restorative breaks vs. brainrot.
-  * **Chronological Session Log:** Clean list of sessions for the rolling 7-day period.
+### 3.4 Ambient Audio Soundscapes
+* Built-in, high-efficiency, offline audio loops:
+  * High-density Brown Noise (muffles background household noise).
+  * 40Hz Gamma Isochronic / Binaural Tones (cognitive focus stimulation).
+  * Rain on Canvas.
+* **Audio Mixing:** Soundscapes mix seamlessly with other active audio streams (e.g. allows brown noise to play simultaneously over a user's Spotify playlist without interrupting playback). Continues playing when the screen is locked.
 
 ---
 
-## 4. Visual Aesthetic & Design System
+## 4. Monetization & Commercial Architecture
 
-* **Design Standard:** **Material 3 / Dynamic Theming**.
-  * Adapts organically to the user's Android system colors and wallpaper palette.
-  * Clean, minimal layout with generous whitespace to prevent cognitive overload.
-  * Distinct semantic accenting to clearly delineate Focus Mode from Rest Mode.
+Focusmaxxing eliminates recurring subscriptions and microtransactions in favor of an ethical, high-conversion commercial model:
 
----
+### 4.1 Tier Breakdown
 
-## 5. Monetization Strategy: One-Time Lifetime Pro Unlock
+| Tier | Price | Features Included |
+| :--- | :--- | :--- |
+| **Free Tier** | **$0** (Free Forever) | • Unlimited Pomodoro & custom focus timers<br>• 1-Sentence Task Initiation & persistent notification anchor<br>• **Brainrot Shield for up to 2 apps** (e.g., Instagram & TikTok)<br>• Zero-Override Hard Lock overlay<br>• Restorative Break Guard (blocks apps during rest periods)<br>• 5-Second Hold-to-Cancel safety valve<br>• Local 7-Day Session History & Streaks<br>• Unobtrusive Backlog scratchpad<br>• Zero ads, zero telemetry, 100% offline |
+| **Lifetime Pro Unlock** | **$9.99 flat** (One-Time Purchase) | • **Unlimited Blocked Apps** (all social feeds, games, and custom apps)<br>• **All Neurodivergent Ambient Audio Loops** (Brown noise, 40Hz, Rain)<br>• **Scheduled Auto-Shield** (auto-lock designated apps during set work hours)<br>• Home Screen & Lock Screen quick-launch widgets<br>• Family Library support & permanent ownership |
 
-Focusmaxxing implements a clean, transparent **One-Time Lifetime Pro Unlock** directly via native platform billing (Google Play Billing on Android in Phase 1).
-
-### 5.1 Free Tier (Generous & Fully Functional)
-* Unlimited Pomodoro focus and rest sessions.
-* 1-Tap quick start and full timer controls.
-* Complete 1–5 productivity and break quality ratings.
-* Anti-brainrot restorative break cards and gentle background nudges.
-* Optional streak tracker with rest-day exemptions.
-* Rolling 7-day metrics, daily summary card, and Anti-Brainrot correlation score.
-* Default audio alerts and system theme matching.
-
-### 5.2 Lifetime Pro Unlock (One-Time Purchase)
-* **Purchase Type:** Single non-consumable in-app purchase (e.g., $9.99 or equivalent local pricing).
-* **Pro Features:**
-  1. **Unlimited Historical Analytics & Deep Trends:** Lifetime history, weekly/monthly trendlines, and correlation insights between rest habits and focus scores.
-  2. **Custom Audio & Ambient Soundscapes:** Built-in ambient background noise (brown noise, white noise, rain, lofi focus beats) and custom alarm chime sets.
-  3. **Home Screen & Lock Screen Widgets:** 1-tap quick start widgets and live glanceable progress dials.
-  4. **Pro Supporter Badge & Themes:** Custom aesthetic variants and exclusive app icons.
-
-### 5.3 Billing Infrastructure
-* **Direct Native Billing:** Google Play Billing integration on Android in Phase 1 (and StoreKit for iOS later).
-* **Zero Third-Party Dependency:** No RevenueCat, no external auth servers, no subscription tracking overhead.
+### 4.2 Billing Implementation
+* Native platform billing via `in_app_purchase` for a single non-consumable product ID: `focusmaxxing_lifetime_pro`.
+* Offline receipt verification and standard 1-tap "Restore Purchase" support.
+* Zero third-party revenue tracking dependencies (no RevenueCat, no external auth servers).
 
 ---
 
-## 6. Implementation Phases
+## 5. Technical Architecture & Permissions (Android)
+
+### 5.1 Tech Stack
+* **Framework:** Flutter (Targeting Android SDK 34+ / Dart 3.x).
+* **State Management:** `provider` with `ChangeNotifier` service controllers (`TimerController`, `ShieldController`, `TaskController`).
+* **Database:** SQLite via `sqflite` for relational session logs, backlog items, and shield configurations.
+* **Audio Engine:** `just_audio` / `audio_session` configured for background audio mixing.
+
+### 5.2 Android Native Permissions & Services
+1. **`PACKAGE_USAGE_STATS` (Usage Access):**
+   * Contextual permission prompt leading directly to `Settings.ACTION_USAGE_ACCESS_SETTINGS`.
+   * Checks foreground app events during active sessions.
+2. **`SYSTEM_ALERT_WINDOW` (Draw Over Other Apps):**
+   * Contextual prompt leading to `Settings.ACTION_MANAGE_OVERLAY_PERMISSION`.
+   * Launches the Hard Lock full-screen overlay instantly when a blocked package is detected.
+3. **`FOREGROUND_SERVICE` & `POST_NOTIFICATIONS`:**
+   * Keeps timer precision intact and displays persistent live countdown with the 1-sentence goal.
+4. **Contextual Onboarding Flow:**
+   * Zero upfront permission walls. Users land immediately on the Timer on first launch.
+   * Permissions are contextually requested only when the user adds apps to the Shield tab or starts their first shielded focus block, accompanied by clear visual instructions.
+
+---
+
+## 6. Implementation Roadmap
 
 ```
 +-----------------------------------------------------------------------------------+
-| Phase 1: MVP Core + Native Billing Integration                                    |
-| - 3-Tab navigation (Timer, Insights, Settings) with Material 3 dynamic theming    |
-| - Wall-clock synced timer with instant 1-tap start                                |
-| - Audio alerts with 60-second gentle repeat for break completion                  |
-| - 1-Tap Quick Rating Bar (1-5 for focus, 1-5 for rest)                            |
-| - Anti-brainrot restorative cards & background nudges                             |
-| - Early rest completion ('I'm Ready to Focus')                                    |
-| - Configurable durations, pause/aborted session logging, and auto-advance toggles |
-| - Optional streak system with rest-day exemptions and master toggle               |
-| - Daily Summary + 7-day session log & Anti-Brainrot score                         |
-| - Local offline storage and session history                                       |
-| - Native Google Play Billing integration for One-Time Lifetime Pro unlock         |
+| Milestone 1: Core Loop & ADHD Task Anchor (MVP)                                   |
+| - Setup Flutter architecture with `provider` and SQLite (`sqflite`)               |
+| - 3-Tab navigation skeleton + Header Backlog bottom sheet                         |
+| - 1-Sentence Task Initiation dialog with recent goal chips                        |
+| - Wall-clock accurate Pomodoro timer with persistent Android notification         |
+| - 5-Second Hold-to-Cancel logic + Binary check-in [Locked In 🚀 / Derailed 💀]     |
+| - Local session history database and daily streak tracking                        |
 +-----------------------------------------------------------------------------------+
                                           |
                                           v
 +-----------------------------------------------------------------------------------+
-| Phase 2: Pro Features & Polish                                                    |
-| - Unlimited analytics dashboard & trend visualizations                            |
-| - Ambient audio soundscapes (brown noise, lofi, rain) during focus                |
-| - Home screen / lock screen widgets                                               |
-| - iOS StoreKit integration & polish                                               |
+| Milestone 2: The Brainrot Shield Engine                                           |
+| - Native Android Kotlin service: UsageStats listener + System Alert Window overlay|
+| - Shield Tab: Curated presets (Instagram, TikTok, X, Reddit) + installed app picker|
+| - Hard Lock Overlay with 0-override policy and 'Return to Focus' action           |
+| - Restorative Break Guard: persistent app blocking through 5m rest periods        |
+| - Lock enforcement until next session starts (anti-doomscroll transition)         |
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v
++-----------------------------------------------------------------------------------+
+| Milestone 3: Audio, Lifetime Pro Billing & Launch Polish                          |
+| - Bundled offline audio loops (Brown noise, 40Hz) with audio mixing               |
+| - Single One-Time Lifetime Pro Unlock ($9.99 non-consumable via `in_app_purchase`)|
+| - Free tier 2-app cap vs. Pro unlimited app shielding                             |
+| - High-contrast "Lock In" dark mode visual polish and release build verification  |
 +-----------------------------------------------------------------------------------+
 ```

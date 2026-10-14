@@ -1,5 +1,5 @@
 name: focusmaxxing
-description: "An app providing the ability to enhance one's focus via the use of the Pomodoro technique and various addictive features."
+description: "The Anti-Brainrot App Blocker and ADHD Lock-In Engine."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
