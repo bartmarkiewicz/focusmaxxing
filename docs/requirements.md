@@ -39,9 +39,9 @@ Instead of relying on fragile willpower against algorithmically optimized social
   * Free tier limit indicator (2 apps selected) with Lifetime Pro upgrade prompt for unlimited shielding.
 * **Tab 3: Insights & Settings:**
   * Daily Summary (total locked-in focus minutes today, sessions completed).
-  * Current Streak Counter (toggleable on/off for ADHD guilt prevention).
+  * Current Streak Counter (master toggle on/off for guilt prevention; optional "Include Weekends" toggle—OFF by default so weekends are exempt).
   * Chronological session history log (Timestamp, 1-sentence goal, duration, `[ Locked In 🚀 ]` vs `[ Derailed 💀 ]`).
-  * Settings section: Custom timer intervals (Focus, Short Break, Long Break), alert sounds/vibrations, and Lifetime Pro restore/purchase.
+  * Settings section: Custom timer intervals, daily focus reminder notifications (OFF by default, configurable time), alert sounds/vibrations, and Lifetime Pro restore/purchase.
 
 ### 2.2 Unobtrusive Task Backlog (Swipe-Up Sheet / Header Modal)
 * Accessible on-demand from the Timer screen header icon.

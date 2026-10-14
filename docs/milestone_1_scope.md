@@ -183,6 +183,9 @@ lib/
    * Exposes `addTask(String title)`, `deleteTask(int id)`, and `selectTaskAsGoal(BacklogTaskEntity task)`.
 3. **`InsightsNotifier`:**
    * Computes today's focus minutes and active streak.
+   * Manages `isStreakEnabled` (master toggle to hide/show streaks).
+   * Manages `includeWeekendsInStreak` (bool, default: `false` so weekends are exempt by default; user can toggle to `true` to require 7-day streaks).
+   * Manages `isDailyReminderEnabled` (bool, default: `false` to prevent notification spam) and schedules daily recurring reminder via `flutter_local_notifications` when toggled `true`.
    * Loads 7-day chronological session list.
 
 #### B. Widgets & Screens
