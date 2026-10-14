@@ -12,9 +12,7 @@ void main() {
   late SessionLocalDataSource dataSource;
   late SessionRepositoryImpl repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-  });
+  setUpAll(sqfliteFfiInit);
 
   setUp(() async {
     final factory = databaseFactoryFfi;

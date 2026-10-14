@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static const int ongoingNotificationId = 1001;
@@ -36,6 +38,8 @@ class NotificationService {
       return;
     }
 
+    tz.initializeTimeZones();
+
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwinSettings = DarwinInitializationSettings();
@@ -47,6 +51,14 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(initializationSettings);
+
+    if (Platform.isAndroid) {
+      final androidImplementation = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidImplementation?.requestNotificationsPermission();
+    }
+
     _isInitialized = true;
   }
 
@@ -56,7 +68,7 @@ class NotificationService {
     required bool isPaused,
     int? targetEndTimeEpochMs,
   }) async {
-    if (!isSupportedPlatform) return;
+    if (!isSupportedPlatform || !_isInitialized) return;
 
     final title = isPaused
         ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
@@ -98,8 +110,18 @@ class NotificationService {
   }
 
   Future<void> cancelTimerNotification() async {
-    if (!isSupportedPlatform) return;
+    if (!isSupportedPlatform || !_isInitialized) return;
     await _notificationsPlugin.cancel(ongoingNotificationId);
+  }
+
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
   }
 
   Future<void> scheduleDailyReminder({
@@ -108,7 +130,7 @@ class NotificationService {
     String title = 'Time to Lock In 🚀',
     String body = 'Start your daily focus block and crush your goals.',
   }) async {
-    if (!isSupportedPlatform) return;
+    if (!isSupportedPlatform || !_isInitialized) return;
     await cancelDailyReminder();
 
     const androidDetails = AndroidNotificationDetails(
@@ -124,18 +146,21 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    await _notificationsPlugin.periodicallyShow(
+    await _notificationsPlugin.zonedSchedule(
       dailyReminderNotificationId,
       title,
       body,
-      RepeatInterval.daily,
+      _nextInstanceOfTime(hour, minute),
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
   Future<void> cancelDailyReminder() async {
-    if (!isSupportedPlatform) return;
+    if (!isSupportedPlatform || !_isInitialized) return;
     await _notificationsPlugin.cancel(dailyReminderNotificationId);
   }
 }

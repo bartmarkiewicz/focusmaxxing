@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/app_colors.dart';
 
-class AppTheme {
-  const AppTheme._();
-
+abstract final class AppTheme {
   static ThemeData buildDarkTheme(ColorScheme? dynamicColorScheme) {
     final baseColorScheme = dynamicColorScheme ??
         ColorScheme.fromSeed(
@@ -16,8 +14,10 @@ class AppTheme {
       surfaceContainerHighest: AppColors.surfaceRaised,
       primary: AppColors.accentLockIn,
       secondary: AppColors.accentRestMode,
+      tertiary: AppColors.accentStreakGold,
       error: AppColors.accentHardLock,
       outline: AppColors.surfaceHairline,
+      outlineVariant: AppColors.surfaceHairline,
       onSurface: AppColors.textHighContrast,
       onSurfaceVariant: AppColors.textMuted,
     );
@@ -27,7 +27,6 @@ class AppTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.surfaceMidnight,
       colorScheme: colorScheme,
-      cardColor: AppColors.surfaceRaised,
       cardTheme: const CardThemeData(
         color: AppColors.surfaceRaised,
         elevation: 0,

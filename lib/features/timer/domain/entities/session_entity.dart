@@ -1,28 +1,17 @@
 import 'package:equatable/equatable.dart';
 
-class SessionType {
-  const SessionType._();
+abstract final class SessionType {
   static const String focus = 'FOCUS';
   static const String shortBreak = 'SHORT_BREAK';
 }
 
-class SessionStatus {
-  const SessionStatus._();
+abstract final class SessionStatus {
   static const String lockedIn = 'LOCKED_IN';
   static const String derailed = 'DERAILED';
   static const String cancelled = 'CANCELLED';
 }
 
 class SessionEntity extends Equatable {
-  final int? id;
-  final String taskGoal;
-  final String sessionType;
-  final int targetDurationSeconds;
-  final int actualDurationSeconds;
-  final int startTimeEpochMs;
-  final int endTimeEpochMs;
-  final String status;
-
   const SessionEntity({
     this.id,
     required this.taskGoal,
@@ -33,6 +22,15 @@ class SessionEntity extends Equatable {
     required this.endTimeEpochMs,
     required this.status,
   });
+
+  final int? id;
+  final String taskGoal;
+  final String sessionType;
+  final int targetDurationSeconds;
+  final int actualDurationSeconds;
+  final int startTimeEpochMs;
+  final int endTimeEpochMs;
+  final String status;
 
   SessionEntity copyWith({
     int? id,

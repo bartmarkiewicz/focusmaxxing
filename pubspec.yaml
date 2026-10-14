@@ -31,7 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
   provider: ^6.1.2
   sqflite: ^2.3.3+1
   path: ^1.9.0
@@ -41,6 +40,7 @@ dependencies:
   dynamic_color: ^1.7.0
   flutter_local_notifications: ^17.2.1+2
   sqflite_common_ffi: ^2.3.3
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:

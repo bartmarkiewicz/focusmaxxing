@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 
 class BacklogTaskItem extends StatelessWidget {
-  final BacklogTaskEntity task;
-  final VoidCallback onSelect;
-  final VoidCallback onDelete;
-
   const BacklogTaskItem({
     super.key,
     required this.task,
     required this.onSelect,
     required this.onDelete,
   });
+
+  final BacklogTaskEntity task;
+  final VoidCallback onSelect;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +22,10 @@ class BacklogTaskItem extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Lock in on task: ${task.title}',
-      hint: 'Double tap to set as active session goal, swipe left to delete',
+      hint: 'Double tap to set as active session goal, or use accessibility action to delete',
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: 'Delete task'): onDelete,
+      },
       child: Dismissible(
         key: ValueKey('backlog_task_${task.id ?? task.title}'),
         direction: DismissDirection.endToStart,

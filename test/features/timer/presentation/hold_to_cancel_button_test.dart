@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/hold_to_cancel_button.dart';
 
@@ -58,6 +59,41 @@ void main() {
 
       expect(holdEnded, isTrue);
       expect(find.text('Hold for 5 full seconds to cancel session'), findsOneWidget);
+    });
+
+    testWidgets('triggers accessible confirmation dialog on tap and confirms cancel', (tester) async {
+      var cancelledImmediate = false;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: HoldToCancelButton(
+            progress: 0.0,
+            onHoldStart: () {},
+            onHoldEnd: () {},
+            onCancelImmediate: () => cancelledImmediate = true,
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final handle = tester.ensureSemantics();
+
+      tester.semantics.tap(
+        find.semantics.byLabel(
+          'Hold for 5 seconds to cancel session. Progress: 0 percent.',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Expect confirmation dialog
+      expect(find.text('Cancel Active Session?'), findsOneWidget);
+      expect(find.text('CONFIRM CANCEL'), findsOneWidget);
+
+      await tester.tap(find.text('CONFIRM CANCEL'));
+      await tester.pumpAndSettle();
+
+      expect(cancelledImmediate, isTrue);
+      handle.dispose();
     });
   });
 }

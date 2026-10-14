@@ -90,9 +90,13 @@ class BacklogNotifier extends ChangeNotifier {
 
   Future<void> deleteTask(int id) async {
     final previousTasks = _pendingTasks;
+    final previousSelected = _selectedTask;
     _pendingTasks = List.unmodifiable(
       _pendingTasks.where((task) => task.id != id),
     );
+    if (_selectedTask?.id == id) {
+      _selectedTask = null;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -101,6 +105,7 @@ class BacklogNotifier extends ChangeNotifier {
       (failure) {
         _errorMessage = failure.message;
         _pendingTasks = previousTasks;
+        _selectedTask = previousSelected;
         notifyListeners();
       },
       (_) {},
@@ -109,6 +114,7 @@ class BacklogNotifier extends ChangeNotifier {
 
   Future<void> completeTask(int id, int sessionId) async {
     final previousTasks = _pendingTasks;
+    final previousSelected = _selectedTask;
     _pendingTasks = List.unmodifiable(
       _pendingTasks.where((task) => task.id != id),
     );
@@ -123,6 +129,7 @@ class BacklogNotifier extends ChangeNotifier {
       (failure) {
         _errorMessage = failure.message;
         _pendingTasks = previousTasks;
+        _selectedTask = previousSelected;
         notifyListeners();
       },
       (_) {},

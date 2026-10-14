@@ -31,6 +31,17 @@ class TimerNotifier extends ChangeNotifier {
   final MarkTaskCompletedUseCase? markTaskCompletedUseCase;
   final SharedPreferences? prefs;
 
+  TimerNotifier({
+    required this.startSessionUseCase,
+    required this.completeSessionUseCase,
+    required this.cancelSessionUseCase,
+    required this.notificationService,
+    this.markTaskCompletedUseCase,
+    this.prefs,
+  }) {
+    unawaited(_loadRecentGoals());
+  }
+
   TimerStatus _status = TimerStatus.idle;
   int _targetDurationSeconds = defaultFocusSeconds;
   int _remainingSeconds = defaultFocusSeconds;
@@ -46,18 +57,9 @@ class TimerNotifier extends ChangeNotifier {
   Timer? _periodicTicker;
   Timer? _cancelHoldTimer;
   DateTime? _cancelHoldStartTime;
+  bool _isStarting = false;
+  bool _isCancelling = false;
   bool _isDisposed = false;
-
-  TimerNotifier({
-    required this.startSessionUseCase,
-    required this.completeSessionUseCase,
-    required this.cancelSessionUseCase,
-    required this.notificationService,
-    this.markTaskCompletedUseCase,
-    this.prefs,
-  }) {
-    unawaited(_loadRecentGoals());
-  }
 
   TimerStatus get status => _status;
   int get targetDurationSeconds => _targetDurationSeconds;
@@ -106,47 +108,56 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<bool> startFocusSession(String goal, {int? backlogTaskId}) async {
-    final trimmed = goal.trim();
-    _currentTaskGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
-    _linkedBacklogTaskId = backlogTaskId;
-    _remainingSeconds = _targetDurationSeconds;
-    _remainingDuration = Duration(seconds: _remainingSeconds);
-    _targetEndTime = DateTime.now().add(_remainingDuration);
-    _cancelHoldProgress = 0.0;
-    _errorMessage = null;
+    if (_status != TimerStatus.idle || _isStarting) return false;
+    _isStarting = true;
 
-    await _cacheRecentGoal(_currentTaskGoal);
+    try {
+      final trimmed = goal.trim();
+      _currentTaskGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
+      _linkedBacklogTaskId = backlogTaskId;
+      _remainingSeconds = _targetDurationSeconds;
+      _remainingDuration = Duration(seconds: _remainingSeconds);
+      _targetEndTime = DateTime.now().add(_remainingDuration);
+      _cancelHoldProgress = 0.0;
+      _errorMessage = null;
 
-    final result = await startSessionUseCase(
-      taskGoal: _currentTaskGoal,
-      sessionType: SessionType.focus,
-      targetDurationSeconds: _targetDurationSeconds,
-    );
+      await _cacheRecentGoal(_currentTaskGoal);
 
-    return result.fold(
-      (failure) {
-        _errorMessage = failure.message;
-        _status = TimerStatus.idle;
-        notifyListeners();
-        return false;
-      },
-      (sessionId) {
-        _activeSessionId = sessionId;
-        _status = TimerStatus.running;
-        _startTicker();
-        _updateNotification();
-        notifyListeners();
-        return true;
-      },
-    );
+      final result = await startSessionUseCase(
+        taskGoal: _currentTaskGoal,
+        sessionType: SessionType.focus,
+        targetDurationSeconds: _targetDurationSeconds,
+      );
+
+      final isSuccess = result.fold(
+        (failure) {
+          _errorMessage = failure.message;
+          _status = TimerStatus.idle;
+          notifyListeners();
+          return false;
+        },
+        (sessionId) {
+          _activeSessionId = sessionId;
+          _status = TimerStatus.running;
+          _startTicker();
+          _updateNotification();
+          notifyListeners();
+          return true;
+        },
+      );
+      return isSuccess;
+    } finally {
+      _isStarting = false;
+    }
   }
 
   void pause() {
     if (_status != TimerStatus.running) return;
 
     _periodicTicker?.cancel();
-    if (_targetEndTime != null) {
-      _remainingDuration = _targetEndTime!.difference(DateTime.now());
+    final targetEnd = _targetEndTime;
+    if (targetEnd != null) {
+      _remainingDuration = targetEnd.difference(DateTime.now());
       if (_remainingDuration.isNegative) _remainingDuration = Duration.zero;
     }
     _remainingSeconds = (_remainingDuration.inMilliseconds / 1000).ceil();
@@ -176,13 +187,14 @@ class TimerNotifier extends ChangeNotifier {
     _cancelHoldTimer = Timer.periodic(
       const Duration(milliseconds: 50),
       (timer) {
-        if (_cancelHoldStartTime == null) {
+        final startTime = _cancelHoldStartTime;
+        if (startTime == null) {
           timer.cancel();
           return;
         }
 
         final elapsedMs =
-            DateTime.now().difference(_cancelHoldStartTime!).inMilliseconds;
+            DateTime.now().difference(startTime).inMilliseconds;
         final progress = (elapsedMs / cancelHoldTotalMs).clamp(0.0, 1.0);
         _cancelHoldProgress = progress;
         notifyListeners();
@@ -216,37 +228,53 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<void> cancelSession() async {
-    _periodicTicker?.cancel();
-    _cancelHoldTimer?.cancel();
-    _cancelHoldProgress = 0.0;
+    if (_isCancelling || _status == TimerStatus.idle) return;
+    _isCancelling = true;
 
-    final actualDuration = _targetDurationSeconds - _remainingSeconds;
-    final sessionId = _activeSessionId;
+    try {
+      _periodicTicker?.cancel();
+      _cancelHoldTimer?.cancel();
+      _cancelHoldTimer = null;
+      _cancelHoldStartTime = null;
+      _cancelHoldProgress = 0.0;
 
-    if (sessionId != null) {
-      final result = await cancelSessionUseCase(
-        sessionId: sessionId,
-        actualDurationSeconds: actualDuration > 0 ? actualDuration : 0,
-      );
-      result.fold(
-        (failure) => _errorMessage = failure.message,
-        (_) {},
-      );
+      final actualDuration = _targetDurationSeconds - _remainingSeconds;
+      final sessionId = _activeSessionId;
+      _activeSessionId = null;
+      _linkedBacklogTaskId = null;
+
+      if (sessionId != null) {
+        final result = await cancelSessionUseCase(
+          sessionId: sessionId,
+          actualDurationSeconds: actualDuration > 0 ? actualDuration : 0,
+        );
+        result.fold(
+          (failure) => _errorMessage = failure.message,
+          (_) {},
+        );
+      }
+
+      await notificationService.cancelTimerNotification();
+      _status = TimerStatus.idle;
+      _remainingSeconds = _targetDurationSeconds;
+      _remainingDuration = Duration(seconds: _targetDurationSeconds);
+      notifyListeners();
+    } finally {
+      _isCancelling = false;
     }
-
-    await notificationService.cancelTimerNotification();
-    _activeSessionId = null;
-    _status = TimerStatus.idle;
-    _remainingSeconds = _targetDurationSeconds;
-    _remainingDuration = Duration(seconds: _targetDurationSeconds);
-    notifyListeners();
   }
 
   Future<void> checkInSession({required bool lockedIn}) async {
+    if (_status != TimerStatus.completed && _status != TimerStatus.running) return;
     final sessionId = _activeSessionId;
     final actualDuration = _targetDurationSeconds;
     final outcomeStatus =
         lockedIn ? SessionStatus.lockedIn : SessionStatus.derailed;
+    final completeTask = markTaskCompletedUseCase;
+    final taskId = _linkedBacklogTaskId;
+
+    _activeSessionId = null;
+    _linkedBacklogTaskId = null;
 
     if (sessionId != null) {
       final completeResult = await completeSessionUseCase(
@@ -260,9 +288,9 @@ class TimerNotifier extends ChangeNotifier {
       );
 
       // Auto-complete linked backlog task if one was promoted to this session
-      if (_linkedBacklogTaskId != null && markTaskCompletedUseCase != null) {
-        final taskResult = await markTaskCompletedUseCase!(
-          id: _linkedBacklogTaskId!,
+      if (taskId != null && completeTask != null) {
+        final taskResult = await completeTask(
+          id: taskId,
           sessionId: sessionId,
         );
         taskResult.fold(
@@ -305,9 +333,10 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void _onTick() {
-    if (_targetEndTime == null) return;
+    final targetEnd = _targetEndTime;
+    if (targetEnd == null) return;
 
-    final diff = _targetEndTime!.difference(DateTime.now());
+    final diff = targetEnd.difference(DateTime.now());
     final isFinished = diff.isNegative || diff.inMilliseconds <= 0;
     final secondsLeft = isFinished ? 0 : (diff.inMilliseconds / 1000).ceil();
 
@@ -325,6 +354,7 @@ class TimerNotifier extends ChangeNotifier {
         unawaited(notificationService.cancelTimerNotification());
       } else if (_status == TimerStatus.breakRunning) {
         _status = TimerStatus.breakCompleted;
+        unawaited(notificationService.cancelTimerNotification());
       }
       notifyListeners();
     }

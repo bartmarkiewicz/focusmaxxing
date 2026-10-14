@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/core/utils/date_utils.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
@@ -14,6 +13,9 @@ class SessionHistoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (sessions.isEmpty) {
       return Card(
         child: Padding(
@@ -22,26 +24,26 @@ class SessionHistoryList extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.history_toggle_off_rounded,
                   size: 40,
-                  color: AppColors.textMuted,
+                  color: colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'No focus sessions recorded yet',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textHighContrast,
-                      ),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Complete a focus session to build your momentum.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -51,41 +53,40 @@ class SessionHistoryList extends StatelessWidget {
     }
 
     return Card(
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: sessions.length,
-        separatorBuilder: (context, index) => const Divider(
-          color: AppColors.surfaceHairline,
-          height: 1,
-        ),
-        itemBuilder: (context, index) {
-          final session = sessions[index];
-          return _SessionHistoryTile(session: session);
-        },
+      child: Column(
+        children: [
+          for (int i = 0; i < sessions.length; i++) ...[
+            if (i > 0)
+              Divider(
+                color: colorScheme.outlineVariant,
+                height: 1,
+              ),
+            _SessionHistoryTile(session: sessions[i]),
+          ],
+        ],
       ),
     );
   }
 }
 
 class _SessionHistoryTile extends StatelessWidget {
-  final SessionEntity session;
-
   const _SessionHistoryTile({required this.session});
+
+  final SessionEntity session;
 
   @override
   Widget build(BuildContext context) {
-    final statusBadge = _resolveStatusBadge(session.status);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusBadge = _resolveStatusBadge(session.status, colorScheme);
     final durationText = session.actualDurationSeconds > 0
         ? TimeFormatter.formatDurationToMinutes(session.actualDurationSeconds)
         : TimeFormatter.formatDurationToMinutes(session.targetDurationSeconds);
     final timeStr = _formatSessionDateTime(session.startTimeEpochMs);
-    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             statusBadge.emoji,
@@ -104,7 +105,7 @@ class _SessionHistoryTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textHighContrast,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -133,7 +134,7 @@ class _SessionHistoryTile extends StatelessWidget {
           Text(
             timeStr,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textMuted,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -158,44 +159,44 @@ class _SessionHistoryTile extends StatelessWidget {
     return '${date.month}/${date.day}, $timeStr';
   }
 
-  _StatusBadge _resolveStatusBadge(String status) {
+  _StatusBadge _resolveStatusBadge(String status, ColorScheme colorScheme) {
     switch (status) {
       case SessionStatus.lockedIn:
-        return const _StatusBadge(
+        return _StatusBadge(
           emoji: '🚀',
           label: 'Locked In',
-          color: AppColors.accentLockIn,
+          color: colorScheme.primary,
         );
       case SessionStatus.derailed:
-        return const _StatusBadge(
+        return _StatusBadge(
           emoji: '💀',
           label: 'Derailed',
-          color: AppColors.accentHardLock,
+          color: colorScheme.error,
         );
       case SessionStatus.cancelled:
-        return const _StatusBadge(
+        return _StatusBadge(
           emoji: '⏹️',
           label: 'Cancelled',
-          color: AppColors.textMuted,
+          color: colorScheme.onSurfaceVariant,
         );
       default:
-        return const _StatusBadge(
+        return _StatusBadge(
           emoji: '⏹️',
           label: 'Session',
-          color: AppColors.textMuted,
+          color: colorScheme.onSurfaceVariant,
         );
     }
   }
 }
 
 class _StatusBadge {
-  final String emoji;
-  final String label;
-  final Color color;
-
   const _StatusBadge({
     required this.emoji,
     required this.label,
     required this.color,
   });
+
+  final String emoji;
+  final String label;
+  final Color color;
 }

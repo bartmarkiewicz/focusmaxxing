@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
@@ -19,7 +19,7 @@ class _InsightsPageState extends State<InsightsPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<InsightsNotifier>().loadInsights();
+        unawaited(context.read<InsightsNotifier>().loadInsights());
       }
     });
   }
@@ -29,6 +29,7 @@ class _InsightsPageState extends State<InsightsPage> {
     final notifier = context.watch<InsightsNotifier>();
     final summary = notifier.dailySummary;
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -42,9 +43,9 @@ class _InsightsPageState extends State<InsightsPage> {
         centerTitle: false,
       ),
       body: RefreshIndicator(
-        onRefresh: () => notifier.refresh(),
-        color: AppColors.accentLockIn,
-        backgroundColor: AppColors.surfaceRaised,
+        onRefresh: notifier.refresh,
+        color: colorScheme.primary,
+        backgroundColor: colorScheme.surfaceContainerHighest,
         child: _buildBody(context, notifier, summary),
       ),
     );
@@ -55,15 +56,17 @@ class _InsightsPageState extends State<InsightsPage> {
     InsightsNotifier notifier,
     DailySummaryEntity? summary,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (notifier.isLoading && summary == null) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32),
+          padding: const EdgeInsets.all(32),
           child: Text(
             'Loading momentum...',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textMuted,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -77,25 +80,25 @@ class _InsightsPageState extends State<InsightsPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline_rounded,
-                color: AppColors.accentHardLock,
+                color: colorScheme.error,
                 size: 48,
               ),
               const SizedBox(height: 16),
               Text(
                 'Unable to load insights',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textHighContrast,
+                      color: colorScheme.onSurface,
                     ),
               ),
               const SizedBox(height: 8),
               Text(
                 notifier.errorMessage!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
               ),
               const SizedBox(height: 20),
@@ -103,9 +106,9 @@ class _InsightsPageState extends State<InsightsPage> {
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('RETRY'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceRaised,
-                  foregroundColor: AppColors.accentLockIn,
-                  side: const BorderSide(color: AppColors.surfaceHairline),
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  foregroundColor: colorScheme.primary,
+                  side: BorderSide(color: colorScheme.outlineVariant),
                 ),
                 onPressed: () => notifier.refresh(),
               ),
@@ -122,26 +125,26 @@ class _InsightsPageState extends State<InsightsPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.accentHardLock.withValues(alpha: 0.15),
+              color: colorScheme.error.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: AppColors.accentHardLock.withValues(alpha: 0.4),
+                color: colorScheme.error.withValues(alpha: 0.4),
               ),
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.warning_amber_rounded,
-                  color: AppColors.accentHardLock,
+                  color: colorScheme.error,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     notifier.errorMessage!,
-                    style: const TextStyle(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       fontSize: 13,
-                      color: AppColors.textHighContrast,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -191,12 +194,13 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Text(
       title,
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+      style: theme.textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
-            color: AppColors.textMuted,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
     );
   }
@@ -214,6 +218,7 @@ class _MomentumRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Row(
       children: [
@@ -227,7 +232,7 @@ class _MomentumRow extends StatelessWidget {
                   Text(
                     '$focusMinutes MINS',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      color: AppColors.accentLockIn,
+                      color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -235,7 +240,7 @@ class _MomentumRow extends StatelessWidget {
                   Text(
                     'Locked In Today',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -254,7 +259,7 @@ class _MomentumRow extends StatelessWidget {
                   Text(
                     '$completedCount',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      color: AppColors.textHighContrast,
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -262,7 +267,7 @@ class _MomentumRow extends StatelessWidget {
                   Text(
                     'Sessions Finished',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -298,20 +303,21 @@ class _PreferencesCard extends StatelessWidget {
     final formattedMinute = reminderMinute.toString().padLeft(2, '0');
     final reminderTimeLabel = '$formattedHour:$formattedMinute';
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Card(
       child: Column(
         children: [
           SwitchListTile.adaptive(
-            secondary: const Icon(
+            secondary: Icon(
               Icons.notifications_active_outlined,
-              color: AppColors.textHighContrast,
+              color: colorScheme.onSurface,
             ),
             title: Text(
               'Daily Focus Reminder',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textHighContrast,
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
@@ -319,11 +325,11 @@ class _PreferencesCard extends StatelessWidget {
                   ? 'Scheduled daily at $reminderTimeLabel'
                   : 'Off (zero notification spam)',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textMuted,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             value: isDailyReminderEnabled,
-            activeThumbColor: AppColors.accentLockIn,
+            activeThumbColor: colorScheme.primary,
             onChanged: onReminderToggle,
           ),
           if (isDailyReminderEnabled)
@@ -335,7 +341,7 @@ class _PreferencesCard extends StatelessWidget {
                   Text(
                     'Reminder Time',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textMuted,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                   TextButton.icon(
@@ -355,51 +361,53 @@ class _PreferencesCard extends StatelessWidget {
                 ],
               ),
             ),
-          const Divider(color: AppColors.surfaceHairline, height: 1),
+          Divider(color: colorScheme.outlineVariant, height: 1),
           ListTile(
-            leading: const Icon(
+            leading: Icon(
               Icons.headphones_outlined,
-              color: AppColors.textHighContrast,
+              color: colorScheme.onSurface,
             ),
             title: Text(
               'Ambient Audio',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textHighContrast,
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               'Brown noise, 40Hz, Rain (Milestone 3)',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textMuted,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
-            trailing: const Chip(
+            trailing: Chip(
               label: Text(
                 'Default',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
               visualDensity: VisualDensity.compact,
-              backgroundColor: AppColors.surfaceHairline,
+              backgroundColor: colorScheme.outlineVariant.withValues(alpha: 0.3),
             ),
           ),
-          const Divider(color: AppColors.surfaceHairline, height: 1),
+          Divider(color: colorScheme.outlineVariant, height: 1),
           ListTile(
-            leading: const Icon(
+            leading: Icon(
               Icons.timer_outlined,
-              color: AppColors.textHighContrast,
+              color: colorScheme.onSurface,
             ),
             title: Text(
               'Timer Intervals',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textHighContrast,
+                color: colorScheme.onSurface,
               ),
             ),
             subtitle: Text(
               '25m Focus · 5m Rest Break',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textMuted,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -415,13 +423,14 @@ class _ProBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: const BorderRadius.all(Radius.circular(16)),
         border: Border.all(
-          color: AppColors.accentStreakGold.withValues(alpha: 0.4),
+          color: colorScheme.tertiary.withValues(alpha: 0.4),
           width: 1.5,
         ),
       ),
@@ -439,14 +448,14 @@ class _ProBanner extends StatelessWidget {
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
-                    color: AppColors.accentStreakGold,
+                    color: colorScheme.tertiary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Zero subscriptions · Unlimited blocking & offline privacy',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

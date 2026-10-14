@@ -12,10 +12,10 @@ class BacklogTaskModel extends BacklogTaskEntity {
 
   factory BacklogTaskModel.fromMap(Map<String, dynamic> map) {
     return BacklogTaskModel(
-      id: map['id'] as int?,
-      title: map['title'] as String,
-      isCompleted: (map['is_completed'] as int?) == 1,
-      completedSessionId: map['completed_session_id'] as int?,
+      id: (map['id'] as num?)?.toInt(),
+      title: map['title']?.toString() ?? '',
+      isCompleted: ((map['is_completed'] as num?)?.toInt() ?? 0) == 1,
+      completedSessionId: (map['completed_session_id'] as num?)?.toInt(),
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),

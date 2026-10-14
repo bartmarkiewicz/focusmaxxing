@@ -3,7 +3,7 @@ import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:focusmaxxing/features/backlog/data/models/backlog_task_model.dart';
 import 'package:sqflite/sqflite.dart' hide DatabaseException;
 
-abstract class IBacklogLocalDataSource {
+abstract interface class IBacklogLocalDataSource {
   Future<List<BacklogTaskModel>> getPendingTasks();
   Future<int> insertTask(BacklogTaskModel task);
   Future<void> deleteTask(int id);
@@ -11,10 +11,10 @@ abstract class IBacklogLocalDataSource {
 }
 
 class BacklogLocalDataSource implements IBacklogLocalDataSource {
-  final DatabaseHelper _databaseHelper;
-
   BacklogLocalDataSource({DatabaseHelper? databaseHelper})
       : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+
+  final DatabaseHelper _databaseHelper;
 
   Future<Database> get _db => _databaseHelper.database;
 
@@ -28,8 +28,9 @@ class BacklogLocalDataSource implements IBacklogLocalDataSource {
         whereArgs: [0],
         orderBy: 'id DESC',
       );
-      return results.map((row) => BacklogTaskModel.fromMap(row)).toList();
-    } on Exception catch (e) {
+      return results.map(BacklogTaskModel.fromMap).toList();
+    } catch (e) {
+      if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to fetch pending backlog tasks: $e');
     }
   }
@@ -43,7 +44,8 @@ class BacklogLocalDataSource implements IBacklogLocalDataSource {
         task.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-    } on Exception catch (e) {
+    } catch (e) {
+      if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to insert backlog task: $e');
     }
   }
@@ -60,7 +62,7 @@ class BacklogLocalDataSource implements IBacklogLocalDataSource {
       if (count == 0) {
         throw DatabaseException('No task found with ID $id');
       }
-    } on Exception catch (e) {
+    } catch (e) {
       if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to delete backlog task $id: $e');
     }
@@ -83,7 +85,7 @@ class BacklogLocalDataSource implements IBacklogLocalDataSource {
       if (count == 0) {
         throw DatabaseException('No task found to complete with ID $id');
       }
-    } on Exception catch (e) {
+    } catch (e) {
       if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to complete backlog task $id: $e');
     }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
@@ -33,7 +34,7 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<BacklogNotifier>().loadPendingTasks();
+        unawaited(context.read<BacklogNotifier>().loadPendingTasks());
       }
     });
   }
@@ -60,7 +61,7 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
     final taskId = task.id;
     if (taskId == null) return;
 
-    notifier.deleteTask(taskId);
+    unawaited(notifier.deleteTask(taskId));
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
@@ -71,7 +72,7 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
         action: SnackBarAction(
           label: 'UNDO',
           onPressed: () {
-            notifier.addTask(task.title);
+            unawaited(notifier.addTask(task.title));
           },
         ),
       ),
@@ -106,100 +107,112 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
               ),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: ExcludeSemantics(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Backlog (Focus Scratchpad)',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                    tooltip: 'Close',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _textController,
-                maxLength: 60,
-                buildCounter: (
-                  context, {
-                  required currentLength,
-                  required isFocused,
-                  maxLength,
-                }) =>
-                    null,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _handleAddTask(),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Add next task...',
-                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  suffixIcon: IconButton(
-                    onPressed: _handleAddTask,
-                    icon: Icon(
-                      Icons.add_circle,
-                      color: colorScheme.primary,
-                    ),
-                    tooltip: 'Add task',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'TAP TO LOCK IN · SWIPE TO REMOVE',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Consumer<BacklogNotifier>(
-                  builder: (context, notifier, _) {
-                    if (notifier.isLoading) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          color: colorScheme.primary,
+          child: CustomScrollView(
+            shrinkWrap: true,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: ExcludeSemantics(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                      );
-                    }
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Backlog (Focus Scratchpad)',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                          tooltip: 'Close',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _textController,
+                      maxLength: 60,
+                      buildCounter: (
+                        context, {
+                        required currentLength,
+                        required isFocused,
+                        maxLength,
+                      }) =>
+                          null,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _handleAddTask(),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Add next task...',
+                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: _handleAddTask,
+                          icon: Icon(
+                            Icons.add_circle,
+                            color: colorScheme.primary,
+                          ),
+                          tooltip: 'Add task',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'TAP TO LOCK IN · SWIPE TO REMOVE',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+              Consumer<BacklogNotifier>(
+                builder: (context, notifier, _) {
+                  if (notifier.isLoading) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-                    if (notifier.errorMessage != null) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
+                  if (notifier.errorMessage != null) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
                           child: Text(
                             notifier.errorMessage!,
                             textAlign: TextAlign.center,
@@ -208,24 +221,30 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                             ),
                           ),
                         ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    if (notifier.pendingTasks.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Scratchpad is clear.\nAdd tasks above to stay locked in.',
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                  if (notifier.pendingTasks.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Center(
+                          child: Text(
+                            'Scratchpad is clear.\nAdd tasks above to stay locked in.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    return ListView.builder(
-                      itemCount: notifier.pendingTasks.length,
-                      itemBuilder: (context, index) {
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
                         final task = notifier.pendingTasks[index];
                         return BacklogTaskItem(
                           task: task,
@@ -237,9 +256,10 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                           onDelete: () => _handleTaskDelete(context, notifier, task),
                         );
                       },
-                    );
-                  },
-                ),
+                      childCount: notifier.pendingTasks.length,
+                    ),
+                  );
+                },
               ),
             ],
           ),

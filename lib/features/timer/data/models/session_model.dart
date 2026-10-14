@@ -14,14 +14,16 @@ class SessionModel extends SessionEntity {
 
   factory SessionModel.fromMap(Map<String, dynamic> map) {
     return SessionModel(
-      id: map['id'] as int?,
-      taskGoal: map['task_goal'] as String,
-      sessionType: map['session_type'] as String,
-      targetDurationSeconds: map['target_duration_seconds'] as int,
-      actualDurationSeconds: map['actual_duration_seconds'] as int,
-      startTimeEpochMs: map['start_time_epoch_ms'] as int,
-      endTimeEpochMs: map['end_time_epoch_ms'] as int,
-      status: map['status'] as String,
+      id: (map['id'] as num?)?.toInt(),
+      taskGoal: map['task_goal']?.toString() ?? 'Deep Work',
+      sessionType: map['session_type']?.toString() ?? SessionType.focus,
+      targetDurationSeconds:
+          (map['target_duration_seconds'] as num?)?.toInt() ?? 0,
+      actualDurationSeconds:
+          (map['actual_duration_seconds'] as num?)?.toInt() ?? 0,
+      startTimeEpochMs: (map['start_time_epoch_ms'] as num?)?.toInt() ?? 0,
+      endTimeEpochMs: (map['end_time_epoch_ms'] as num?)?.toInt() ?? 0,
+      status: map['status']?.toString() ?? SessionStatus.cancelled,
     );
   }
 

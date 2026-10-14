@@ -32,5 +32,18 @@ class MigrationV1 extends Migration {
         FOREIGN KEY(completed_session_id) REFERENCES sessions(id) ON DELETE SET NULL
       );
     ''');
+
+    await db.execute(
+      'CREATE INDEX idx_sessions_start_time ON sessions (start_time_epoch_ms DESC);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sessions_type_status_time ON sessions (session_type, status, start_time_epoch_ms DESC);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_backlog_tasks_is_completed ON backlog_tasks (is_completed, id DESC);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_backlog_tasks_completed_session ON backlog_tasks (completed_session_id);',
+    );
   }
 }

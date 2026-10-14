@@ -1,17 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 class HoldToCancelButton extends StatefulWidget {
-  final double progress;
-  final VoidCallback onHoldStart;
-  final VoidCallback onHoldEnd;
-
   const HoldToCancelButton({
     super.key,
     required this.progress,
     required this.onHoldStart,
     required this.onHoldEnd,
+    this.onCancelImmediate,
   });
+
+  final double progress;
+  final VoidCallback onHoldStart;
+  final VoidCallback onHoldEnd;
+  final VoidCallback? onCancelImmediate;
 
   @override
   State<HoldToCancelButton> createState() => _HoldToCancelButtonState();
@@ -30,7 +35,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
       final currentTier = (widget.progress * 4).floor(); // 0: 0-25%, 1: 25-50%, 2: 50-75%, 3: 75-100%
       if (currentTier > _lastHapticTier) {
         _lastHapticTier = currentTier;
-        HapticFeedback.lightImpact();
+        unawaited(HapticFeedback.lightImpact());
       }
     }
   }
@@ -39,16 +44,14 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   void dispose() {
     if (_touchStartTime != null) {
       _touchStartTime = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onHoldEnd();
-      });
+      widget.onHoldEnd();
     }
     super.dispose();
   }
 
   void _handleTapDown(TapDownDetails _) {
     _touchStartTime = DateTime.now();
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     widget.onHoldStart();
   }
 
@@ -82,6 +85,41 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
     }
   }
 
+  Future<void> _showAccessibleCancelConfirmation(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Active Session?'),
+        content: const Text(
+          'Are you sure you want to cancel this focus block? Momentum will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('KEEP FOCUSING'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            child: const Text('CONFIRM CANCEL'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      if (widget.onCancelImmediate != null) {
+        widget.onCancelImmediate!();
+      } else {
+        widget.onHoldStart();
+        widget.onHoldEnd();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -94,6 +132,12 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
     return Semantics(
       button: true,
       label: 'Hold for 5 seconds to cancel session. Progress: $percent percent.',
+      hint: 'Double tap to open cancellation confirmation',
+      onTap: () => _showAccessibleCancelConfirmation(context),
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: 'Cancel session'): () =>
+            _showAccessibleCancelConfirmation(context),
+      },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: _handleTapDown,

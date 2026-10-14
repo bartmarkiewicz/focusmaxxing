@@ -62,7 +62,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       );
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } on Exception catch (e) {
+    } catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }
@@ -87,7 +87,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       return Right(entities);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } on Exception catch (e) {
+    } catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }
@@ -138,7 +138,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       return Right(streak);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } on Exception catch (e) {
+    } catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }

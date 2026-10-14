@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
 class SessionCheckInDialog extends StatelessWidget {
-  final int durationSeconds;
-  final String taskGoal;
-
   const SessionCheckInDialog({
     super.key,
     required this.durationSeconds,
     required this.taskGoal,
   });
+
+  final int durationSeconds;
+  final String taskGoal;
 
   static Future<bool?> show(
     BuildContext context, {
@@ -45,11 +45,12 @@ class SessionCheckInDialog extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '🎉 $formattedDuration Complete',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '🎉 $formattedDuration Complete',
               style: theme.textTheme.titleLarge?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -153,6 +154,7 @@ class SessionCheckInDialog extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

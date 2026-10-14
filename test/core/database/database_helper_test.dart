@@ -25,9 +25,7 @@ class _MigrationV2 extends Migration {
 }
 
 void main() {
-  setUpAll(() {
-    sqfliteFfiInit();
-  });
+  setUpAll(sqfliteFfiInit);
 
   tearDown(() async {
     await DatabaseHelper.instance.close();

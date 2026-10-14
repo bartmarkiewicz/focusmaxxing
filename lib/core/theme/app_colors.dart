@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AppColors {
-  const AppColors._();
+abstract final class AppColors {
 
   static const Color surfaceMidnight = Color(0xFF090A0D);
   static const Color surfaceRaised = Color(0xFF13151B);

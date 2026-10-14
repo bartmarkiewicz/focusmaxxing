@@ -1,6 +1,4 @@
-class AppDateUtils {
-  const AppDateUtils._();
-
+abstract final class AppDateUtils {
   static DateTime getStartOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
@@ -14,9 +12,9 @@ class AppDateUtils {
   }
 
   static int calendarDaysBetween(DateTime from, DateTime to) {
-    final startFrom = getStartOfDay(from);
-    final startTo = getStartOfDay(to);
-    return startTo.difference(startFrom).inDays;
+    final utcFrom = DateTime.utc(from.year, from.month, from.day);
+    final utcTo = DateTime.utc(to.year, to.month, to.day);
+    return utcTo.difference(utcFrom).inDays;
   }
 
   static bool isWeekend(DateTime date) {

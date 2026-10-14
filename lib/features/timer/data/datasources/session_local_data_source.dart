@@ -3,7 +3,7 @@ import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:focusmaxxing/features/timer/data/models/session_model.dart';
 import 'package:sqflite/sqflite.dart' hide DatabaseException;
 
-abstract class ISessionLocalDataSource {
+abstract interface class ISessionLocalDataSource {
   Future<int> insertSession(SessionModel session);
   Future<void> updateSessionStatus(
     int sessionId,
@@ -11,15 +11,14 @@ abstract class ISessionLocalDataSource {
     int actualDurationSeconds,
   );
   Future<List<SessionModel>> getSessionsForDateRange(int startMs, int endMs);
-  Future<List<SessionModel>> getAllSessions({int limit = 100});
   Future<List<int>> getCompletedFocusSessionStartTimes();
 }
 
 class SessionLocalDataSource implements ISessionLocalDataSource {
-  final DatabaseHelper _databaseHelper;
-
   SessionLocalDataSource({DatabaseHelper? databaseHelper})
       : _databaseHelper = databaseHelper ?? DatabaseHelper.instance;
+
+  final DatabaseHelper _databaseHelper;
 
   Future<Database> get _db => _databaseHelper.database;
 
@@ -32,7 +31,8 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
         session.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
-    } on Exception catch (e) {
+    } catch (e) {
+      if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to insert session: $e');
     }
   }
@@ -58,7 +58,7 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
       if (count == 0) {
         throw DatabaseException('No session found with ID $sessionId to update');
       }
-    } on Exception catch (e) {
+    } catch (e) {
       if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to update session $sessionId: $e');
     }
@@ -77,24 +77,10 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
         whereArgs: [startMs, endMs],
         orderBy: 'start_time_epoch_ms DESC',
       );
-      return results.map((row) => SessionModel.fromMap(row)).toList();
-    } on Exception catch (e) {
+      return results.map(SessionModel.fromMap).toList();
+    } catch (e) {
+      if (e is DatabaseException) rethrow;
       throw DatabaseException('Failed to query sessions for date range: $e');
-    }
-  }
-
-  @override
-  Future<List<SessionModel>> getAllSessions({int limit = 100}) async {
-    try {
-      final db = await _db;
-      final results = await db.query(
-        DatabaseHelper.tableSessions,
-        orderBy: 'start_time_epoch_ms DESC',
-        limit: limit,
-      );
-      return results.map((row) => SessionModel.fromMap(row)).toList();
-    } on Exception catch (e) {
-      throw DatabaseException('Failed to query all sessions: $e');
     }
   }
 
@@ -112,7 +98,8 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
       return results
           .map((row) => row['start_time_epoch_ms'] as int)
           .toList();
-    } on Exception catch (e) {
+    } catch (e) {
+      if (e is DatabaseException) rethrow;
       throw DatabaseException(
           'Failed to query completed session timestamps: $e');
     }

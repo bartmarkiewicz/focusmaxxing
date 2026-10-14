@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
@@ -20,7 +21,7 @@ class InsightsNotifier extends ChangeNotifier {
   final SharedPreferences? sharedPreferences;
 
   DailySummaryEntity? _dailySummary;
-  List<SessionEntity> _recentSessions = [];
+  List<SessionEntity> _recentSessions = const [];
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -36,11 +37,15 @@ class InsightsNotifier extends ChangeNotifier {
     required this.notificationService,
     this.sharedPreferences,
   }) {
-    _loadPreferences();
+    if (sharedPreferences != null) {
+      _applyPreferences(sharedPreferences!);
+    } else {
+      unawaited(_loadPreferencesAsync());
+    }
   }
 
   DailySummaryEntity? get dailySummary => _dailySummary;
-  List<SessionEntity> get recentSessions => List.unmodifiable(_recentSessions);
+  List<SessionEntity> get recentSessions => _recentSessions;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -53,16 +58,21 @@ class InsightsNotifier extends ChangeNotifier {
   TimeOfDay get dailyReminderTime =>
       TimeOfDay(hour: _dailyReminderHour, minute: _dailyReminderMinute);
 
-  void _loadPreferences() {
-    final prefs = sharedPreferences;
-    if (prefs != null) {
-      _isStreakEnabled = prefs.getBool(keyStreakEnabled) ?? true;
-      _includeWeekendsInStreak = prefs.getBool(keyIncludeWeekends) ?? false;
-      _isDailyReminderEnabled =
-          prefs.getBool(keyDailyReminderEnabled) ?? false;
-      _dailyReminderHour = prefs.getInt(keyDailyReminderHour) ?? 9;
-      _dailyReminderMinute = prefs.getInt(keyDailyReminderMinute) ?? 0;
+  Future<void> _loadPreferencesAsync() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!_isDisposed) {
+      _applyPreferences(prefs);
+      notifyListeners();
     }
+  }
+
+  void _applyPreferences(SharedPreferences prefs) {
+    _isStreakEnabled = prefs.getBool(keyStreakEnabled) ?? true;
+    _includeWeekendsInStreak = prefs.getBool(keyIncludeWeekends) ?? false;
+    _isDailyReminderEnabled =
+        prefs.getBool(keyDailyReminderEnabled) ?? false;
+    _dailyReminderHour = prefs.getInt(keyDailyReminderHour) ?? 9;
+    _dailyReminderMinute = prefs.getInt(keyDailyReminderMinute) ?? 0;
   }
 
   bool _isDisposed = false;
@@ -91,7 +101,6 @@ class InsightsNotifier extends ChangeNotifier {
       date,
       includeWeekendsInStreak: _includeWeekendsInStreak,
     );
-
     final sessionsResult = await getRecentSessionsUseCase(days: 7);
 
     summaryResult.fold(
@@ -108,7 +117,7 @@ class InsightsNotifier extends ChangeNotifier {
         _errorMessage = _errorMessage ?? failure.message;
       },
       (sessions) {
-        _recentSessions = sessions;
+        _recentSessions = List.unmodifiable(sessions);
       },
     );
 

@@ -19,20 +19,28 @@ class BacklogRepositoryImpl implements IBacklogRepository {
       return Right(entities);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 
   @override
   Future<Either<Failure, int>> addTask(String title) async {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) {
+      return const Left(ValidationFailure('Task title cannot be empty'));
+    }
     try {
       final model = BacklogTaskModel(
-        title: title.trim(),
-        createdAt: DateTime.now(),
+        title: trimmed,
+        createdAt: DateTime.now().toUtc(),
       );
       final id = await localDataSource.insertTask(model);
       return Right(id);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 
@@ -43,6 +51,8 @@ class BacklogRepositoryImpl implements IBacklogRepository {
       return const Right(null);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 
@@ -53,6 +63,8 @@ class BacklogRepositoryImpl implements IBacklogRepository {
       return const Right(null);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 }

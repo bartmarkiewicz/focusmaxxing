@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:provider/provider.dart';
 
 class StreakCard extends StatelessWidget {
-  final int? streakDays;
-
   const StreakCard({
     super.key,
     this.streakDays,
   });
+
+  final int? streakDays;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +17,7 @@ class StreakCard extends StatelessWidget {
     final includeWeekends = notifier.includeWeekendsInStreak;
     final days = streakDays ?? notifier.dailySummary?.currentStreakDays ?? 0;
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Card(
       child: Padding(
@@ -27,7 +27,6 @@ class StreakCard extends StatelessWidget {
           children: [
             if (isStreakEnabled) ...[
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
                     '🔥',
@@ -43,7 +42,7 @@ class StreakCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
-                            color: AppColors.accentStreakGold,
+                            color: colorScheme.tertiary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -52,7 +51,7 @@ class StreakCard extends StatelessWidget {
                               ? 'Momentum is rolling · Every lock-in counts'
                               : 'No active streak · Start a session to ignite it',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -61,14 +60,14 @@ class StreakCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              const Divider(color: AppColors.surfaceHairline, height: 1),
+              Divider(color: colorScheme.outlineVariant, height: 1),
               const SizedBox(height: 8),
             ] else ...[
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.visibility_off_outlined,
-                    color: AppColors.textMuted,
+                    color: colorScheme.onSurfaceVariant,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -80,14 +79,14 @@ class StreakCard extends StatelessWidget {
                           'Streak Tracking Hidden',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textHighContrast,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Zero-guilt mode active. Focus at your own pace.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -103,18 +102,18 @@ class StreakCard extends StatelessWidget {
                 'Streak Tracking',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textHighContrast,
+                  color: colorScheme.onSurface,
                 ),
               ),
               subtitle: Text(
                 'Show streak counter and momentum badges',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textMuted,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
               value: isStreakEnabled,
-              activeThumbColor: AppColors.accentLockIn,
-              onChanged: (val) => notifier.setStreakEnabled(val),
+              activeThumbColor: colorScheme.primary,
+              onChanged: notifier.setStreakEnabled,
             ),
             if (isStreakEnabled)
               SwitchListTile.adaptive(
@@ -123,7 +122,7 @@ class StreakCard extends StatelessWidget {
                   'Include Weekends in Streak',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textHighContrast,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 subtitle: Text(
@@ -131,12 +130,12 @@ class StreakCard extends StatelessWidget {
                       ? '7-day discipline: weekends required'
                       : 'Weekends exempt: momentum preserved',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 value: includeWeekends,
-                activeThumbColor: AppColors.accentLockIn,
-                onChanged: (val) => notifier.setIncludeWeekendsInStreak(val),
+                activeThumbColor: colorScheme.primary,
+                onChanged: notifier.setIncludeWeekendsInStreak,
               ),
           ],
         ),

@@ -1,15 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
 class TimerDialWidget extends StatelessWidget {
-  final int remainingSeconds;
-  final int totalSeconds;
-  final String? taskGoal;
-  final bool isPaused;
-  final bool isRestMode;
-
   const TimerDialWidget({
     super.key,
     required this.remainingSeconds,
@@ -18,6 +11,12 @@ class TimerDialWidget extends StatelessWidget {
     this.isPaused = false,
     this.isRestMode = false,
   });
+
+  final int remainingSeconds;
+  final int totalSeconds;
+  final String? taskGoal;
+  final bool isPaused;
+  final bool isRestMode;
 
   double get _progress {
     if (totalSeconds <= 0) return 0.0;
@@ -32,94 +31,104 @@ class TimerDialWidget extends StatelessWidget {
     final formattedTime = TimeFormatter.formatMMSS(remainingSeconds);
 
     final accentColor = isRestMode
-        ? AppColors.accentRestMode
+        ? colorScheme.secondary
         : colorScheme.primary;
     final trackColor = colorScheme.outlineVariant.withValues(alpha: 0.35);
+
+    final trimmedGoal = taskGoal?.trim();
+    final hasGoal = trimmedGoal != null && trimmedGoal.isNotEmpty;
 
     return Semantics(
       label: '$formattedTime remaining. ${isPaused ? "Paused." : ""}',
       child: Center(
-        child: SizedBox(
-          width: 280,
-          height: 280,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(280, 280),
-                painter: _DialPainter(
-                  progress: _progress,
-                  accentColor: accentColor,
-                  trackColor: trackColor,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isPaused)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3,
-                        ),
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: Text(
-                          'PAUSED',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                    Text(
-                      formattedTime,
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -1.5,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final dialSize = math.min(constraints.maxWidth, 280.0);
+            return SizedBox(
+              width: dialSize,
+              height: dialSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      size: Size(dialSize, dialSize),
+                      painter: _DialPainter(
+                        progress: _progress,
+                        accentColor: accentColor,
+                        trackColor: trackColor,
                       ),
                     ),
-                    if (taskGoal != null && taskGoal!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '"${taskGoal!.trim()}"',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isPaused)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 3,
+                            ),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Text(
+                              'PAUSED',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                        Text(
+                          formattedTime,
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -1.5,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
-                      ),
-                    ] else if (isRestMode) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'RECHARGE YOUR BRAIN',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: AppColors.accentRestMode,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                        if (hasGoal) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '"$trimmedGoal"',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
+                          ),
+                        ] else if (isRestMode) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'RECHARGE YOUR BRAIN',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colorScheme.secondary,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -127,15 +136,15 @@ class TimerDialWidget extends StatelessWidget {
 }
 
 class _DialPainter extends CustomPainter {
-  final double progress;
-  final Color accentColor;
-  final Color trackColor;
-
   _DialPainter({
     required this.progress,
     required this.accentColor,
     required this.trackColor,
   });
+
+  final double progress;
+  final Color accentColor;
+  final Color trackColor;
 
   @override
   void paint(Canvas canvas, Size size) {

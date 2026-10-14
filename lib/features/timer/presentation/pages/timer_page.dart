@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/features/backlog/presentation/widgets/backlog_modal_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/goal_input_dialog.dart';
@@ -33,7 +32,7 @@ class _TimerPageState extends State<TimerPage> {
     if (notifier.status == TimerStatus.completed && !_isCheckingIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && notifier.status == TimerStatus.completed && !_isCheckingIn) {
-          _triggerCheckIn(notifier);
+          unawaited(_triggerCheckIn(notifier));
         }
       });
     }
@@ -51,7 +50,7 @@ class _TimerPageState extends State<TimerPage> {
     if (notifier != null && notifier.status == TimerStatus.completed && !_isCheckingIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _timerNotifier?.status == TimerStatus.completed && !_isCheckingIn) {
-          _triggerCheckIn(notifier);
+          unawaited(_triggerCheckIn(notifier));
         }
       });
     }
@@ -85,6 +84,7 @@ class _TimerPageState extends State<TimerPage> {
       durationMinutes: durationMinutes,
       initialGoal: timerNotifier.currentTaskGoal,
     );
+    if (!mounted) return;
     if (selectedGoal != null && selectedGoal.trim().isNotEmpty) {
       timerNotifier.setTaskGoal(selectedGoal);
     }
@@ -113,6 +113,7 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _openBacklog(BuildContext context, TimerNotifier timerNotifier) async {
     final task = await BacklogModalSheet.show(context);
+    if (!mounted) return;
     if (task != null) {
       timerNotifier.setTaskGoal(task.title, backlogTaskId: task.id);
     }
@@ -162,6 +163,7 @@ class _TimerPageState extends State<TimerPage> {
     );
 
     controller.dispose();
+    if (!mounted) return;
 
     if (result != null && result > 0) {
       timerNotifier.setDurationPreset(result * 60);
@@ -209,7 +211,6 @@ class _TimerPageState extends State<TimerPage> {
                   timerNotifier.status == TimerStatus.breakCompleted;
 
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildGoalAnchorPill(context, timerNotifier),
                   const SizedBox(height: 24),
@@ -408,6 +409,7 @@ class _TimerPageState extends State<TimerPage> {
               progress: timerNotifier.cancelHoldProgress,
               onHoldStart: timerNotifier.startHoldToCancel,
               onHoldEnd: timerNotifier.releaseHoldToCancel,
+              onCancelImmediate: timerNotifier.cancelSession,
             ),
           ],
         );
@@ -445,8 +447,8 @@ class _TimerPageState extends State<TimerPage> {
           child: ElevatedButton(
             onPressed: timerNotifier.readyToFocusFromBreak,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentRestMode,
-              foregroundColor: Colors.black,
+              backgroundColor: colorScheme.secondary,
+              foregroundColor: colorScheme.onSecondary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -455,7 +457,7 @@ class _TimerPageState extends State<TimerPage> {
             child: Text(
               'I\'M READY TO FOCUS',
               style: theme.textTheme.titleSmall?.copyWith(
-                color: Colors.black,
+                color: colorScheme.onSecondary,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
               ),
@@ -467,15 +469,15 @@ class _TimerPageState extends State<TimerPage> {
 }
 
 class _DurationPresets extends StatelessWidget {
-  final int selectedSeconds;
-  final ValueChanged<int> onPresetSelected;
-  final VoidCallback onCustomTapped;
-
   const _DurationPresets({
     required this.selectedSeconds,
     required this.onPresetSelected,
     required this.onCustomTapped,
   });
+
+  final int selectedSeconds;
+  final ValueChanged<int> onPresetSelected;
+  final VoidCallback onCustomTapped;
 
   @override
   Widget build(BuildContext context) {

@@ -7,9 +7,9 @@ import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart'
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 
 class SessionRepositoryImpl implements ISessionRepository {
-  final ISessionLocalDataSource localDataSource;
-
   const SessionRepositoryImpl({required this.localDataSource});
+
+  final ISessionLocalDataSource localDataSource;
 
   @override
   Future<Either<Failure, int>> createSession(SessionEntity session) async {
@@ -19,6 +19,8 @@ class SessionRepositoryImpl implements ISessionRepository {
       return Right(id);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 
@@ -37,6 +39,8 @@ class SessionRepositoryImpl implements ISessionRepository {
       return const Right(null);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 
@@ -54,6 +58,8 @@ class SessionRepositoryImpl implements ISessionRepository {
       return Right(entities);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
+    } catch (e) {
+      return Left(DatabaseFailure('Unexpected error: $e'));
     }
   }
 }

@@ -4,9 +4,9 @@ import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart'
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 
 class StartSessionUseCase {
-  final ISessionRepository repository;
-
   const StartSessionUseCase(this.repository);
+
+  final ISessionRepository repository;
 
   Future<Either<Failure, int>> call({
     required String taskGoal,

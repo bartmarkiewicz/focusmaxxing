@@ -1,5 +1,4 @@
-class TimeFormatter {
-  const TimeFormatter._();
+abstract final class TimeFormatter {
 
   static String formatMMSS(int totalSeconds) {
     if (totalSeconds <= 0) return '00:00';

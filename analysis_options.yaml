@@ -21,7 +21,11 @@ linter:
     - prefer_final_in_for_each
     - avoid_print
     - unawaited_futures
+    - discarded_futures
     - always_declare_return_types
     - always_use_package_imports
     - cancel_subscriptions
     - close_sinks
+    - unnecessary_lambdas
+    - unnecessary_null_aware_assignments
+    - unnecessary_parenthesis

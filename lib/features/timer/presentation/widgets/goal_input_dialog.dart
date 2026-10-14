@@ -3,14 +3,14 @@ import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifie
 import 'package:provider/provider.dart';
 
 class GoalInputDialog extends StatefulWidget {
-  final int durationMinutes;
-  final String initialGoal;
-
   const GoalInputDialog({
     super.key,
     required this.durationMinutes,
     this.initialGoal = '',
   });
+
+  final int durationMinutes;
+  final String initialGoal;
 
   static Future<String?> show(
     BuildContext context, {
@@ -79,15 +79,15 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
             border: Border(
               top: BorderSide(
                 color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                width: 1,
               ),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
                 child: ExcludeSemantics(
                   child: Container(
                     width: 40,
@@ -210,6 +210,7 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

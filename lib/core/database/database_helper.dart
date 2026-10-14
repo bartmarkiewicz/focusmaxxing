@@ -11,6 +11,7 @@ class DatabaseHelper {
   static const String tableBacklogTasks = 'backlog_tasks';
 
   static Database? _database;
+  static Future<Database>? _initFuture;
   static DatabaseFactory? _databaseFactory;
   static MigrationRunner? _customMigrationRunner;
 
@@ -23,6 +24,7 @@ class DatabaseHelper {
     MigrationRunner? migrationRunner,
   }) {
     _database = db;
+    _initFuture = null;
     _databaseFactory = factory;
     _customMigrationRunner = migrationRunner;
   }
@@ -34,11 +36,20 @@ class DatabaseHelper {
       ]);
 
   Future<Database> get database async {
-    if (_database != null) {
-      return _database!;
+    final currentDb = _database;
+    if (currentDb != null) {
+      return currentDb;
     }
-    _database = await _initDatabase();
-    return _database!;
+    _initFuture ??= _initDatabase();
+    try {
+      _database = await _initFuture;
+      final readyDb = _database;
+      if (readyDb != null) return readyDb;
+      throw StateError('Database failed to initialize');
+    } catch (_) {
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   Future<Database> _initDatabase() async {
@@ -70,9 +81,11 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    if (_database != null) {
-      await _database!.close();
+    final currentDb = _database;
+    if (currentDb != null) {
+      await currentDb.close();
       _database = null;
     }
+    _initFuture = null;
   }
 }

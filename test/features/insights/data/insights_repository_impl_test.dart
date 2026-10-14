@@ -35,12 +35,6 @@ class _FakeSessionLocalDataSource implements ISessionLocalDataSource {
   }
 
   @override
-  Future<List<SessionModel>> getAllSessions({int limit = 100}) async {
-    if (shouldThrow) throw const DatabaseException('Database read error');
-    return sessions;
-  }
-
-  @override
   Future<List<int>> getCompletedFocusSessionStartTimes() async {
     if (shouldThrow) throw const DatabaseException('Database read error');
     return sessions

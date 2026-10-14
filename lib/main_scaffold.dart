@@ -7,12 +7,12 @@ import 'package:focusmaxxing/features/timer/presentation/pages/timer_page.dart';
 import 'package:provider/provider.dart';
 
 class MainScaffold extends StatefulWidget {
-  final int initialIndex;
-
   const MainScaffold({
     super.key,
     this.initialIndex = 0,
   });
+
+  final int initialIndex;
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -48,10 +48,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               _currentIndex = index;
             });
             if (index == 2) {
-              try {
-                unawaited(context.read<InsightsNotifier>().refresh());
-              } on ProviderNotFoundException {
-                // Allowed when running in isolated widget tests lacking InsightsNotifier
+              final insightsNotifier = context.read<InsightsNotifier?>();
+              if (insightsNotifier != null) {
+                unawaited(insightsNotifier.refresh());
               }
             }
           }

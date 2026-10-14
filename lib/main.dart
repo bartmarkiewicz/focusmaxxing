@@ -85,10 +85,6 @@ void main() async {
 }
 
 class FocusmaxxingApp extends StatelessWidget {
-  final TimerNotifier? timerNotifier;
-  final BacklogNotifier? backlogNotifier;
-  final InsightsNotifier? insightsNotifier;
-
   const FocusmaxxingApp({
     super.key,
     this.timerNotifier,
@@ -96,25 +92,28 @@ class FocusmaxxingApp extends StatelessWidget {
     this.insightsNotifier,
   });
 
+  final TimerNotifier? timerNotifier;
+  final BacklogNotifier? backlogNotifier;
+  final InsightsNotifier? insightsNotifier;
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        if (timerNotifier != null)
-          ChangeNotifierProvider<TimerNotifier>.value(value: timerNotifier!)
+        if (timerNotifier case final notifier?)
+          ChangeNotifierProvider<TimerNotifier>.value(value: notifier)
         else
           ChangeNotifierProvider<TimerNotifier>(
             create: (_) => _createDefaultTimerNotifier(),
           ),
-        if (backlogNotifier != null)
-          ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier!)
+        if (backlogNotifier case final notifier?)
+          ChangeNotifierProvider<BacklogNotifier>.value(value: notifier)
         else
           ChangeNotifierProvider<BacklogNotifier>(
             create: (_) => _createDefaultBacklogNotifier(),
           ),
-        if (insightsNotifier != null)
-          ChangeNotifierProvider<InsightsNotifier>.value(
-              value: insightsNotifier!)
+        if (insightsNotifier case final notifier?)
+          ChangeNotifierProvider<InsightsNotifier>.value(value: notifier)
         else
           ChangeNotifierProvider<InsightsNotifier>(
             create: (_) => _createDefaultInsightsNotifier(),

@@ -11,9 +11,7 @@ void main() {
   late BacklogLocalDataSource dataSource;
   late BacklogRepositoryImpl repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-  });
+  setUpAll(sqfliteFfiInit);
 
   setUp(() async {
     final factory = databaseFactoryFfi;
