@@ -1,3 +1,4 @@
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:focusmaxxing/features/schedule/data/models/schedule_config_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,7 +9,7 @@ abstract interface class IScheduleLocalDataSource {
 }
 
 class ScheduleLocalDataSourceImpl implements IScheduleLocalDataSource {
-  static const String schedulePrefsKey = 'scheduled_auto_shield_config';
+  static const String schedulePrefsKey = ScheduleConstants.schedulePrefsKey;
 
   final SharedPreferences? prefs;
 

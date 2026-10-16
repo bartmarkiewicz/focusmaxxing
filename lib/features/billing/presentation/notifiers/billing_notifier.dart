@@ -7,6 +7,7 @@ import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repo
 import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
+import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 
 /// Billing lifecycle states tracking the one-time Lifetime Pro unlock flow.
@@ -27,6 +28,7 @@ class BillingNotifier extends ChangeNotifier {
 
   ShieldNotifier? shieldNotifier;
   AudioNotifier? audioNotifier;
+  ScheduleNotifier? scheduleNotifier;
   StreamSubscription<ProUnlockStatusEntity>? _purchaseStreamSubscription;
 
   BillingStatus _status = BillingStatus.initial;
@@ -42,6 +44,7 @@ class BillingNotifier extends ChangeNotifier {
     required this.repository,
     this.shieldNotifier,
     this.audioNotifier,
+    this.scheduleNotifier,
     bool autoInitialize = true,
   }) {
     _purchaseStreamSubscription = repository.purchaseStatusStream.listen(
@@ -76,6 +79,13 @@ class BillingNotifier extends ChangeNotifier {
     audioNotifier = notifier;
     if (_unlockStatus.isUnlocked) {
       audioNotifier?.setProUnlocked(true);
+    }
+  }
+
+  void attachScheduleNotifier(ScheduleNotifier? notifier) {
+    scheduleNotifier = notifier;
+    if (_unlockStatus.isUnlocked) {
+      unawaited(scheduleNotifier?.unlockLifetimePro());
     }
   }
 
@@ -191,6 +201,7 @@ class BillingNotifier extends ChangeNotifier {
   void _propagateProEntitlement() {
     unawaited(shieldNotifier?.unlockLifetimePro());
     audioNotifier?.setProUnlocked(true);
+    unawaited(scheduleNotifier?.unlockLifetimePro());
   }
 
   @override

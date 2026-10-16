@@ -4,6 +4,10 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
+import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
+import 'package:focusmaxxing/features/schedule/domain/repositories/i_schedule_repository.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
@@ -530,5 +534,91 @@ void main() {
         expect(repository.bringToForegroundCount, 1);
       },
     );
+
+    test(
+      'syncWithTimer does NOT stop shield service when schedule is active now',
+      () async {
+        final scheduleRepo = _FakeScheduleRepo()..isActive = true;
+        final checkScheduleUseCase =
+            CheckScheduleActiveNowUseCase(scheduleRepo);
+
+        final scheduledShieldNotifier = ShieldNotifier(
+          getShieldedAppsUseCase: GetShieldedAppsUseCase(repository),
+          getInstalledAppsUseCase: GetInstalledAppsUseCase(repository),
+          toggleShieldAppUseCase: ToggleShieldAppUseCase(repository),
+          checkShieldPermissionsUseCase:
+              CheckShieldPermissionsUseCase(repository),
+          requestPermissionUseCase: RequestPermissionUseCase(repository),
+          syncShieldWithOverlayUseCase:
+              SyncShieldWithOverlayUseCase(repository),
+          repository: repository,
+          checkScheduleActiveNowUseCase: checkScheduleUseCase,
+          sharedPreferences: prefs,
+          autoInitialize: false,
+        );
+
+        final sessionRepo = _FakeSessionRepository();
+        final timerNotifier = _ControllableTimerNotifier(
+          startSessionUseCase: StartSessionUseCase(sessionRepo),
+          completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
+          cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+          notificationService: _NoOpNotificationService(),
+          prefs: prefs,
+        );
+
+        await timerNotifier.startFocusSession('Schedule priority test');
+        await scheduledShieldNotifier.syncWithTimer(timerNotifier);
+
+        final stopsBefore = repository.stopShieldCallCount;
+
+        timerNotifier.overrideStatus = TimerStatus.idle;
+        await scheduledShieldNotifier.syncWithTimer(timerNotifier);
+
+        expect(repository.stopShieldCallCount, equals(stopsBefore));
+
+        scheduledShieldNotifier.dispose();
+        timerNotifier.dispose();
+      },
+    );
+
+    test(
+      'persists scheduled auto-shield packages even when installedApps is empty',
+      () async {
+        repository.installedApps = [];
+        await notifier.refresh();
+
+        await notifier.toggleApp(
+          packageName: 'com.test.emptyapps',
+          appName: 'Empty App',
+          isPreset: true,
+        );
+
+        final saved =
+            prefs.getStringList(ScheduleConstants.schedulePackagesPrefsKey);
+        expect(saved, contains('com.test.emptyapps'));
+      },
+    );
   });
+}
+
+class _FakeScheduleRepo implements IScheduleRepository {
+  bool isActive = false;
+
+  @override
+  Future<Either<Failure, bool>> isScheduleActiveNow() async => Right(isActive);
+
+  @override
+  Future<Either<Failure, void>> armAlarms(ScheduleConfigEntity schedule) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, void>> cancelAlarms() async => const Right(null);
+
+  @override
+  Future<Either<Failure, ScheduleConfigEntity>> getSchedule() async =>
+      const Right(ScheduleConfigEntity.initial);
+
+  @override
+  Future<Either<Failure, void>> saveSchedule(ScheduleConfigEntity schedule) async =>
+      const Right(null);
 }

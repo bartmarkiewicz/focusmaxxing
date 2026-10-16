@@ -35,6 +35,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:focusmaxxing/features/schedule/data/datasources/schedule_alarm_data_source.dart';
 import 'package:focusmaxxing/features/schedule/data/datasources/schedule_local_data_source.dart';
 import 'package:focusmaxxing/features/schedule/data/repositories/schedule_repository_impl.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/save_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/toggle_auto_shield_usecase.dart';
@@ -140,6 +141,9 @@ void main() async {
     sharedPreferences: sharedPreferences,
   );
 
+  final checkScheduleActiveNowUseCase =
+      CheckScheduleActiveNowUseCase(scheduleRepository);
+
   final shieldNotifier = ShieldNotifier(
     getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepository),
     getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepository),
@@ -150,6 +154,7 @@ void main() async {
     syncShieldWithOverlayUseCase:
         SyncShieldWithOverlayUseCase(shieldRepository),
     repository: shieldRepository,
+    checkScheduleActiveNowUseCase: checkScheduleActiveNowUseCase,
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
@@ -165,7 +170,9 @@ void main() async {
     getScheduleUseCase: GetScheduleUseCase(scheduleRepository),
     saveScheduleUseCase: SaveScheduleUseCase(scheduleRepository),
     toggleAutoShieldUseCase: ToggleAutoShieldUseCase(scheduleRepository),
+    checkScheduleActiveNowUseCase: checkScheduleActiveNowUseCase,
     repository: scheduleRepository,
+    shieldNotifier: shieldNotifier,
     sharedPreferences: sharedPreferences,
   );
 
@@ -177,6 +184,7 @@ void main() async {
     repository: billingRepository,
     shieldNotifier: shieldNotifier,
     audioNotifier: audioNotifier,
+    scheduleNotifier: scheduleNotifier,
   );
 
   runApp(
@@ -256,25 +264,31 @@ class FocusmaxxingApp extends StatelessWidget {
               return resolved;
             },
           ),
-        if (billingNotifier case final notifier?)
-          ChangeNotifierProvider<BillingNotifier>.value(value: notifier)
-        else
-          ChangeNotifierProxyProvider2<ShieldNotifier, AudioNotifier,
-              BillingNotifier>(
-            create: (_) => _createDefaultBillingNotifier(),
-            update: (_, shield, audio, billing) {
-              final resolved = billing ?? _createDefaultBillingNotifier();
-              resolved
-                ..attachShieldNotifier(shield)
-                ..attachAudioNotifier(audio);
-              return resolved;
-            },
-          ),
         if (scheduleNotifier case final notifier?)
           ChangeNotifierProvider<ScheduleNotifier>.value(value: notifier)
         else
-          ChangeNotifierProvider<ScheduleNotifier>(
+          ChangeNotifierProxyProvider<ShieldNotifier, ScheduleNotifier>(
             create: (_) => _createDefaultScheduleNotifier(),
+            update: (_, shield, schedule) {
+              final resolved = schedule ?? _createDefaultScheduleNotifier();
+              resolved.attachShieldNotifier(shield);
+              return resolved;
+            },
+          ),
+        if (billingNotifier case final notifier?)
+          ChangeNotifierProvider<BillingNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProxyProvider3<ShieldNotifier, AudioNotifier,
+              ScheduleNotifier, BillingNotifier>(
+            create: (_) => _createDefaultBillingNotifier(),
+            update: (_, shield, audio, schedule, billing) {
+              final resolved = billing ?? _createDefaultBillingNotifier();
+              resolved
+                ..attachShieldNotifier(shield)
+                ..attachAudioNotifier(audio)
+                ..attachScheduleNotifier(schedule);
+              return resolved;
+            },
           ),
       ],
       child: DynamicColorBuilder(

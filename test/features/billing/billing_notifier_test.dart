@@ -8,6 +8,7 @@ import 'package:focusmaxxing/features/billing/domain/usecases/get_product_detail
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
+import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 
 class _FakeBillingRepo implements IBillingRepository {
@@ -84,6 +85,15 @@ class _StubAudioNotifier extends Fake implements AudioNotifier {
   }
 }
 
+class _StubScheduleNotifier extends Fake implements ScheduleNotifier {
+  bool unlockedLifetimeCalled = false;
+
+  @override
+  Future<void> unlockLifetimePro() async {
+    unlockedLifetimeCalled = true;
+  }
+}
+
 void main() {
   group('BillingNotifier', () {
     late _FakeBillingRepo repo;
@@ -92,6 +102,7 @@ void main() {
     late RestorePurchasesUseCase restorePurchasesUseCase;
     late _StubShieldNotifier shieldNotifier;
     late _StubAudioNotifier audioNotifier;
+    late _StubScheduleNotifier scheduleNotifier;
 
     setUp(() {
       repo = _FakeBillingRepo();
@@ -100,6 +111,7 @@ void main() {
       restorePurchasesUseCase = RestorePurchasesUseCase(repo);
       shieldNotifier = _StubShieldNotifier();
       audioNotifier = _StubAudioNotifier();
+      scheduleNotifier = _StubScheduleNotifier();
     });
 
     tearDown(() async {
@@ -114,6 +126,7 @@ void main() {
         repository: repo,
         shieldNotifier: shieldNotifier,
         audioNotifier: audioNotifier,
+        scheduleNotifier: scheduleNotifier,
         autoInitialize: autoInitialize,
       );
     }
@@ -126,6 +139,7 @@ void main() {
       expect(notifier.isProUnlocked, isFalse);
       expect(notifier.productDetails.price, r'$9.99');
       expect(shieldNotifier.unlockedLifetimeCalled, isFalse);
+      expect(scheduleNotifier.unlockedLifetimeCalled, isFalse);
     });
 
     test('initial status reflects cached Pro purchase state when already unlocked', () async {
@@ -141,6 +155,7 @@ void main() {
       expect(notifier.isProUnlocked, isTrue);
       expect(shieldNotifier.unlockedLifetimeCalled, isTrue);
       expect(audioNotifier.proUnlockedValue, isTrue);
+      expect(scheduleNotifier.unlockedLifetimeCalled, isTrue);
     });
 
     test('purchase success dispatches isProUnlocked = true and unlocks dependent notifiers', () async {
@@ -155,6 +170,7 @@ void main() {
       expect(notifier.unlockStatus.orderId, 'GPA.BUY-1234');
       expect(shieldNotifier.unlockedLifetimeCalled, isTrue);
       expect(audioNotifier.proUnlockedValue, isTrue);
+      expect(scheduleNotifier.unlockedLifetimeCalled, isTrue);
     });
 
     test('purchase cancellation resets state without error banner', () async {
@@ -197,6 +213,7 @@ void main() {
       expect(notifier.status, BillingStatus.purchased);
       expect(notifier.isProUnlocked, isTrue);
       expect(notifier.unlockStatus.orderId, 'GPA.RESTORE-5678');
+      expect(scheduleNotifier.unlockedLifetimeCalled, isTrue);
       expect(shieldNotifier.unlockedLifetimeCalled, isTrue);
       expect(audioNotifier.proUnlockedValue, isTrue);
     });

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,21 +11,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 void autoShieldStartAlarmCallback() async {
   final now = DateTime.now();
   final prefs = await SharedPreferences.getInstance();
-  final rawJson = prefs.getString('scheduled_auto_shield_config');
+  final rawJson = prefs.getString(ScheduleConstants.schedulePrefsKey);
   if (rawJson == null) return;
 
-  final activeDays = prefs.getStringList('scheduled_auto_shield_active_days') ??
-      ['1', '2', '3', '4', '5'];
+  final activeDays =
+      prefs.getStringList(ScheduleConstants.scheduleActiveDaysPrefsKey) ??
+          ['1', '2', '3', '4', '5'];
   if (!activeDays.contains(now.weekday.toString())) {
     return;
   }
 
   const channel = MethodChannel('com.focusmaxxing/shield');
   final blockedPackages =
-      prefs.getStringList('scheduled_auto_shield_packages') ?? <String>[];
+      prefs.getStringList(ScheduleConstants.schedulePackagesPrefsKey) ??
+          <String>[];
   try {
     await channel.invokeMethod<bool>('startShield', {
       'packages': blockedPackages,
+      'isScheduled': true,
     });
   } catch (_) {
     // Ignore native background startup errors
@@ -47,8 +51,8 @@ abstract interface class IScheduleAlarmDataSource {
 }
 
 class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
-  static const int startAlarmId = 2001;
-  static const int endAlarmId = 2002;
+  static const int startAlarmId = ScheduleConstants.startAlarmId;
+  static const int endAlarmId = ScheduleConstants.endAlarmId;
 
   final bool isTestMode;
   final Future<bool> Function(
@@ -80,7 +84,7 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
-        'scheduled_auto_shield_active_days',
+        ScheduleConstants.scheduleActiveDaysPrefsKey,
         schedule.activeDays.map((d) => d.toString()).toList(),
       );
     } catch (_) {}

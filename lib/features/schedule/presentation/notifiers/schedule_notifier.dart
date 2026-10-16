@@ -1,20 +1,27 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
 import 'package:focusmaxxing/features/schedule/domain/repositories/i_schedule_repository.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/save_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/toggle_auto_shield_usecase.dart';
+import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ScheduleNotifier extends ChangeNotifier {
-  static const String proUnlockedPrefsKey = 'is_lifetime_pro';
+  static const String proUnlockedPrefsKey =
+      ScheduleConstants.proUnlockedPrefsKey;
 
   final GetScheduleUseCase getScheduleUseCase;
   final SaveScheduleUseCase saveScheduleUseCase;
   final ToggleAutoShieldUseCase toggleAutoShieldUseCase;
-  final IScheduleRepository repository;
+  final CheckScheduleActiveNowUseCase? checkScheduleActiveNowUseCase;
+  final IScheduleRepository? repository;
   final SharedPreferences? sharedPreferences;
+
+  ShieldNotifier? shieldNotifier;
 
   ScheduleConfigEntity _schedule = ScheduleConfigEntity.initial;
   bool _isLoading = false;
@@ -27,7 +34,9 @@ class ScheduleNotifier extends ChangeNotifier {
     required this.getScheduleUseCase,
     required this.saveScheduleUseCase,
     required this.toggleAutoShieldUseCase,
-    required this.repository,
+    this.checkScheduleActiveNowUseCase,
+    this.repository,
+    this.shieldNotifier,
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
@@ -50,6 +59,10 @@ class ScheduleNotifier extends ChangeNotifier {
   bool get requiresProPrompt => _requiresProPrompt;
   bool get isValid => _schedule.isValid;
   String get formattedTimeRange => _schedule.formattedTimeRange;
+
+  void attachShieldNotifier(ShieldNotifier? notifier) {
+    shieldNotifier = notifier;
+  }
 
   @override
   void dispose() {
@@ -102,6 +115,18 @@ class ScheduleNotifier extends ChangeNotifier {
       },
       (updatedSchedule) {
         _schedule = updatedSchedule;
+        if (enabled) {
+          final now = DateTime.now();
+          if (updatedSchedule.isWithinSchedule(now)) {
+            unawaited(
+              shieldNotifier?.startShieldForSchedule(
+                timeRange: updatedSchedule.formattedTimeRange,
+              ),
+            );
+          }
+        } else {
+          unawaited(shieldNotifier?.stopShieldForSchedule());
+        }
         notifyListeners();
         return true;
       },
@@ -169,9 +194,11 @@ class ScheduleNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  void unlockLifetimePro() {
+  Future<void> unlockLifetimePro() async {
     _isPro = true;
     _requiresProPrompt = false;
+    final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
+    await prefs.setBool(proUnlockedPrefsKey, true);
     notifyListeners();
   }
 
@@ -191,6 +218,20 @@ class ScheduleNotifier extends ChangeNotifier {
       },
       (_) {
         _schedule = updated;
+        if (updated.isEnabled) {
+          final now = DateTime.now();
+          if (updated.isWithinSchedule(now)) {
+            unawaited(
+              shieldNotifier?.startShieldForSchedule(
+                timeRange: updated.formattedTimeRange,
+              ),
+            );
+          } else {
+            unawaited(shieldNotifier?.stopShieldForSchedule());
+          }
+        } else {
+          unawaited(shieldNotifier?.stopShieldForSchedule());
+        }
         notifyListeners();
         return true;
       },

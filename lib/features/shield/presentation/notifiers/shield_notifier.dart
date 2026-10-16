@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
@@ -30,6 +32,7 @@ class ShieldNotifier extends ChangeNotifier {
   final RequestPermissionUseCase requestPermissionUseCase;
   final SyncShieldWithOverlayUseCase syncShieldWithOverlayUseCase;
   final IShieldRepository repository;
+  final CheckScheduleActiveNowUseCase? checkScheduleActiveNowUseCase;
   final SharedPreferences? sharedPreferences;
 
   ShieldNotifier({
@@ -40,6 +43,7 @@ class ShieldNotifier extends ChangeNotifier {
     required this.requestPermissionUseCase,
     required this.syncShieldWithOverlayUseCase,
     required this.repository,
+    this.checkScheduleActiveNowUseCase,
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
@@ -67,6 +71,7 @@ class ShieldNotifier extends ChangeNotifier {
   TimerNotifier? _attachedTimerNotifier;
 
   bool _isSessionShieldActive = false;
+  bool _isScheduledShieldActive = false;
   TimerStatus? _lastSyncedStatus;
   int? _lastSyncedRemainingSeconds;
   String? _lastSyncedGoal;
@@ -83,6 +88,7 @@ class ShieldNotifier extends ChangeNotifier {
   ShieldedAppEntity? get pendingSwapCandidate => _pendingSwapCandidate;
   Stream<ShieldedAppEntity> get upgradeEvents => _upgradeEventController.stream;
   bool get isSessionShieldActive => _isSessionShieldActive;
+  bool get isScheduledShieldActive => _isScheduledShieldActive;
 
   List<ShieldedAppEntity> get activeShieldedApps =>
       _shieldedApps.where((app) => app.isActive).toList(growable: false);
@@ -332,6 +338,31 @@ class ShieldNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> startShieldForSchedule({required String timeRange}) async {
+    _isScheduledShieldActive = true;
+    final activePackages = activePackageNames.toList();
+    if (activePackages.isNotEmpty) {
+      await repository.startShieldService(activePackages);
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopShieldForSchedule() async {
+    _isScheduledShieldActive = false;
+    if (!_isSessionShieldActive) {
+      await repository.stopShieldService();
+    }
+    notifyListeners();
+  }
+
+  Future<bool> _checkIfScheduleActive() async {
+    if (checkScheduleActiveNowUseCase == null) {
+      return _isScheduledShieldActive;
+    }
+    final result = await checkScheduleActiveNowUseCase!();
+    return result.getOrElse(() => false);
+  }
+
   Future<void> syncWithTimer(TimerNotifier timer) async {
     final status = timer.status;
 
@@ -341,7 +372,11 @@ class ShieldNotifier extends ChangeNotifier {
         _lastSyncedStatus = TimerStatus.idle;
         _lastSyncedRemainingSeconds = null;
         _lastSyncedGoal = null;
-        await repository.stopShieldService();
+
+        final isScheduleActive = await _checkIfScheduleActive();
+        if (!isScheduleActive && !_isScheduledShieldActive) {
+          await repository.stopShieldService();
+        }
         notifyListeners();
       }
       return;
@@ -412,6 +447,7 @@ class ShieldNotifier extends ChangeNotifier {
   }
 
   void _syncInstalledAppsActiveFlags() {
+    unawaited(_persistScheduledPackages());
     if (_installedApps.isEmpty) return;
     final activeSet = activePackageNames;
     _installedApps = List.unmodifiable(
@@ -419,14 +455,13 @@ class ShieldNotifier extends ChangeNotifier {
         (app) => app.copyWith(isActive: activeSet.contains(app.packageName)),
       ),
     );
-    unawaited(_persistScheduledPackages());
   }
 
   Future<void> _persistScheduledPackages() async {
     try {
       final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
       await prefs.setStringList(
-        'scheduled_auto_shield_packages',
+        ScheduleConstants.schedulePackagesPrefsKey,
         activePackageNames.toList(),
       );
     } catch (_) {}

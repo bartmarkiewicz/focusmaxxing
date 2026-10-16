@@ -219,18 +219,21 @@ void main() {
       expect(notifier.activeDays, equals([DateTime.monday]));
     });
 
-    test('unlockLifetimePro updates isPro and dismisses prompt', () {
+    test('unlockLifetimePro updates isPro, dismisses prompt, and persists to SharedPreferences', () async {
+      final prefs = await SharedPreferences.getInstance();
       final notifier = ScheduleNotifier(
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
         repository: repository,
+        sharedPreferences: prefs,
         autoInitialize: false,
       );
 
-      notifier.unlockLifetimePro();
+      await notifier.unlockLifetimePro();
       expect(notifier.isPro, isTrue);
       expect(notifier.requiresProPrompt, isFalse);
+      expect(prefs.getBool('is_lifetime_pro'), isTrue);
     });
   });
 }

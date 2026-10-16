@@ -107,11 +107,11 @@ void main() {
       final checkUseCase = CheckScheduleActiveNowUseCase(repository);
       repository.schedule = const ScheduleConfigEntity(isEnabled: true);
       final activeResult = await checkUseCase();
-      expect(activeResult, equals(const Right(true)));
+      expect(activeResult, equals(const Right<Failure, bool>(true)));
 
       repository.schedule = const ScheduleConfigEntity(isEnabled: false);
       final inactiveResult = await checkUseCase();
-      expect(inactiveResult, equals(const Right(false)));
+      expect(inactiveResult, equals(const Right<Failure, bool>(false)));
     });
   });
 }
