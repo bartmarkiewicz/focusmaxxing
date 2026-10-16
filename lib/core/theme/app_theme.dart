@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/app_colors.dart';
 
 abstract final class AppTheme {
-  static ThemeData buildDarkTheme(ColorScheme? dynamicColorScheme) {
-    final baseColorScheme = dynamicColorScheme ??
+  static ThemeData buildDarkTheme(
+    ColorScheme? dynamicColorScheme, {
+    Color accentColor = AppColors.accentLockIn,
+  }) {
+    final effectiveDynamicScheme =
+        (accentColor != AppColors.accentLockIn) ? null : dynamicColorScheme;
+
+    final baseColorScheme = effectiveDynamicScheme ??
         ColorScheme.fromSeed(
-          seedColor: AppColors.accentLockIn,
+          seedColor: accentColor,
           brightness: Brightness.dark,
         );
 
     final colorScheme = baseColorScheme.copyWith(
       surface: AppColors.surfaceMidnight,
       surfaceContainerHighest: AppColors.surfaceRaised,
-      primary: AppColors.accentLockIn,
+      primary: accentColor,
       secondary: AppColors.accentRestMode,
       tertiary: AppColors.accentStreakGold,
       error: AppColors.accentHardLock,
@@ -53,9 +59,17 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surfaceMidnight,
-        indicatorColor: AppColors.accentLockIn.withValues(alpha: 0.2),
+        indicatorColor: accentColor.withValues(alpha: 0.2),
         elevation: 0,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accentColor,
+        foregroundColor: Colors.black,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: accentColor,
+        linearTrackColor: accentColor.withValues(alpha: 0.2),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -71,7 +85,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.accentLockIn, width: 1.5),
+          borderSide: BorderSide(color: accentColor, width: 1.5),
         ),
       ),
       textTheme: const TextTheme(

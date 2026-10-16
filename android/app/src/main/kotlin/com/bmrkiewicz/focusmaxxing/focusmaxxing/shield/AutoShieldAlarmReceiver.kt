@@ -84,7 +84,7 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
 
             ACTION_STOP_AUTO_SHIELD -> {
                 val serviceIntent = Intent(context, FocusShieldService::class.java).apply {
-                    action = FocusShieldService.ACTION_STOP_SHIELD
+                    setAction(FocusShieldService.ACTION_STOP_SHIELD)
                 }
                 context.startService(serviceIntent)
                 context.stopService(Intent(context, FocusShieldService::class.java))

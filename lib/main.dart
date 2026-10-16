@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/theme/app_theme.dart';
+import 'package:focusmaxxing/core/theme/theme_notifier.dart';
 import 'package:focusmaxxing/features/audio/data/repositories/audio_repository_impl.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
@@ -182,6 +183,10 @@ void main() async {
     sharedPreferences: sharedPreferences,
   );
 
+  final themeNotifier = ThemeNotifier(
+    sharedPreferences: sharedPreferences,
+  );
+
   final billingNotifier = BillingNotifier(
     getProductDetailsUseCase: GetProductDetailsUseCase(billingRepository),
     purchaseLifetimeProUseCase:
@@ -191,6 +196,7 @@ void main() async {
     shieldNotifier: shieldNotifier,
     audioNotifier: audioNotifier,
     scheduleNotifier: scheduleNotifier,
+    themeNotifier: themeNotifier,
   );
 
   runApp(
@@ -202,6 +208,7 @@ void main() async {
       audioNotifier: audioNotifier,
       billingNotifier: billingNotifier,
       scheduleNotifier: scheduleNotifier,
+      themeNotifier: themeNotifier,
     ),
   );
 }
@@ -216,6 +223,7 @@ class FocusmaxxingApp extends StatelessWidget {
     this.audioNotifier,
     this.billingNotifier,
     this.scheduleNotifier,
+    this.themeNotifier,
   });
 
   final TimerNotifier? timerNotifier;
@@ -225,6 +233,7 @@ class FocusmaxxingApp extends StatelessWidget {
   final AudioNotifier? audioNotifier;
   final BillingNotifier? billingNotifier;
   final ScheduleNotifier? scheduleNotifier;
+  final ThemeNotifier? themeNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -281,31 +290,45 @@ class FocusmaxxingApp extends StatelessWidget {
               return resolved;
             },
           ),
+        if (themeNotifier case final notifier?)
+          ChangeNotifierProvider<ThemeNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProvider<ThemeNotifier>(
+            create: (_) => _createDefaultThemeNotifier(),
+          ),
         if (billingNotifier case final notifier?)
           ChangeNotifierProvider<BillingNotifier>.value(value: notifier)
         else
-          ChangeNotifierProxyProvider3<ShieldNotifier, AudioNotifier,
-              ScheduleNotifier, BillingNotifier>(
+          ChangeNotifierProxyProvider4<ShieldNotifier, AudioNotifier,
+              ScheduleNotifier, ThemeNotifier, BillingNotifier>(
             create: (_) => _createDefaultBillingNotifier(),
-            update: (_, shield, audio, schedule, billing) {
+            update: (_, shield, audio, schedule, theme, billing) {
               final resolved = billing ?? _createDefaultBillingNotifier();
               resolved
                 ..attachShieldNotifier(shield)
                 ..attachAudioNotifier(audio)
-                ..attachScheduleNotifier(schedule);
+                ..attachScheduleNotifier(schedule)
+                ..attachThemeNotifier(theme);
               return resolved;
             },
           ),
       ],
       child: DynamicColorBuilder(
         builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-          return MaterialApp(
-            title: 'Focusmaxxing',
-            debugShowCheckedModeBanner: false,
-            themeMode: ThemeMode.dark,
-            theme: AppTheme.buildDarkTheme(darkDynamic),
-            darkTheme: AppTheme.buildDarkTheme(darkDynamic),
-            home: const MainScaffold(),
+          return Consumer<ThemeNotifier>(
+            builder: (context, themeNotifier, _) {
+              final accentColor = themeNotifier.currentAccent.color;
+              return MaterialApp(
+                title: 'Focusmaxxing',
+                debugShowCheckedModeBanner: false,
+                themeMode: ThemeMode.dark,
+                theme: AppTheme.buildDarkTheme(darkDynamic,
+                    accentColor: accentColor),
+                darkTheme: AppTheme.buildDarkTheme(darkDynamic,
+                    accentColor: accentColor),
+                home: const MainScaffold(),
+              );
+            },
           );
         },
       ),
@@ -421,6 +444,10 @@ class FocusmaxxingApp extends StatelessWidget {
       repository: scheduleRepo,
       autoInitialize: false,
     );
+  }
+
+  static ThemeNotifier _createDefaultThemeNotifier() {
+    return ThemeNotifier();
   }
 }
 

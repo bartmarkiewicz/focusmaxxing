@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focusmaxxing/core/theme/theme_notifier.dart';
 import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifier.dart';
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
 import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repository.dart';
@@ -94,6 +95,15 @@ class _StubScheduleNotifier extends Fake implements ScheduleNotifier {
   }
 }
 
+class _StubThemeNotifier extends Fake implements ThemeNotifier {
+  bool? validatedProAccessArg;
+
+  @override
+  Future<void> validateProAccess({required bool isLifetimePro}) async {
+    validatedProAccessArg = isLifetimePro;
+  }
+}
+
 void main() {
   group('BillingNotifier', () {
     late _FakeBillingRepo repo;
@@ -103,6 +113,7 @@ void main() {
     late _StubShieldNotifier shieldNotifier;
     late _StubAudioNotifier audioNotifier;
     late _StubScheduleNotifier scheduleNotifier;
+    late _StubThemeNotifier themeNotifier;
 
     setUp(() {
       repo = _FakeBillingRepo();
@@ -112,6 +123,7 @@ void main() {
       shieldNotifier = _StubShieldNotifier();
       audioNotifier = _StubAudioNotifier();
       scheduleNotifier = _StubScheduleNotifier();
+      themeNotifier = _StubThemeNotifier();
     });
 
     tearDown(() async {
@@ -127,6 +139,7 @@ void main() {
         shieldNotifier: shieldNotifier,
         audioNotifier: audioNotifier,
         scheduleNotifier: scheduleNotifier,
+        themeNotifier: themeNotifier,
         autoInitialize: autoInitialize,
       );
     }
@@ -216,6 +229,16 @@ void main() {
       expect(scheduleNotifier.unlockedLifetimeCalled, isTrue);
       expect(shieldNotifier.unlockedLifetimeCalled, isTrue);
       expect(audioNotifier.proUnlockedValue, isTrue);
+    });
+
+    test('attachThemeNotifier validates Pro access when non-pro', () async {
+      final customThemeNotifier = _StubThemeNotifier();
+      final notifier = createNotifier();
+      await notifier.initialize();
+
+      notifier.attachThemeNotifier(customThemeNotifier);
+
+      expect(customThemeNotifier.validatedProAccessArg, isFalse);
     });
   });
 }

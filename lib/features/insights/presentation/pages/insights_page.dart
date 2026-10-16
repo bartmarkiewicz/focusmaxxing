@@ -6,6 +6,7 @@ import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
+import 'package:focusmaxxing/features/insights/presentation/widgets/pro_accent_color_section.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/streak_card.dart';
 import 'package:provider/provider.dart';
@@ -449,6 +450,8 @@ class _PreferencesCard extends StatelessWidget {
           const SoundscapeConfigTile(),
           Divider(color: colorScheme.outlineVariant, height: 1),
           const ScheduleConfigSection(),
+          Divider(color: colorScheme.outlineVariant, height: 1),
+          const ProAccentColorSection(),
           Divider(color: colorScheme.outlineVariant, height: 1),
           ListTile(
             leading: Icon(

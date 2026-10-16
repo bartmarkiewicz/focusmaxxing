@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:focusmaxxing/core/theme/theme_notifier.dart';
 import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifier.dart';
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
 import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repository.dart';
@@ -29,6 +30,7 @@ class BillingNotifier extends ChangeNotifier {
   ShieldNotifier? shieldNotifier;
   AudioNotifier? audioNotifier;
   ScheduleNotifier? scheduleNotifier;
+  ThemeNotifier? themeNotifier;
   StreamSubscription<ProUnlockStatusEntity>? _purchaseStreamSubscription;
 
   BillingStatus _status = BillingStatus.initial;
@@ -45,6 +47,7 @@ class BillingNotifier extends ChangeNotifier {
     this.shieldNotifier,
     this.audioNotifier,
     this.scheduleNotifier,
+    this.themeNotifier,
     bool autoInitialize = true,
   }) {
     _purchaseStreamSubscription = repository.purchaseStatusStream.listen(
@@ -86,6 +89,13 @@ class BillingNotifier extends ChangeNotifier {
     scheduleNotifier = notifier;
     if (_unlockStatus.isUnlocked) {
       unawaited(scheduleNotifier?.unlockLifetimePro());
+    }
+  }
+
+  void attachThemeNotifier(ThemeNotifier? notifier) {
+    themeNotifier = notifier;
+    if (!_unlockStatus.isUnlocked) {
+      unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
     }
   }
 
@@ -194,6 +204,7 @@ class BillingNotifier extends ChangeNotifier {
       _propagateProEntitlement();
     } else {
       _status = BillingStatus.initial;
+      unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
     }
     notifyListeners();
   }
