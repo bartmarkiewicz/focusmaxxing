@@ -26,6 +26,9 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+export 'package:focusmaxxing/features/shield/presentation/overlay/overlay_main.dart'
+    show overlayMain, HardLockOverlayWidget;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
