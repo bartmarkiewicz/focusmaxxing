@@ -31,6 +31,14 @@ import 'package:focusmaxxing/features/shield/data/datasources/shield_installed_a
 import 'package:focusmaxxing/features/shield/data/datasources/shield_local_data_source.dart';
 import 'package:focusmaxxing/features/shield/data/datasources/shield_native_bridge_source.dart';
 import 'package:focusmaxxing/features/shield/data/repositories/shield_repository_impl.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:focusmaxxing/features/schedule/data/datasources/schedule_alarm_data_source.dart';
+import 'package:focusmaxxing/features/schedule/data/datasources/schedule_local_data_source.dart';
+import 'package:focusmaxxing/features/schedule/data/repositories/schedule_repository_impl.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usecase.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/save_schedule_usecase.dart';
+import 'package:focusmaxxing/features/schedule/domain/usecases/toggle_auto_shield_usecase.dart';
+import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
@@ -49,6 +57,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+export 'package:focusmaxxing/features/schedule/data/datasources/schedule_alarm_data_source.dart'
+    show autoShieldStartAlarmCallback, autoShieldEndAlarmCallback;
 export 'package:focusmaxxing/features/shield/presentation/overlay/overlay_main.dart'
     show overlayMain, HardLockOverlayWidget;
 
@@ -65,6 +75,12 @@ void main() async {
 
   final sharedPreferences = await SharedPreferences.getInstance();
 
+  if (!kIsWeb && Platform.isAndroid) {
+    try {
+      await AndroidAlarmManager.initialize();
+    } catch (_) {}
+  }
+
   final sessionLocalDataSource = SessionLocalDataSource();
   final backlogLocalDataSource = BacklogLocalDataSource();
   final shieldLocalDataSource = ShieldLocalDataSource();
@@ -73,6 +89,9 @@ void main() async {
   final billingLocalCacheSource =
       BillingLocalCacheSourceImpl(sharedPreferences: sharedPreferences);
   const inAppPurchaseClient = InAppPurchaseClientImpl();
+  final scheduleLocalDataSource =
+      ScheduleLocalDataSourceImpl(prefs: sharedPreferences);
+  final scheduleAlarmDataSource = ScheduleAlarmDataSourceImpl();
 
   final sessionRepository =
       SessionRepositoryImpl(localDataSource: sessionLocalDataSource);
@@ -89,6 +108,10 @@ void main() async {
   final billingRepository = BillingRepositoryImpl(
     iapClient: inAppPurchaseClient,
     localCacheSource: billingLocalCacheSource,
+  );
+  final scheduleRepository = ScheduleRepositoryImpl(
+    localDataSource: scheduleLocalDataSource,
+    alarmDataSource: scheduleAlarmDataSource,
   );
 
   final markTaskCompletedUseCase =
@@ -138,6 +161,14 @@ void main() async {
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
+  final scheduleNotifier = ScheduleNotifier(
+    getScheduleUseCase: GetScheduleUseCase(scheduleRepository),
+    saveScheduleUseCase: SaveScheduleUseCase(scheduleRepository),
+    toggleAutoShieldUseCase: ToggleAutoShieldUseCase(scheduleRepository),
+    repository: scheduleRepository,
+    sharedPreferences: sharedPreferences,
+  );
+
   final billingNotifier = BillingNotifier(
     getProductDetailsUseCase: GetProductDetailsUseCase(billingRepository),
     purchaseLifetimeProUseCase:
@@ -156,6 +187,7 @@ void main() async {
       shieldNotifier: shieldNotifier,
       audioNotifier: audioNotifier,
       billingNotifier: billingNotifier,
+      scheduleNotifier: scheduleNotifier,
     ),
   );
 }
@@ -169,6 +201,7 @@ class FocusmaxxingApp extends StatelessWidget {
     this.shieldNotifier,
     this.audioNotifier,
     this.billingNotifier,
+    this.scheduleNotifier,
   });
 
   final TimerNotifier? timerNotifier;
@@ -177,6 +210,7 @@ class FocusmaxxingApp extends StatelessWidget {
   final ShieldNotifier? shieldNotifier;
   final AudioNotifier? audioNotifier;
   final BillingNotifier? billingNotifier;
+  final ScheduleNotifier? scheduleNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +269,12 @@ class FocusmaxxingApp extends StatelessWidget {
                 ..attachAudioNotifier(audio);
               return resolved;
             },
+          ),
+        if (scheduleNotifier case final notifier?)
+          ChangeNotifierProvider<ScheduleNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProvider<ScheduleNotifier>(
+            create: (_) => _createDefaultScheduleNotifier(),
           ),
       ],
       child: DynamicColorBuilder(
@@ -335,6 +375,23 @@ class FocusmaxxingApp extends StatelessWidget {
       purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(billingRepo),
       restorePurchasesUseCase: RestorePurchasesUseCase(billingRepo),
       repository: billingRepo,
+      autoInitialize: false,
+    );
+  }
+
+  static ScheduleNotifier _createDefaultScheduleNotifier() {
+    final localDataSource = ScheduleLocalDataSourceImpl();
+    final alarmDataSource = ScheduleAlarmDataSourceImpl();
+    final scheduleRepo = ScheduleRepositoryImpl(
+      localDataSource: localDataSource,
+      alarmDataSource: alarmDataSource,
+    );
+
+    return ScheduleNotifier(
+      getScheduleUseCase: GetScheduleUseCase(scheduleRepo),
+      saveScheduleUseCase: SaveScheduleUseCase(scheduleRepo),
+      toggleAutoShieldUseCase: ToggleAutoShieldUseCase(scheduleRepo),
+      repository: scheduleRepo,
       autoInitialize: false,
     );
   }

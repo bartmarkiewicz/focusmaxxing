@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 class NotificationService {
   static const int ongoingNotificationId = 1001;
   static const int dailyReminderNotificationId = 1002;
+  static const int autoShieldNotificationId = 1003;
 
   static const String timerChannelId = 'focusmaxxing_timer_channel';
   static const String timerChannelName = 'Focus Countdown';
@@ -17,6 +18,11 @@ class NotificationService {
   static const String reminderChannelName = 'Daily Focus Reminders';
   static const String reminderChannelDescription =
       'Scheduled notifications prompting daily focus blocks';
+
+  static const String autoShieldChannelId = 'focusmaxxing_schedule_channel';
+  static const String autoShieldChannelName = 'Scheduled Auto-Shield';
+  static const String autoShieldChannelDescription =
+      'Notifications for scheduled work/study focus shielding';
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
@@ -162,5 +168,43 @@ class NotificationService {
   Future<void> cancelDailyReminder() async {
     if (!isSupportedPlatform || !_isInitialized) return;
     await _notificationsPlugin.cancel(dailyReminderNotificationId);
+  }
+
+  Future<void> showAutoShieldNotification({required String timeRange}) async {
+    if (!isSupportedPlatform || !_isInitialized) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      autoShieldChannelId,
+      autoShieldChannelName,
+      channelDescription: autoShieldChannelDescription,
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      showWhen: false,
+      subText: 'Scheduled Auto-Shield',
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: false,
+        presentBadge: false,
+        presentSound: false,
+      ),
+    );
+
+    await _notificationsPlugin.show(
+      autoShieldNotificationId,
+      'Brainrot Shield Active',
+      'Scheduled Auto-Shield Active ($timeRange)',
+      notificationDetails,
+    );
+  }
+
+  Future<void> cancelAutoShieldNotification() async {
+    if (!isSupportedPlatform || !_isInitialized) return;
+    await _notificationsPlugin.cancel(autoShieldNotificationId);
   }
 }

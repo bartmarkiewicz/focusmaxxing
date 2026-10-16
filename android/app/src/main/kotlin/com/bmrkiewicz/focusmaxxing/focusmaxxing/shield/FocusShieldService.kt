@@ -32,6 +32,8 @@ class FocusShieldService : Service() {
         const val CHANNEL_ID = "focus_shield_channel"
         const val NOTIFICATION_ID = 1001
         const val EXTRA_BLOCKED_PACKAGES = "BLOCKED_PACKAGES"
+        const val EXTRA_TIME_RANGE = "SCHEDULE_TIME_RANGE"
+        const val EXTRA_IS_SCHEDULED = "IS_SCHEDULED"
         const val ACTION_STOP_SHIELD = "com.bmrkiewicz.focusmaxxing.STOP_SHIELD"
         const val ACTION_DISMISS_COOLDOWN = "com.bmrkiewicz.focusmaxxing.DISMISS_COOLDOWN"
 
@@ -51,6 +53,12 @@ class FocusShieldService : Service() {
 
     @Volatile
     private var blockedPackages: Set<String> = emptySet()
+
+    @Volatile
+    private var isScheduled: Boolean = false
+
+    @Volatile
+    private var scheduleTimeRange: String? = null
 
     @Volatile
     private var isDegraded: Boolean = false
@@ -73,11 +81,24 @@ class FocusShieldService : Service() {
             blockedPackages = packages.toSet()
         }
 
+        if (intent?.hasExtra(EXTRA_IS_SCHEDULED) == true) {
+            isScheduled = intent.getBooleanExtra(EXTRA_IS_SCHEDULED, false)
+            scheduleTimeRange = intent.getStringExtra(EXTRA_TIME_RANGE)
+        }
+
+        val notificationText = if (isScheduled && !scheduleTimeRange.isNullOrEmpty()) {
+            "Scheduled Auto-Shield Active ($scheduleTimeRange)"
+        } else {
+            "Focus session in progress"
+        }
+
         if (!isRunning) {
             isRunning = true
             createNotificationChannel()
-            startForeground(NOTIFICATION_ID, buildForegroundNotification("Focus session in progress"))
+            startForeground(NOTIFICATION_ID, buildForegroundNotification(notificationText))
             startPollingLoop()
+        } else {
+            updateNotification(notificationText)
         }
 
         return START_STICKY
@@ -128,7 +149,12 @@ class FocusShieldService : Service() {
 
                     if (isDegraded) {
                         isDegraded = false
-                        updateNotification("Focus session in progress")
+                        val currentText = if (isScheduled && !scheduleTimeRange.isNullOrEmpty()) {
+                            "Scheduled Auto-Shield Active ($scheduleTimeRange)"
+                        } else {
+                            "Focus session in progress"
+                        }
+                        updateNotification(currentText)
                     }
                 } catch (securityEx: SecurityException) {
                     if (!isDegraded) {

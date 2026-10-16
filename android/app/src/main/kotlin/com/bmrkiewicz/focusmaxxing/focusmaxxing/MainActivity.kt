@@ -43,8 +43,14 @@ class MainActivity : FlutterActivity() {
         when (call.method) {
             "startShield" -> {
                 val packages = call.argument<List<String>>("packages") ?: emptyList()
+                val isScheduled = call.argument<Boolean>("isScheduled") ?: false
+                val timeRange = call.argument<String>("timeRange")
                 val intent = Intent(this, FocusShieldService::class.java).apply {
                     putStringArrayListExtra(FocusShieldService.EXTRA_BLOCKED_PACKAGES, ArrayList(packages))
+                    putExtra(FocusShieldService.EXTRA_IS_SCHEDULED, isScheduled)
+                    if (timeRange != null) {
+                        putExtra(FocusShieldService.EXTRA_TIME_RANGE, timeRange)
+                    }
                 }
                 ContextCompat.startForegroundService(this, intent)
                 result.success(true)
