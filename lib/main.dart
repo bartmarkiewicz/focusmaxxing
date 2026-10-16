@@ -16,6 +16,13 @@ import 'package:focusmaxxing/features/backlog/domain/usecases/delete_backlog_tas
 import 'package:focusmaxxing/features/backlog/domain/usecases/get_pending_tasks_usecase.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
+import 'package:focusmaxxing/features/billing/data/datasources/billing_local_cache_source.dart';
+import 'package:focusmaxxing/features/billing/data/datasources/in_app_purchase_client.dart';
+import 'package:focusmaxxing/features/billing/data/repositories/billing_repository_impl.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
+import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/insights/data/repositories/insights_repository_impl.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
@@ -63,6 +70,9 @@ void main() async {
   final shieldLocalDataSource = ShieldLocalDataSource();
   const shieldInstalledAppsSource = ShieldInstalledAppsSourceImpl();
   final shieldNativeBridgeSource = ShieldNativeBridgeSourceImpl();
+  final billingLocalCacheSource =
+      BillingLocalCacheSourceImpl(sharedPreferences: sharedPreferences);
+  const inAppPurchaseClient = InAppPurchaseClientImpl();
 
   final sessionRepository =
       SessionRepositoryImpl(localDataSource: sessionLocalDataSource);
@@ -76,6 +86,10 @@ void main() async {
     nativeBridgeSource: shieldNativeBridgeSource,
   );
   final audioRepository = AudioRepositoryImpl();
+  final billingRepository = BillingRepositoryImpl(
+    iapClient: inAppPurchaseClient,
+    localCacheSource: billingLocalCacheSource,
+  );
 
   final markTaskCompletedUseCase =
       MarkTaskCompletedUseCase(backlogRepository);
@@ -124,6 +138,16 @@ void main() async {
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
+  final billingNotifier = BillingNotifier(
+    getProductDetailsUseCase: GetProductDetailsUseCase(billingRepository),
+    purchaseLifetimeProUseCase:
+        PurchaseLifetimeProUseCase(billingRepository),
+    restorePurchasesUseCase: RestorePurchasesUseCase(billingRepository),
+    repository: billingRepository,
+    shieldNotifier: shieldNotifier,
+    audioNotifier: audioNotifier,
+  );
+
   runApp(
     FocusmaxxingApp(
       timerNotifier: timerNotifier,
@@ -131,6 +155,7 @@ void main() async {
       insightsNotifier: insightsNotifier,
       shieldNotifier: shieldNotifier,
       audioNotifier: audioNotifier,
+      billingNotifier: billingNotifier,
     ),
   );
 }
@@ -143,6 +168,7 @@ class FocusmaxxingApp extends StatelessWidget {
     this.insightsNotifier,
     this.shieldNotifier,
     this.audioNotifier,
+    this.billingNotifier,
   });
 
   final TimerNotifier? timerNotifier;
@@ -150,6 +176,7 @@ class FocusmaxxingApp extends StatelessWidget {
   final InsightsNotifier? insightsNotifier;
   final ShieldNotifier? shieldNotifier;
   final AudioNotifier? audioNotifier;
+  final BillingNotifier? billingNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +219,20 @@ class FocusmaxxingApp extends StatelessWidget {
             update: (_, timer, audio) {
               final resolved = audio ?? _createDefaultAudioNotifier();
               resolved.attachTimerNotifier(timer);
+              return resolved;
+            },
+          ),
+        if (billingNotifier case final notifier?)
+          ChangeNotifierProvider<BillingNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProxyProvider2<ShieldNotifier, AudioNotifier,
+              BillingNotifier>(
+            create: (_) => _createDefaultBillingNotifier(),
+            update: (_, shield, audio, billing) {
+              final resolved = billing ?? _createDefaultBillingNotifier();
+              resolved
+                ..attachShieldNotifier(shield)
+                ..attachAudioNotifier(audio);
               return resolved;
             },
           ),
@@ -282,4 +323,20 @@ class FocusmaxxingApp extends StatelessWidget {
       repository: audioRepo,
     );
   }
+
+  static BillingNotifier _createDefaultBillingNotifier() {
+    final billingRepo = BillingRepositoryImpl(
+      iapClient: const InAppPurchaseClientImpl(),
+      localCacheSource: const BillingLocalCacheSourceImpl(),
+    );
+
+    return BillingNotifier(
+      getProductDetailsUseCase: GetProductDetailsUseCase(billingRepo),
+      purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(billingRepo),
+      restorePurchasesUseCase: RestorePurchasesUseCase(billingRepo),
+      repository: billingRepo,
+      autoInitialize: false,
+    );
+  }
 }
+

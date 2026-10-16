@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/app_colors.dart';
+import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
+import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/installed_app_tile.dart';
@@ -81,7 +83,12 @@ class _ShieldPageState extends State<ShieldPage> {
             activeApps: notifier.activeShieldedApps,
             candidateAppName: appName,
             onUnlockPro: () async {
-              await notifier.unlockLifetimePro();
+              final billingNotifier = context.read<BillingNotifier?>();
+              if (billingNotifier != null) {
+                await billingNotifier.buyLifetimePro();
+              } else {
+                await notifier.unlockLifetimePro();
+              }
               if (sheetContext.mounted) {
                 Navigator.of(sheetContext).pop();
               }
@@ -136,6 +143,12 @@ class _ShieldPageState extends State<ShieldPage> {
             letterSpacing: 0.5,
           ),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Center(child: ProSupporterBadge()),
+          ),
+        ],
         centerTitle: false,
       ),
       body: RefreshIndicator(
@@ -263,6 +276,8 @@ class _ShieldPageState extends State<ShieldPage> {
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
               sliver: SliverList.list(
                 children: const [
+                  LifetimeProBanner(),
+                  SizedBox(height: 24),
                   _SectionHeader(title: 'PROTECTION RULES'),
                   SizedBox(height: 10),
                   _RulesCard(),

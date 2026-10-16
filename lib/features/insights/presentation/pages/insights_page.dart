@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/features/audio/presentation/widgets/soundscape_config_tile.dart';
+import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
+import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
@@ -41,6 +43,12 @@ class _InsightsPageState extends State<InsightsPage> {
             letterSpacing: 0.5,
           ),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: Center(child: ProSupporterBadge()),
+          ),
+        ],
         centerTitle: false,
       ),
       body: RefreshIndicator(
@@ -242,10 +250,23 @@ class _InsightsContentList extends StatelessWidget {
           onReminderTimePick: notifier.setDailyReminderTime,
         ),
         const SizedBox(height: 20),
-        const _ProBanner(),
+        const _ProSection(),
         const SizedBox(height: 32),
       ],
     );
+  }
+}
+
+class _ProSection extends StatelessWidget {
+  const _ProSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final billingNotifier = context.watch<BillingNotifier?>();
+    if (billingNotifier != null) {
+      return LifetimeProBanner(notifier: billingNotifier);
+    }
+    return const _ProBanner();
   }
 }
 

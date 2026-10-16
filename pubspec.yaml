@@ -45,6 +45,7 @@ dependencies:
   installed_apps: ^2.2.1
   just_audio: ^0.9.38
   audio_session: ^0.1.19
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:
