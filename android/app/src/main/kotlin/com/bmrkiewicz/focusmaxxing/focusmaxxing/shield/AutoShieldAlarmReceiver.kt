@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import flutter.overlay.window.flutter_overlay_window.OverlayService
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -83,11 +84,10 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
             }
 
             ACTION_STOP_AUTO_SHIELD -> {
-                val serviceIntent = Intent(context, FocusShieldService::class.java).apply {
-                    setAction(FocusShieldService.ACTION_STOP_SHIELD)
-                }
-                context.startService(serviceIntent)
                 context.stopService(Intent(context, FocusShieldService::class.java))
+                if (OverlayService.isRunning) {
+                    context.stopService(Intent(context, OverlayService::class.java))
+                }
             }
         }
     }

@@ -36,7 +36,7 @@ class ScheduleConfigEntity extends Equatable {
   int get endTotalMinutes => endHour * 60 + endMinute;
 
   /// Checks if the schedule is mathematically valid.
-  /// Start time must strictly precede end time.
+  /// Start time and end time must not be equal.
   bool get isValid {
     final validHours = startHour >= 0 &&
         startHour <= 23 &&
@@ -47,7 +47,7 @@ class ScheduleConfigEntity extends Equatable {
         endMinute >= 0 &&
         endMinute <= 59;
     if (!validHours) return false;
-    if (startTotalMinutes >= endTotalMinutes) return false;
+    if (startTotalMinutes == endTotalMinutes) return false;
     if (activeDays.isEmpty) return false;
     final validDays = activeDays.every((day) => day >= 1 && day <= 7);
     return validDays;
@@ -78,8 +78,13 @@ class ScheduleConfigEntity extends Equatable {
     if (!isEnabled) return false;
     if (!isActiveOn(dateTime.weekday)) return false;
     final currentMinutes = dateTime.hour * 60 + dateTime.minute;
-    return currentMinutes >= startTotalMinutes &&
-        currentMinutes < endTotalMinutes;
+    if (startTotalMinutes < endTotalMinutes) {
+      return currentMinutes >= startTotalMinutes &&
+          currentMinutes < endTotalMinutes;
+    } else {
+      return currentMinutes >= startTotalMinutes ||
+          currentMinutes < endTotalMinutes;
+    }
   }
 
   ScheduleConfigEntity copyWith({

@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
@@ -35,18 +36,10 @@ class FocusShieldService : Service() {
         const val EXTRA_TIME_RANGE = "SCHEDULE_TIME_RANGE"
         const val EXTRA_IS_SCHEDULED = "IS_SCHEDULED"
         const val ACTION_STOP_SHIELD = "com.bmrkiewicz.focusmaxxing.STOP_SHIELD"
-        const val ACTION_DISMISS_COOLDOWN = "com.bmrkiewicz.focusmaxxing.DISMISS_COOLDOWN"
 
         @Volatile
         var isRunning: Boolean = false
             private set
-
-        @Volatile
-        var cooldownUntilMs: Long = 0L
-
-        fun setDismissCooldown(durationMs: Long = 3000L) {
-            cooldownUntilMs = System.currentTimeMillis() + durationMs
-        }
     }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -63,17 +56,10 @@ class FocusShieldService : Service() {
     @Volatile
     private var isDegraded: Boolean = false
 
-    private var wasOverlayRunning: Boolean = false
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_SHIELD) {
             stopSelf()
             return START_NOT_STICKY
-        }
-
-        if (intent?.action == ACTION_DISMISS_COOLDOWN) {
-            setDismissCooldown(3000L)
-            return START_STICKY
         }
 
         val packages = intent?.getStringArrayListExtra(EXTRA_BLOCKED_PACKAGES)
@@ -107,13 +93,14 @@ class FocusShieldService : Service() {
     private fun startPollingLoop() {
         scope.launch {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
             while (isRunning) {
                 try {
-                    val overlayActive = OverlayService.isRunning
-                    if (wasOverlayRunning && !overlayActive) {
-                        setDismissCooldown(3000L)
+                    val isInteractive = powerManager?.isInteractive ?: true
+                    if (!isInteractive) {
+                        delay(2000)
+                        continue
                     }
-                    wasOverlayRunning = overlayActive
 
                     if (!hasUsageStatsPermission()) {
                         if (!isDegraded) {
@@ -124,26 +111,26 @@ class FocusShieldService : Service() {
                         continue
                     }
 
-                    if (System.currentTimeMillis() < cooldownUntilMs) {
-                        delay(500)
-                        continue
-                    }
-
                     if (usageStatsManager != null && blockedPackages.isNotEmpty()) {
                         val now = System.currentTimeMillis()
                         val events = usageStatsManager.queryEvents(now - 2000, now)
-                        val event = UsageEvents.Event()
-                        var resumedPackage: String? = null
+                        if (events != null) {
+                            val event = UsageEvents.Event()
+                            var resumedPackage: String? = null
 
-                        while (events.hasNextEvent()) {
-                            events.getNextEvent(event)
-                            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                                resumedPackage = event.packageName
+                            while (events.hasNextEvent()) {
+                                events.getNextEvent(event)
+                                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                                    resumedPackage = event.packageName
+                                }
                             }
-                        }
 
-                        if (resumedPackage != null && blockedPackages.contains(resumedPackage)) {
-                            triggerOverlay()
+                            if (resumedPackage != null &&
+                                resumedPackage != packageName &&
+                                blockedPackages.contains(resumedPackage)
+                            ) {
+                                triggerOverlay()
+                            }
                         }
                     }
 
@@ -264,6 +251,10 @@ class FocusShieldService : Service() {
     override fun onDestroy() {
         isRunning = false
         scope.cancel()
+
+        if (OverlayService.isRunning) {
+            stopService(Intent(this, OverlayService::class.java))
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)

@@ -1,8 +1,9 @@
 import 'package:focusmaxxing/core/database/migrations/migration_runner.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v1.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v2.dart';
+import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' hide DatabaseException;
 
 class DatabaseHelper {
   static const String databaseName = 'focusmaxxing.db';
@@ -41,14 +42,17 @@ class DatabaseHelper {
   Future<Database> get database async {
     final currentDb = _database;
     if (currentDb != null) {
+      if (!currentDb.isOpen) {
+        throw const DatabaseException('Database is closed');
+      }
       return currentDb;
     }
     _initFuture ??= _initDatabase();
     try {
       _database = await _initFuture;
       final readyDb = _database;
-      if (readyDb != null) return readyDb;
-      throw StateError('Database failed to initialize');
+      if (readyDb != null && readyDb.isOpen) return readyDb;
+      throw const DatabaseException('Database failed to initialize');
     } catch (_) {
       _initFuture = null;
       rethrow;
@@ -73,6 +77,7 @@ class DatabaseHelper {
 
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON;');
+    await db.execute('PRAGMA journal_mode = WAL;');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -85,10 +90,10 @@ class DatabaseHelper {
 
   Future<void> close() async {
     final currentDb = _database;
-    if (currentDb != null) {
-      await currentDb.close();
-      _database = null;
-    }
+    _database = null;
     _initFuture = null;
+    if (currentDb != null && currentDb.isOpen) {
+      await currentDb.close();
+    }
   }
 }

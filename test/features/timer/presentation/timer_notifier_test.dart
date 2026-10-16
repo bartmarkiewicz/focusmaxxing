@@ -205,5 +205,58 @@ void main() {
       expect(notifier.status, TimerStatus.idle);
       expect(notifier.targetDurationSeconds, TimerNotifier.defaultFocusSeconds);
     });
+
+    test('checkInSession with lockedIn false records DERAILED and leaves backlog task pending (MED-03)', () async {
+      await notifier.startFocusSession('Unfinished Task', backlogTaskId: 99);
+
+      await notifier.checkInSession(lockedIn: false);
+
+      expect(sessionRepository.lastUpdatedStatus, SessionStatus.derailed);
+      expect(backlogRepository.lastCompletedTaskId, isNull);
+      expect(backlogRepository.lastCompletedSessionId, isNull);
+      expect(notifier.status, TimerStatus.breakRunning);
+    });
+
+    test('startFocusSession can start directly from break mode with saved focus duration preset (CRIT-02)', () async {
+      notifier.setDurationPreset(45 * 60);
+      await notifier.startFocusSession('Session 1');
+      await notifier.checkInSession(lockedIn: true);
+
+      expect(notifier.status, TimerStatus.breakRunning);
+      expect(notifier.targetDurationSeconds, TimerNotifier.defaultBreakSeconds);
+
+      final success = await notifier.startFocusSession('Session 2');
+
+      expect(success, isTrue);
+      expect(notifier.status, TimerStatus.running);
+      expect(notifier.targetDurationSeconds, 45 * 60);
+      expect(notifier.currentTaskGoal, 'Session 2');
+    });
+
+    test('startHoldToCancel updates cancelHoldProgressNotifier without calling notifyListeners on TimerNotifier (MED-02)', () async {
+      await notifier.startFocusSession('No Rebuild Storm');
+      notifier.pause();
+
+      var timerNotifierCallCount = 0;
+      notifier.addListener(() => timerNotifierCallCount++);
+
+      final progressValues = <double>[];
+      void onProgress() => progressValues.add(notifier.cancelHoldProgressNotifier.value);
+      notifier.cancelHoldProgressNotifier.addListener(onProgress);
+
+      notifier.startHoldToCancel();
+      await Future<void>.delayed(const Duration(milliseconds: 160));
+
+      // TimerNotifier must not trigger notifyListeners during hold ticks to avoid page rebuild storms
+      expect(timerNotifierCallCount, 0);
+      expect(progressValues, isNotEmpty);
+      expect(notifier.cancelHoldProgress, greaterThan(0.0));
+
+      notifier.releaseHoldToCancel();
+      expect(timerNotifierCallCount, 0);
+      expect(notifier.cancelHoldProgress, 0.0);
+
+      notifier.cancelHoldProgressNotifier.removeListener(onProgress);
+    });
   });
 }

@@ -94,5 +94,38 @@ void main() {
       expect(cancelledImmediate, isTrue);
       handle.dispose();
     });
+
+    testWidgets('updates progress and countdown dynamically via progressListenable (MED-02)', (tester) async {
+      final progressNotifier = ValueNotifier<double>(0.0);
+      addTearDown(progressNotifier.dispose);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: HoldToCancelButton(
+            progressListenable: progressNotifier,
+            onHoldStart: () {},
+            onHoldEnd: () {},
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hold to Cancel (5s)'), findsOneWidget);
+
+      progressNotifier.value = 0.4;
+      await tester.pump();
+
+      expect(find.text('HOLD TO CANCEL (3.0s)'), findsOneWidget);
+
+      progressNotifier.value = 0.8;
+      await tester.pump();
+
+      expect(find.text('HOLD TO CANCEL (1.0s)'), findsOneWidget);
+
+      progressNotifier.value = 0.0;
+      await tester.pump();
+
+      expect(find.text('Hold to Cancel (5s)'), findsOneWidget);
+    });
   });
 }

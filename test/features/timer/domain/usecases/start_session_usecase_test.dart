@@ -83,7 +83,18 @@ void main() {
       expect(result, const Right<Failure, int>(1));
       expect(repository.lastCreatedSession?.taskGoal, 'Deep Work');
       expect(repository.lastCreatedSession?.targetDurationSeconds, 1500);
-      expect(repository.lastCreatedSession?.status, SessionStatus.lockedIn);
+      expect(repository.lastCreatedSession?.status, SessionStatus.cancelled);
+    });
+
+    test('initial session status is CANCELLED to prevent uncompleted streak poisoning', () async {
+      final result = await useCase(
+        taskGoal: 'Prevent Poisoning',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+      );
+
+      expect(result, const Right<Failure, int>(1));
+      expect(repository.lastCreatedSession?.status, SessionStatus.cancelled);
     });
 
     test('creates session with trimmed goal when input is valid', () async {
@@ -96,6 +107,7 @@ void main() {
       expect(result, const Right<Failure, int>(1));
       expect(repository.lastCreatedSession?.taskGoal, 'Finish Unit Tests');
       expect(repository.lastCreatedSession?.targetDurationSeconds, 1800);
+      expect(repository.lastCreatedSession?.status, SessionStatus.cancelled);
     });
   });
 }

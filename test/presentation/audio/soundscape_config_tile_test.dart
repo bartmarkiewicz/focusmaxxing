@@ -136,9 +136,36 @@ void main() {
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
     });
 
-    testWidgets('selecting a soundscape starts preview and toggles button label',
+    testWidgets('tapping a locked Pro option prompts pro requirement banner cleanly',
         (tester) async {
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
+
+      await tester.tap(
+        find.byKey(const ValueKey('soundscape_option_brown_noise')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+      expect(notifier.isPlaying, isFalse);
+      expect(
+        find.byKey(const ValueKey('soundscape_error_banner')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Unlock Lifetime Pro to access Brown Noise'),
+        findsOneWidget,
+      );
+
+      // Dismiss banner
+      await tester.tap(find.byKey(const ValueKey('soundscape_error_dismiss')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('soundscape_error_banner')), findsNothing);
+    });
+
+    testWidgets('pro user selecting soundscape updates active state and preview button toggles playback',
+        (tester) async {
+      notifier.setProUnlocked(true);
+      await tester.pumpWidget(buildTestWidget(isProUnlocked: true));
 
       await tester.tap(
         find.byKey(const ValueKey('soundscape_option_brown_noise')),
@@ -146,6 +173,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
+      expect(notifier.isPlaying, isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('soundscape_preview_button')));
+      await tester.pumpAndSettle();
+
       expect(notifier.isPlaying, isTrue);
       expect(find.text('Stop'), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
@@ -173,12 +205,13 @@ void main() {
 
     testWidgets('renders error banner when AudioNotifier reports an error',
         (tester) async {
+      notifier.setProUnlocked(true);
       repository.failureToReturn =
           const PlatformFailure('Unable to initialize audio output');
 
-      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpWidget(buildTestWidget(isProUnlocked: true));
       await tester.tap(
-        find.byKey(const ValueKey('soundscape_option_brown_noise')),
+        find.byKey(const ValueKey('soundscape_preview_button')),
       );
       await tester.pumpAndSettle();
 

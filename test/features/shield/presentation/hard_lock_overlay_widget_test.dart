@@ -167,4 +167,24 @@ void main() {
 
     expect(closeCalled, isTrue);
   });
+
+  testWidgets('HardLockOverlayWidget is protected by PopScope with canPop false (HIGH-04)',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: Stream.empty(),
+          initialGoal: 'Locked In Task',
+          initialRemainingSeconds: 1500,
+        ),
+      ),
+    );
+
+    final popScopeFinder = find.byWidgetPredicate(
+      (widget) => widget is PopScope,
+    );
+    expect(popScopeFinder, findsOneWidget);
+    final popScope = tester.widget<PopScope<Object?>>(popScopeFinder);
+    expect(popScope.canPop, isFalse);
+  });
 }

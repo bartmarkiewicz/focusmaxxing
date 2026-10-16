@@ -41,11 +41,13 @@ void main() {
       expect(prefs.getBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey), isTrue);
     });
 
-    test('restores unlocked state from legacy boolean key if encrypted receipt is absent', () async {
+    test('evaluates to locked when encrypted receipt is absent even if legacy boolean keys are true', () async {
       await prefs.setBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey, true);
+      await prefs.setBool(BillingLocalCacheSourceImpl.proUnlockedPrefsKey, true);
 
       final status = await cacheSource.getProUnlockStatus();
-      expect(status.isUnlocked, isTrue);
+      expect(status.isUnlocked, isFalse);
+      expect(status, equals(ProUnlockStatusEntity.locked));
     });
 
     test('safely falls back to locked when encrypted receipt signature is tampered even if plaintext boolean is true', () async {

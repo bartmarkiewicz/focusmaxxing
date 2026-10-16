@@ -44,14 +44,25 @@ class SoundscapeConfigTile extends StatelessWidget {
           ),
           if (errorMessage != null) ...[
             const SizedBox(height: 6),
-            _AudioErrorBanner(message: errorMessage),
+            _AudioErrorBanner(
+              message: errorMessage,
+              onDismiss: audioNotifier?.clearError,
+            ),
           ],
           const SizedBox(height: 4),
           RadioGroup<String>(
             groupValue: activeSoundscape.id,
             onChanged: (value) {
               if (value != null && audioNotifier != null) {
-                unawaited(audioNotifier.selectSoundscape(value));
+                final selected = soundscapes.firstWhere(
+                  (s) => s.id == value,
+                  orElse: () => SoundscapeEntity.none,
+                );
+                if (selected.isProOnly && !proUnlocked) {
+                  audioNotifier.triggerProRequirement(selected);
+                } else {
+                  unawaited(audioNotifier.selectSoundscape(value));
+                }
               }
             },
             child: Column(
@@ -64,7 +75,13 @@ class SoundscapeConfigTile extends StatelessWidget {
                     showProBadge: soundscape.isProOnly && !proUnlocked,
                     onTap: () {
                       if (audioNotifier != null) {
-                        unawaited(audioNotifier.selectSoundscape(soundscape.id));
+                        if (soundscape.isProOnly && !proUnlocked) {
+                          audioNotifier.triggerProRequirement(soundscape);
+                        } else {
+                          unawaited(
+                            audioNotifier.selectSoundscape(soundscape.id),
+                          );
+                        }
                       }
                     },
                   ),
@@ -95,8 +112,12 @@ class SoundscapeConfigTile extends StatelessWidget {
 
 class _AudioErrorBanner extends StatelessWidget {
   final String message;
+  final VoidCallback? onDismiss;
 
-  const _AudioErrorBanner({required this.message});
+  const _AudioErrorBanner({
+    required this.message,
+    this.onDismiss,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +152,14 @@ class _AudioErrorBanner extends StatelessWidget {
                 ),
               ),
             ),
+            if (onDismiss != null)
+              IconButton(
+                key: const ValueKey('soundscape_error_dismiss'),
+                icon: const Icon(Icons.close_rounded, size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onDismiss,
+              ),
           ],
         ),
       ),

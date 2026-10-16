@@ -26,7 +26,7 @@ void main() {
       expect(schedule.formattedTimeRange, equals('09:00 - 17:00'));
     });
 
-    test('isValid returns false when start time is equal to or after end time', () {
+    test('isValid returns false when start time is equal to end time', () {
       const equalTime = ScheduleConfigEntity(
         startHour: 10,
         startMinute: 30,
@@ -34,14 +34,24 @@ void main() {
         endMinute: 30,
       );
       expect(equalTime.isValid, isFalse);
+    });
 
-      const afterTime = ScheduleConfigEntity(
+    test('isValid returns true for overnight schedules spanning midnight', () {
+      const overnightTime = ScheduleConfigEntity(
         startHour: 18,
         startMinute: 0,
         endHour: 9,
         endMinute: 0,
       );
-      expect(afterTime.isValid, isFalse);
+      expect(overnightTime.isValid, isTrue);
+
+      const nightOwlTime = ScheduleConfigEntity(
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+      );
+      expect(nightOwlTime.isValid, isTrue);
     });
 
     test('isValid returns false for out-of-range hours or minutes or days', () {
@@ -108,6 +118,49 @@ void main() {
       // Disabled schedule returns false even during active window
       final disabled = schedule.copyWith(isEnabled: false);
       expect(disabled.isWithinSchedule(mondayInside), isFalse);
+    });
+
+    test('isWithinSchedule handles overnight schedules spanning midnight', () {
+      const overnightSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+        activeDays: [DateTime.monday],
+      );
+
+      // Monday at 21:59 (before start)
+      final mondayBefore = DateTime(2026, 10, 19, 21, 59);
+      expect(overnightSchedule.isWithinSchedule(mondayBefore), isFalse);
+
+      // Monday at 22:00 (start boundary)
+      final mondayStart = DateTime(2026, 10, 19, 22, 0);
+      expect(overnightSchedule.isWithinSchedule(mondayStart), isTrue);
+
+      // Monday at 23:45 (late evening inside)
+      final mondayLate = DateTime(2026, 10, 19, 23, 45);
+      expect(overnightSchedule.isWithinSchedule(mondayLate), isTrue);
+
+      // Monday at 02:30 (early morning inside active day)
+      final mondayEarly = DateTime(2026, 10, 19, 2, 30);
+      expect(overnightSchedule.isWithinSchedule(mondayEarly), isTrue);
+
+      // Monday at 05:59 (just before end)
+      final mondayBeforeEnd = DateTime(2026, 10, 19, 5, 59);
+      expect(overnightSchedule.isWithinSchedule(mondayBeforeEnd), isTrue);
+
+      // Monday at 06:00 (at end boundary - exclusive)
+      final mondayAtEnd = DateTime(2026, 10, 19, 6, 0);
+      expect(overnightSchedule.isWithinSchedule(mondayAtEnd), isFalse);
+
+      // Monday at 12:00 (noon outside)
+      final mondayNoon = DateTime(2026, 10, 19, 12, 0);
+      expect(overnightSchedule.isWithinSchedule(mondayNoon), isFalse);
+
+      // Sunday at 23:00 (inactive day)
+      final sundayLate = DateTime(2026, 10, 18, 23, 0);
+      expect(overnightSchedule.isWithinSchedule(sundayLate), isFalse);
     });
 
     test('copyWith updates fields correctly', () {

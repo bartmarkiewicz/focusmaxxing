@@ -6,9 +6,13 @@ import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 @pragma('vm:entry-point')
 void overlayMain() {
   runApp(
-    const MaterialApp(
+    MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HardLockOverlayWidget(),
+      home: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {},
+        child: const HardLockOverlayWidget(),
+      ),
     ),
   );
 }
@@ -126,73 +130,77 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget> {
     final minutes = (clampedSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (clampedSeconds % 60).toString().padLeft(2, '0');
 
-    return Scaffold(
-      backgroundColor: _surfaceColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.lock_rounded,
-                size: 64,
-                color: _alertColor,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _isBreakMode ? 'RECHARGE YOUR BRAIN' : 'LOCKED IN',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2.0,
-                  color: Colors.white,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {},
+      child: Scaffold(
+        backgroundColor: _surfaceColor,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.lock_rounded,
+                  size: 64,
+                  color: _alertColor,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _isBreakMode
-                    ? 'Social feeds remain locked during your break.'
-                    : '"$_taskGoal"',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: _subtextColor,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                '$minutes:$seconds',
-                style: const TextStyle(
-                  fontSize: 64,
-                  fontWeight: FontWeight.bold,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _actionGreen,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                  onPressed: _handleReturn,
-                  child: const Text(
-                    'RETURN TO FOCUSMAXXING',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  _isBreakMode ? 'RECHARGE YOUR BRAIN' : 'LOCKED IN',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Text(
+                  _isBreakMode
+                      ? 'Social feeds remain locked during your break.'
+                      : '"$_taskGoal"',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: _subtextColor,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  '$minutes:$seconds',
+                  style: const TextStyle(
+                    fontSize: 64,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _actionGreen,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                    ),
+                    onPressed: _handleReturn,
+                    child: const Text(
+                      'RETURN TO FOCUSMAXXING',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

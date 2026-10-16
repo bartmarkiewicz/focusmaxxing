@@ -134,16 +134,40 @@ void main() {
       expect(notifier.errorMessage, isNull);
     });
 
-    test('selecting soundscape starts playback and updates active state', () async {
+    test('non-pro user cannot select pro soundscapes and error is reported', () async {
+      await notifier.selectSoundscape('brown_noise');
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+      expect(notifier.isPlaying, isFalse);
+      expect(
+        notifier.errorMessage,
+        equals('Unlock Lifetime Pro to access Brown Noise'),
+      );
+
+      await notifier.selectSoundscape('gamma_40hz');
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+      expect(
+        notifier.errorMessage,
+        equals('Unlock Lifetime Pro to access 40Hz Gamma'),
+      );
+
+      await notifier.selectSoundscape('rain');
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+      expect(
+        notifier.errorMessage,
+        equals('Unlock Lifetime Pro to access Rain on Canvas'),
+      );
+    });
+
+    test('selecting soundscape updates active state without premature autoplay when timer is not running', () async {
+      notifier.setProUnlocked(true);
+
       await notifier.selectSoundscape('brown_noise');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
       expect(notifier.activeSoundscapeId, equals('brown_noise'));
-      expect(notifier.isPlaying, isTrue);
-      expect(
-        repository.playedAssets,
-        equals(['assets/audio/brown_noise_loop.ogg']),
-      );
+      expect(notifier.isPlaying, isFalse);
+      expect(repository.playedAssets, isEmpty);
       expect(
         prefs.getString(AudioNotifier.selectedSoundscapePrefsKey),
         equals('brown_noise'),
@@ -152,13 +176,37 @@ void main() {
       await notifier.selectSoundscape('gamma_40hz');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.gamma40Hz));
+      expect(notifier.isPlaying, isFalse);
+      expect(
+        prefs.getString(AudioNotifier.selectedSoundscapePrefsKey),
+        equals('gamma_40hz'),
+      );
+    });
+
+    test('selecting soundscape starts playback immediately if timer is actively running', () async {
+      final sessionRepo = _FakeSessionRepository();
+      final timerNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepo),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+        notificationService: NotificationService(),
+        prefs: prefs,
+      );
+      addTearDown(timerNotifier.dispose);
+
+      notifier.setProUnlocked(true);
+      notifier.attachTimerNotifier(timerNotifier);
+
+      await timerNotifier.startFocusSession('Test running session');
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.selectSoundscape('brown_noise');
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
       expect(notifier.isPlaying, isTrue);
       expect(
         repository.playedAssets,
-        equals([
-          'assets/audio/brown_noise_loop.ogg',
-          'assets/audio/gamma_40hz_loop.ogg',
-        ]),
+        equals(['assets/audio/brown_noise_loop.ogg']),
       );
     });
 
@@ -194,7 +242,8 @@ void main() {
     });
 
     test('selecting None stops player and resets playing flag', () async {
-      await notifier.selectSoundscape('rain');
+      notifier.setProUnlocked(true);
+      await notifier.togglePreview('rain');
       expect(notifier.isPlaying, isTrue);
       expect(notifier.activeSoundscapeId, equals('rain'));
 
@@ -207,10 +256,11 @@ void main() {
     });
 
     test('guards against race condition when selecting None while playLoop is in flight', () async {
+      notifier.setProUnlocked(true);
       final gate = Completer<void>();
       repository.playLoopGate = gate;
 
-      final playFuture = notifier.selectSoundscape('brown_noise');
+      final playFuture = notifier.togglePreview('brown_noise');
       final stopFuture = notifier.selectSoundscape('none');
 
       gate.complete();
@@ -220,7 +270,20 @@ void main() {
       expect(notifier.isPlaying, isFalse);
     });
 
-    test('togglePreview selects Brown Noise when None is active and toggles playback', () async {
+    test('togglePreview fails for free user on pro soundscape when active is none', () async {
+      expect(notifier.isProUnlocked, isFalse);
+      await notifier.togglePreview();
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+      expect(notifier.isPlaying, isFalse);
+      expect(
+        notifier.errorMessage,
+        equals('Unlock Lifetime Pro to access Brown Noise'),
+      );
+    });
+
+    test('togglePreview selects Brown Noise when None is active and toggles playback for Pro user', () async {
+      notifier.setProUnlocked(true);
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
 
       await notifier.togglePreview();
@@ -237,9 +300,11 @@ void main() {
     });
 
     test('records errorMessage and sets isPlaying false when playback fails', () async {
-      repository.failureToReturn = const PlatformFailure('Audio hardware unavailable');
+      notifier.setProUnlocked(true);
+      repository.failureToReturn =
+          const PlatformFailure('Audio hardware unavailable');
 
-      await notifier.selectSoundscape('brown_noise');
+      await notifier.togglePreview('brown_noise');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
       expect(notifier.isPlaying, isFalse);
@@ -281,9 +346,9 @@ void main() {
       );
       addTearDown(timerNotifier.dispose);
 
+      notifier.setProUnlocked(true);
       notifier.attachTimerNotifier(timerNotifier);
       await notifier.selectSoundscape('brown_noise');
-      await notifier.stop();
       expect(notifier.isPlaying, isFalse);
 
       await timerNotifier.startFocusSession('Write audio tests');

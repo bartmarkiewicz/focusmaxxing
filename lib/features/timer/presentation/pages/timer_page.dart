@@ -92,9 +92,14 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _handleStartLockIn(TimerNotifier timerNotifier) async {
     String goal = timerNotifier.currentTaskGoal.trim();
-    final durationMinutes = (timerNotifier.targetDurationSeconds / 60).round();
+    final isBreak = timerNotifier.status == TimerStatus.breakCompleted ||
+        timerNotifier.status == TimerStatus.breakRunning;
+    final durationSeconds = isBreak
+        ? timerNotifier.focusDurationSeconds
+        : timerNotifier.targetDurationSeconds;
+    final durationMinutes = (durationSeconds / 60).round();
 
-    if (goal.isEmpty) {
+    if (goal.isEmpty || isBreak) {
       final selectedGoal = await GoalInputDialog.show(
         context,
         durationMinutes: durationMinutes,
@@ -407,6 +412,7 @@ class _TimerPageState extends State<TimerPage> {
             const SizedBox(height: 12),
             HoldToCancelButton(
               progress: timerNotifier.cancelHoldProgress,
+              progressListenable: timerNotifier.cancelHoldProgressNotifier,
               onHoldStart: timerNotifier.startHoldToCancel,
               onHoldEnd: timerNotifier.releaseHoldToCancel,
               onCancelImmediate: timerNotifier.cancelSession,
@@ -445,7 +451,7 @@ class _TimerPageState extends State<TimerPage> {
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: timerNotifier.readyToFocusFromBreak,
+            onPressed: () => _handleStartLockIn(timerNotifier),
             style: ElevatedButton.styleFrom(
               backgroundColor: colorScheme.secondary,
               foregroundColor: colorScheme.onSecondary,

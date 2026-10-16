@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -7,13 +8,15 @@ import 'package:flutter/services.dart';
 class HoldToCancelButton extends StatefulWidget {
   const HoldToCancelButton({
     super.key,
-    required this.progress,
+    this.progress = 0.0,
+    this.progressListenable,
     required this.onHoldStart,
     required this.onHoldEnd,
     this.onCancelImmediate,
   });
 
   final double progress;
+  final ValueListenable<double>? progressListenable;
   final VoidCallback onHoldStart;
   final VoidCallback onHoldEnd;
   final VoidCallback? onCancelImmediate;
@@ -26,13 +29,38 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   int _lastHapticTier = 0;
   DateTime? _touchStartTime;
 
+  double get _currentProgress =>
+      widget.progressListenable?.value ?? widget.progress;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.progressListenable?.addListener(_handleProgressListenableChanged);
+  }
+
   @override
   void didUpdateWidget(covariant HoldToCancelButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.progress == 0.0) {
+    if (oldWidget.progressListenable != widget.progressListenable) {
+      oldWidget.progressListenable?.removeListener(_handleProgressListenableChanged);
+      widget.progressListenable?.addListener(_handleProgressListenableChanged);
+    }
+    if (widget.progressListenable == null) {
+      _checkHapticTier(widget.progress);
+    }
+  }
+
+  void _handleProgressListenableChanged() {
+    if (!mounted) return;
+    _checkHapticTier(_currentProgress);
+    setState(() {});
+  }
+
+  void _checkHapticTier(double progress) {
+    if (progress == 0.0) {
       _lastHapticTier = 0;
     } else {
-      final currentTier = (widget.progress * 4).floor(); // 0: 0-25%, 1: 25-50%, 2: 50-75%, 3: 75-100%
+      final currentTier = (progress * 4).floor(); // 0: 0-25%, 1: 25-50%, 2: 50-75%, 3: 75-100%
       if (currentTier > _lastHapticTier) {
         _lastHapticTier = currentTier;
         unawaited(HapticFeedback.lightImpact());
@@ -42,6 +70,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
 
   @override
   void dispose() {
+    widget.progressListenable?.removeListener(_handleProgressListenableChanged);
     if (_touchStartTime != null) {
       _touchStartTime = null;
       widget.onHoldEnd();
@@ -73,7 +102,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
     widget.onHoldEnd();
 
     // If released quickly (tap gesture without sustained hold), prompt the user
-    if (holdDurationMs < 600 && widget.progress < 0.2 && mounted) {
+    if (holdDurationMs < 600 && _currentProgress < 0.2 && mounted) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -124,10 +153,11 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final percent = (widget.progress * 100).toInt();
+    final currentProgress = _currentProgress;
+    final percent = (currentProgress * 100).toInt();
 
     final errorColor = colorScheme.error;
-    final isHolding = widget.progress > 0;
+    final isHolding = currentProgress > 0;
 
     return Semantics(
       button: true,
@@ -160,7 +190,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
             child: Stack(
               children: [
                 FractionallySizedBox(
-                  widthFactor: widget.progress.clamp(0.0, 1.0),
+                  widthFactor: currentProgress.clamp(0.0, 1.0),
                   heightFactor: 1.0,
                   child: Container(
                     color: errorColor.withValues(alpha: 0.35),
@@ -180,7 +210,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
                       const SizedBox(width: 8),
                       Text(
                         isHolding
-                            ? 'HOLD TO CANCEL (${(5.0 * (1.0 - widget.progress)).toStringAsFixed(1)}s)'
+                            ? 'HOLD TO CANCEL (${(5.0 * (1.0 - currentProgress)).toStringAsFixed(1)}s)'
                             : 'Hold to Cancel (5s)',
                         style: theme.textTheme.labelMedium?.copyWith(
                           color: isHolding

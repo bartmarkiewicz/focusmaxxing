@@ -41,6 +41,7 @@ dependencies:
   flutter_local_notifications: ^17.2.1+2
   sqflite_common_ffi: ^2.3.3
   timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
   flutter_overlay_window: ^1.0.0
   installed_apps: ^2.2.1
   just_audio: ^0.9.38

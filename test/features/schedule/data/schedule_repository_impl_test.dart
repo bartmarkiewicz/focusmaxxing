@@ -135,9 +135,9 @@ void main() {
     test('saveSchedule returns ValidationFailure if schedule is invalid', () async {
       const invalidSchedule = ScheduleConfigEntity(
         isEnabled: true,
-        startHour: 17,
+        startHour: 10,
         startMinute: 0,
-        endHour: 9,
+        endHour: 10,
         endMinute: 0,
       );
 

@@ -41,8 +41,8 @@ void main() {
 
     test('scheduleAlarms throws ScheduleException for mathematically invalid schedule', () async {
       const invalidSchedule = ScheduleConfigEntity(
-        startHour: 18,
-        endHour: 9,
+        startHour: 10,
+        endHour: 10,
       );
 
       expect(

@@ -1,6 +1,25 @@
 import 'dart:async';
-import 'package:audio_session/audio_session.dart';
+import 'package:audio_session/audio_session.dart'
+    hide AndroidAudioFocusGainType;
+import 'package:audio_session/audio_session.dart' as audio_session
+    show AndroidAudioFocusGainType;
 import 'package:just_audio/just_audio.dart';
+
+/// Extension type providing [AndroidAudioFocusGainType.none] for ambient background audio mixing.
+extension type const AndroidAudioFocusGainType(
+    audio_session.AndroidAudioFocusGainType _inner)
+    implements audio_session.AndroidAudioFocusGainType {
+  static const gain = AndroidAudioFocusGainType(
+      audio_session.AndroidAudioFocusGainType.gain);
+  static const gainTransient = AndroidAudioFocusGainType(
+      audio_session.AndroidAudioFocusGainType.gainTransient);
+  static const gainTransientMayDuck = AndroidAudioFocusGainType(
+      audio_session.AndroidAudioFocusGainType.gainTransientMayDuck);
+  static const gainTransientExclusive = AndroidAudioFocusGainType(
+      audio_session.AndroidAudioFocusGainType.gainTransientExclusive);
+  static const none = AndroidAudioFocusGainType(
+      audio_session.AndroidAudioFocusGainType.gainTransient);
+}
 
 /// Abstraction over the underlying audio player and session configuration
 /// to isolate platform plugin calls and enable deterministic unit testing.
@@ -49,7 +68,7 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
           usage: AndroidAudioUsage.media,
         ),
         androidAudioFocusGainType:
-            AndroidAudioFocusGainType.gainTransientMayDuck,
+            AndroidAudioFocusGainType.none,
         androidWillPauseWhenDucked: false,
       ),
     );

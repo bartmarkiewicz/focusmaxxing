@@ -61,21 +61,6 @@ class BillingLocalCacheSourceImpl implements IBillingLocalCacheSource {
         if (decodedStatus != null) {
           return decodedStatus;
         }
-        // Tampered or corrupted receipt: do not fall back to plaintext booleans.
-        return ProUnlockStatusEntity.locked;
-      }
-
-      // Legacy migration fallback: only when no encrypted receipt exists yet.
-      final isUnlockedFlag =
-          (prefs.getBool(proUnlockedPrefsKey) ?? false) ||
-          (prefs.getBool(lifetimeProLegacyPrefsKey) ?? false);
-
-      if (isUnlockedFlag) {
-        return ProUnlockStatusEntity(
-          isUnlocked: true,
-          purchaseDateMs: prefs.getInt(purchaseDateMsPrefsKey),
-          orderId: prefs.getString(orderIdPrefsKey),
-        );
       }
     } on Exception catch (e) {
       developer.log(

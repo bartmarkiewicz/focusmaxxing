@@ -10,3 +10,6 @@
 # Home Widget rules
 -keep class es.antonborri.home_widget.** { *; }
 -keep class com.bmrkiewicz.focusmaxxing.focusmaxxing.widget.** { *; }
+
+# Focus Shield rules
+-keep class com.bmrkiewicz.focusmaxxing.focusmaxxing.shield.** { *; }

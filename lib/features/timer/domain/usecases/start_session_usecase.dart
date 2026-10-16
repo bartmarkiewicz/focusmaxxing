@@ -35,7 +35,7 @@ class StartSessionUseCase {
       actualDurationSeconds: 0,
       startTimeEpochMs: now,
       endTimeEpochMs: now + (targetDurationSeconds * 1000),
-      status: SessionStatus.lockedIn,
+      status: SessionStatus.cancelled,
     );
     return await repository.createSession(session);
   }

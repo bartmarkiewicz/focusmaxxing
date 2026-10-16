@@ -49,6 +49,7 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   TimerStatus _status = TimerStatus.idle;
+  int _focusDurationSeconds = defaultFocusSeconds;
   int _targetDurationSeconds = defaultFocusSeconds;
   int _remainingSeconds = defaultFocusSeconds;
   Duration _remainingDuration = const Duration(seconds: defaultFocusSeconds);
@@ -56,7 +57,7 @@ class TimerNotifier extends ChangeNotifier {
   String _currentTaskGoal = '';
   int? _linkedBacklogTaskId;
   int? _activeSessionId;
-  double _cancelHoldProgress = 0.0;
+  final ValueNotifier<double> cancelHoldProgressNotifier = ValueNotifier<double>(0.0);
   List<String> _recentGoals = const [];
   String? _errorMessage;
 
@@ -68,12 +69,13 @@ class TimerNotifier extends ChangeNotifier {
   bool _isDisposed = false;
 
   TimerStatus get status => _status;
+  int get focusDurationSeconds => _focusDurationSeconds;
   int get targetDurationSeconds => _targetDurationSeconds;
   int get remainingSeconds => _remainingSeconds;
   String get currentTaskGoal => _currentTaskGoal;
   int? get linkedBacklogTaskId => _linkedBacklogTaskId;
   List<String> get recentGoals => _recentGoals;
-  double get cancelHoldProgress => _cancelHoldProgress;
+  double get cancelHoldProgress => cancelHoldProgressNotifier.value;
   int? get activeSessionId => _activeSessionId;
   String? get errorMessage => _errorMessage;
 
@@ -89,6 +91,7 @@ class TimerNotifier extends ChangeNotifier {
     _isDisposed = true;
     _periodicTicker?.cancel();
     _cancelHoldTimer?.cancel();
+    cancelHoldProgressNotifier.dispose();
     super.dispose();
   }
 
@@ -101,6 +104,7 @@ class TimerNotifier extends ChangeNotifier {
 
   void setDurationPreset(int seconds) {
     if (_status != TimerStatus.idle) return;
+    _focusDurationSeconds = seconds;
     _targetDurationSeconds = seconds;
     _remainingSeconds = seconds;
     _remainingDuration = Duration(seconds: seconds);
@@ -114,17 +118,25 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<bool> startFocusSession(String goal, {int? backlogTaskId}) async {
-    if (_status != TimerStatus.idle || _isStarting) return false;
+    if ((_status != TimerStatus.idle &&
+            _status != TimerStatus.breakCompleted &&
+            _status != TimerStatus.breakRunning) ||
+        _isStarting) {
+      return false;
+    }
     _isStarting = true;
+    final previousStatus = _status;
 
     try {
+      _periodicTicker?.cancel();
       final trimmed = goal.trim();
       _currentTaskGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
       _linkedBacklogTaskId = backlogTaskId;
+      _targetDurationSeconds = _focusDurationSeconds;
       _remainingSeconds = _targetDurationSeconds;
       _remainingDuration = Duration(seconds: _remainingSeconds);
       _targetEndTime = DateTime.now().add(_remainingDuration);
-      _cancelHoldProgress = 0.0;
+      cancelHoldProgressNotifier.value = 0.0;
       _errorMessage = null;
 
       await _cacheRecentGoal(_currentTaskGoal);
@@ -138,7 +150,9 @@ class TimerNotifier extends ChangeNotifier {
       final isSuccess = result.fold(
         (failure) {
           _errorMessage = failure.message;
-          _status = TimerStatus.idle;
+          _status = (previousStatus == TimerStatus.idle)
+              ? TimerStatus.idle
+              : TimerStatus.breakCompleted;
           notifyListeners();
           return false;
         },
@@ -177,7 +191,7 @@ class TimerNotifier extends ChangeNotifier {
 
     _targetEndTime = DateTime.now().add(_remainingDuration);
     _status = TimerStatus.running;
-    _cancelHoldProgress = 0.0;
+    cancelHoldProgressNotifier.value = 0.0;
     _startTicker();
     _updateNotification();
     notifyListeners();
@@ -187,7 +201,7 @@ class TimerNotifier extends ChangeNotifier {
     if (_status != TimerStatus.paused) return;
 
     _cancelHoldStartTime = DateTime.now();
-    _cancelHoldProgress = 0.0;
+    cancelHoldProgressNotifier.value = 0.0;
     _cancelHoldTimer?.cancel();
 
     _cancelHoldTimer = Timer.periodic(
@@ -202,8 +216,7 @@ class TimerNotifier extends ChangeNotifier {
         final elapsedMs =
             DateTime.now().difference(startTime).inMilliseconds;
         final progress = (elapsedMs / cancelHoldTotalMs).clamp(0.0, 1.0);
-        _cancelHoldProgress = progress;
-        notifyListeners();
+        cancelHoldProgressNotifier.value = progress;
 
         if (elapsedMs >= cancelHoldTotalMs) {
           timer.cancel();
@@ -227,9 +240,8 @@ class TimerNotifier extends ChangeNotifier {
       return;
     }
 
-    if (_cancelHoldProgress > 0.0 && _cancelHoldProgress < 1.0) {
-      _cancelHoldProgress = 0.0;
-      notifyListeners();
+    if (cancelHoldProgressNotifier.value > 0.0 && cancelHoldProgressNotifier.value < 1.0) {
+      cancelHoldProgressNotifier.value = 0.0;
     }
   }
 
@@ -242,7 +254,7 @@ class TimerNotifier extends ChangeNotifier {
       _cancelHoldTimer?.cancel();
       _cancelHoldTimer = null;
       _cancelHoldStartTime = null;
-      _cancelHoldProgress = 0.0;
+      cancelHoldProgressNotifier.value = 0.0;
 
       final actualDuration = _targetDurationSeconds - _remainingSeconds;
       final sessionId = _activeSessionId;
@@ -293,8 +305,8 @@ class TimerNotifier extends ChangeNotifier {
         (_) {},
       );
 
-      // Auto-complete linked backlog task if one was promoted to this session
-      if (taskId != null && completeTask != null) {
+      // Auto-complete linked backlog task only if session was locked in
+      if (lockedIn && taskId != null && completeTask != null) {
         final taskResult = await completeTask(
           id: taskId,
           sessionId: sessionId,
@@ -344,9 +356,9 @@ class TimerNotifier extends ChangeNotifier {
   void readyToFocusFromBreak() {
     _periodicTicker?.cancel();
     _status = TimerStatus.idle;
-    _targetDurationSeconds = defaultFocusSeconds;
-    _remainingSeconds = defaultFocusSeconds;
-    _remainingDuration = const Duration(seconds: defaultFocusSeconds);
+    _targetDurationSeconds = _focusDurationSeconds;
+    _remainingSeconds = _focusDurationSeconds;
+    _remainingDuration = Duration(seconds: _focusDurationSeconds);
     _activeSessionId = null;
     _currentTaskGoal = '';
     _linkedBacklogTaskId = null;

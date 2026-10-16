@@ -127,6 +127,12 @@ class AudioNotifier extends ChangeNotifier {
     switch (status) {
       case TimerStatus.running:
         if (!_activeSoundscape.isNone && !_isPlaying) {
+          if (_activeSoundscape.isProOnly && !_isProUnlocked) {
+            _errorMessage =
+                'Unlock Lifetime Pro to access ${_activeSoundscape.title}';
+            notifyListeners();
+            break;
+          }
           final token = ++_operationToken;
           await _startActiveSoundscape(token);
         }
@@ -163,8 +169,14 @@ class AudioNotifier extends ChangeNotifier {
     await selectSoundscapeEntity(target);
   }
 
-  /// Selects a [SoundscapeEntity], starting loop playback or stopping when `none`.
+  /// Selects a [SoundscapeEntity], starting loop playback if timer is running, or stopping when `none`.
   Future<void> selectSoundscapeEntity(SoundscapeEntity soundscape) async {
+    if (soundscape.isProOnly && !_isProUnlocked) {
+      _errorMessage = 'Unlock Lifetime Pro to access ${soundscape.title}';
+      notifyListeners();
+      return;
+    }
+
     final token = ++_operationToken;
     _errorMessage = null;
     _activeSoundscape = soundscape;
@@ -188,12 +200,27 @@ class AudioNotifier extends ChangeNotifier {
       return;
     }
 
+    if (_attachedTimerNotifier?.status != TimerStatus.running) {
+      if (_isPlaying) {
+        await stop();
+      } else {
+        notifyListeners();
+      }
+      return;
+    }
+
     await _startActiveSoundscape(token);
   }
 
   Future<void> _startActiveSoundscape(int token) async {
     final targetSoundscape = _activeSoundscape;
     if (targetSoundscape.isNone) return;
+    if (targetSoundscape.isProOnly && !_isProUnlocked) {
+      _errorMessage =
+          'Unlock Lifetime Pro to access ${targetSoundscape.title}';
+      notifyListeners();
+      return;
+    }
 
     await setAudioVolumeUseCase(_volume);
     if (_isDisposed || token != _operationToken || _activeSoundscape.isNone) {
@@ -258,7 +285,25 @@ class AudioNotifier extends ChangeNotifier {
   /// If `'none'` is currently selected, selects and previews [SoundscapeEntity.brownNoise].
   Future<void> togglePreview([String? soundscapeId]) async {
     if (soundscapeId != null && soundscapeId != _activeSoundscape.id) {
-      await selectSoundscape(soundscapeId);
+      final target = SoundscapeEntity.fromId(soundscapeId.trim().toLowerCase());
+      if (target.isProOnly && !_isProUnlocked) {
+        _errorMessage = 'Unlock Lifetime Pro to access ${target.title}';
+        notifyListeners();
+        return;
+      }
+      final token = ++_operationToken;
+      _errorMessage = null;
+      _activeSoundscape = target;
+      final prefs = await _resolvePrefs();
+      if (prefs != null) {
+        await prefs.setString(selectedSoundscapePrefsKey, target.id);
+      }
+      if (_isDisposed || token != _operationToken) return;
+      if (target.isNone) {
+        await stop();
+        return;
+      }
+      await _startActiveSoundscape(token);
       return;
     }
 
@@ -266,7 +311,24 @@ class AudioNotifier extends ChangeNotifier {
       if (_isPlaying) {
         await stop();
       } else {
-        await selectSoundscapeEntity(SoundscapeEntity.brownNoise);
+        if (SoundscapeEntity.brownNoise.isProOnly && !_isProUnlocked) {
+          _errorMessage =
+              'Unlock Lifetime Pro to access ${SoundscapeEntity.brownNoise.title}';
+          notifyListeners();
+          return;
+        }
+        final token = ++_operationToken;
+        _errorMessage = null;
+        _activeSoundscape = SoundscapeEntity.brownNoise;
+        final prefs = await _resolvePrefs();
+        if (prefs != null) {
+          await prefs.setString(
+            selectedSoundscapePrefsKey,
+            SoundscapeEntity.brownNoise.id,
+          );
+        }
+        if (_isDisposed || token != _operationToken) return;
+        await _startActiveSoundscape(token);
       }
       return;
     }
@@ -274,6 +336,12 @@ class AudioNotifier extends ChangeNotifier {
     if (_isPlaying) {
       await stop();
     } else {
+      if (_activeSoundscape.isProOnly && !_isProUnlocked) {
+        _errorMessage =
+            'Unlock Lifetime Pro to access ${_activeSoundscape.title}';
+        notifyListeners();
+        return;
+      }
       final token = ++_operationToken;
       await _startActiveSoundscape(token);
     }
@@ -297,6 +365,19 @@ class AudioNotifier extends ChangeNotifier {
   void setProUnlocked(bool unlocked) {
     if (_isProUnlocked == unlocked) return;
     _isProUnlocked = unlocked;
+    notifyListeners();
+  }
+
+  /// Clears the active [_errorMessage] and notifies listeners.
+  void clearError() {
+    if (_errorMessage == null) return;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Sets an error message indicating that Lifetime Pro is required for [soundscape].
+  void triggerProRequirement(SoundscapeEntity soundscape) {
+    _errorMessage = 'Unlock Lifetime Pro to access ${soundscape.title}';
     notifyListeners();
   }
 }

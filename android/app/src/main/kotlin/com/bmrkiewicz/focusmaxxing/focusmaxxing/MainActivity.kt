@@ -138,7 +138,6 @@ class MainActivity : FlutterActivity() {
             }
 
             "bringToForeground" -> {
-                FocusShieldService.setDismissCooldown(3000L)
                 bringToForeground()
                 result.success(true)
             }
