@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/features/audio/presentation/widgets/soundscape_config_tile.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
@@ -46,82 +47,145 @@ class _InsightsPageState extends State<InsightsPage> {
         onRefresh: notifier.refresh,
         color: colorScheme.primary,
         backgroundColor: colorScheme.surfaceContainerHighest,
-        child: _buildBody(context, notifier, summary),
+        child: _InsightsBody(
+          notifier: notifier,
+          summary: summary,
+        ),
       ),
     );
   }
+}
 
-  Widget _buildBody(
-    BuildContext context,
-    InsightsNotifier notifier,
-    DailySummaryEntity? summary,
-  ) {
+class _InsightsBody extends StatelessWidget {
+  final InsightsNotifier notifier;
+  final DailySummaryEntity? summary;
+
+  const _InsightsBody({
+    required this.notifier,
+    required this.summary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (notifier.isLoading && summary == null) {
+      return const _InsightsLoadingView();
+    }
+
+    final errorMessage = notifier.errorMessage;
+    if (errorMessage != null && summary == null) {
+      return _InsightsErrorView(
+        errorMessage: errorMessage,
+        onRetry: notifier.refresh,
+      );
+    }
+
+    return _InsightsContentList(
+      notifier: notifier,
+      summary: summary,
+    );
+  }
+}
+
+class _InsightsLoadingView extends StatelessWidget {
+  const _InsightsLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    if (notifier.isLoading && summary == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(
-            'Loading momentum...',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Text(
+          'Loading momentum...',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    if (notifier.errorMessage != null && summary == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline_rounded,
-                color: colorScheme.error,
-                size: 48,
+class _InsightsErrorView extends StatelessWidget {
+  final String errorMessage;
+  final VoidCallback onRetry;
+
+  const _InsightsErrorView({
+    required this.errorMessage,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              color: colorScheme.error,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load insights',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Unable to load insights',
-                style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 8),
-              Text(
-                notifier.errorMessage!,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('RETRY'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                foregroundColor: colorScheme.primary,
+                side: BorderSide(color: colorScheme.outlineVariant),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('RETRY'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  foregroundColor: colorScheme.primary,
-                  side: BorderSide(color: colorScheme.outlineVariant),
-                ),
-                onPressed: () => notifier.refresh(),
-              ),
-            ],
-          ),
+              onPressed: onRetry,
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
+}
+
+class _InsightsContentList extends StatelessWidget {
+  final InsightsNotifier notifier;
+  final DailySummaryEntity? summary;
+
+  const _InsightsContentList({
+    required this.notifier,
+    required this.summary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final errorMessage = notifier.errorMessage;
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: [
-        if (notifier.errorMessage != null) ...[
+        if (errorMessage != null) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -141,9 +205,8 @@ class _InsightsPageState extends State<InsightsPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    notifier.errorMessage!,
+                    errorMessage,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 13,
                       color: colorScheme.onSurface,
                     ),
                   ),
@@ -175,9 +238,8 @@ class _InsightsPageState extends State<InsightsPage> {
           reminderHour: notifier.dailyReminderHour,
           reminderMinute: notifier.dailyReminderMinute,
           dailyReminderTime: notifier.dailyReminderTime,
-          onReminderToggle: (val) => notifier.setDailyReminderEnabled(val),
-          onReminderTimePick: (hour, minute) =>
-              notifier.setDailyReminderTime(hour, minute),
+          onReminderToggle: notifier.setDailyReminderEnabled,
+          onReminderTimePick: notifier.setDailyReminderTime,
         ),
         const SizedBox(height: 20),
         const _ProBanner(),
@@ -198,10 +260,10 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       title,
       style: theme.textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }
@@ -362,35 +424,7 @@ class _PreferencesCard extends StatelessWidget {
               ),
             ),
           Divider(color: colorScheme.outlineVariant, height: 1),
-          ListTile(
-            leading: Icon(
-              Icons.headphones_outlined,
-              color: colorScheme.onSurface,
-            ),
-            title: Text(
-              'Ambient Audio',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              'Brown noise, 40Hz, Rain (Milestone 3)',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            trailing: Chip(
-              label: Text(
-                'Default',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              visualDensity: VisualDensity.compact,
-              backgroundColor: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-          ),
+          const SoundscapeConfigTile(),
           Divider(color: colorScheme.outlineVariant, height: 1),
           ListTile(
             leading: Icon(
@@ -437,7 +471,10 @@ class _ProBanner extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          const Text('⭐', style: TextStyle(fontSize: 26)),
+          Text(
+            '⭐',
+            style: theme.textTheme.headlineMedium,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

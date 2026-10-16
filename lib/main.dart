@@ -4,6 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/theme/app_theme.dart';
+import 'package:focusmaxxing/features/audio/data/repositories/audio_repository_impl.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
+import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifier.dart';
 import 'package:focusmaxxing/features/backlog/data/datasources/backlog_local_data_source.dart';
 import 'package:focusmaxxing/features/backlog/data/repositories/backlog_repository_impl.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/add_backlog_task_usecase.dart';
@@ -70,6 +75,7 @@ void main() async {
     installedAppsSource: shieldInstalledAppsSource,
     nativeBridgeSource: shieldNativeBridgeSource,
   );
+  final audioRepository = AudioRepositoryImpl();
 
   final markTaskCompletedUseCase =
       MarkTaskCompletedUseCase(backlogRepository);
@@ -110,12 +116,21 @@ void main() async {
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
+  final audioNotifier = AudioNotifier(
+    playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepository),
+    stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepository),
+    setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepository),
+    repository: audioRepository,
+    sharedPreferences: sharedPreferences,
+  )..attachTimerNotifier(timerNotifier);
+
   runApp(
     FocusmaxxingApp(
       timerNotifier: timerNotifier,
       backlogNotifier: backlogNotifier,
       insightsNotifier: insightsNotifier,
       shieldNotifier: shieldNotifier,
+      audioNotifier: audioNotifier,
     ),
   );
 }
@@ -127,12 +142,14 @@ class FocusmaxxingApp extends StatelessWidget {
     this.backlogNotifier,
     this.insightsNotifier,
     this.shieldNotifier,
+    this.audioNotifier,
   });
 
   final TimerNotifier? timerNotifier;
   final BacklogNotifier? backlogNotifier;
   final InsightsNotifier? insightsNotifier;
   final ShieldNotifier? shieldNotifier;
+  final AudioNotifier? audioNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +180,17 @@ class FocusmaxxingApp extends StatelessWidget {
             create: (_) => _createDefaultShieldNotifier(),
             update: (_, timer, shield) {
               final resolved = shield ?? _createDefaultShieldNotifier();
+              resolved.attachTimerNotifier(timer);
+              return resolved;
+            },
+          ),
+        if (audioNotifier case final notifier?)
+          ChangeNotifierProvider<AudioNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProxyProvider<TimerNotifier, AudioNotifier>(
+            create: (_) => _createDefaultAudioNotifier(),
+            update: (_, timer, audio) {
+              final resolved = audio ?? _createDefaultAudioNotifier();
               resolved.attachTimerNotifier(timer);
               return resolved;
             },
@@ -241,6 +269,17 @@ class FocusmaxxingApp extends StatelessWidget {
       syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
       repository: shieldRepo,
       autoInitialize: false,
+    );
+  }
+
+  static AudioNotifier _createDefaultAudioNotifier() {
+    final audioRepo = AudioRepositoryImpl();
+
+    return AudioNotifier(
+      playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepo),
+      stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepo),
+      setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepo),
+      repository: audioRepo,
     );
   }
 }
