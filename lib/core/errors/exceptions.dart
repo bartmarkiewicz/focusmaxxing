@@ -15,3 +15,12 @@ class PlatformBridgeException implements Exception {
   @override
   String toString() => 'PlatformBridgeException: $message';
 }
+
+class ScheduleException implements Exception {
+  final String message;
+
+  const ScheduleException(this.message);
+
+  @override
+  String toString() => 'ScheduleException: $message';
+}

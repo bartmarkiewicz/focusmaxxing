@@ -419,6 +419,17 @@ class ShieldNotifier extends ChangeNotifier {
         (app) => app.copyWith(isActive: activeSet.contains(app.packageName)),
       ),
     );
+    unawaited(_persistScheduledPackages());
+  }
+
+  Future<void> _persistScheduledPackages() async {
+    try {
+      final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'scheduled_auto_shield_packages',
+        activePackageNames.toList(),
+      );
+    } catch (_) {}
   }
 
   void _bindOverlayEvents() {

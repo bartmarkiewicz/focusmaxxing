@@ -45,6 +45,7 @@ dependencies:
   installed_apps: ^2.2.1
   just_audio: ^0.9.38
   audio_session: ^0.1.19
+  android_alarm_manager_plus: ^4.0.3
 
 dev_dependencies:
   flutter_test:

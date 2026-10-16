@@ -20,3 +20,7 @@ final class ValidationFailure extends Failure {
 final class PlatformFailure extends Failure {
   const PlatformFailure(super.message);
 }
+
+final class ScheduleFailure extends Failure {
+  const ScheduleFailure(super.message);
+}
