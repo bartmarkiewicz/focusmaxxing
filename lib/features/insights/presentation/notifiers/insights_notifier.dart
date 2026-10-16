@@ -5,6 +5,7 @@ import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_ent
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
+import 'package:focusmaxxing/features/widget/domain/services/i_widget_sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class InsightsNotifier extends ChangeNotifier {
@@ -19,6 +20,7 @@ class InsightsNotifier extends ChangeNotifier {
   final GetRecentSessionsUseCase getRecentSessionsUseCase;
   final NotificationService notificationService;
   final SharedPreferences? sharedPreferences;
+  final IWidgetSyncService? widgetSyncService;
 
   DailySummaryEntity? _dailySummary;
   List<SessionEntity> _recentSessions = const [];
@@ -36,6 +38,7 @@ class InsightsNotifier extends ChangeNotifier {
     required this.getRecentSessionsUseCase,
     required this.notificationService,
     this.sharedPreferences,
+    this.widgetSyncService,
   }) {
     if (sharedPreferences != null) {
       _applyPreferences(sharedPreferences!);
@@ -109,6 +112,10 @@ class InsightsNotifier extends ChangeNotifier {
       },
       (summary) {
         _dailySummary = summary;
+        unawaited(widgetSyncService?.updateGlanceableWidget(
+          todayMinutes: summary.totalFocusMinutes,
+          activeStreak: summary.currentStreakDays,
+        ));
       },
     );
 

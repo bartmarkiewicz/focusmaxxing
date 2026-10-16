@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quick_lockin_name">Quick Lock-In</string>
+    <string name="quick_lockin_description">1-Tap launcher that opens the 1-sentence goal modal to lock in instantly.</string>
+    <string name="glanceable_dial_name">Focus Glanceable Dial</string>
+    <string name="glanceable_dial_description">Glanceable focus minutes and active streak counter with Lock In trigger.</string>
+    <string name="widget_btn_lockin">LOCK IN</string>
+    <string name="widget_app_title">FOCUSMAXXING</string>
+    <string name="widget_todays_focus">TODAY\'S FOCUS</string>
+</resources>

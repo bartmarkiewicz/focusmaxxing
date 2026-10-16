@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
+import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
+import 'package:focusmaxxing/features/widget/domain/services/i_widget_sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum TimerStatus {
@@ -30,6 +32,8 @@ class TimerNotifier extends ChangeNotifier {
   final NotificationService notificationService;
   final MarkTaskCompletedUseCase? markTaskCompletedUseCase;
   final SharedPreferences? prefs;
+  final IWidgetSyncService? widgetSyncService;
+  final GetDailySummaryUseCase? getDailySummaryUseCase;
 
   TimerNotifier({
     required this.startSessionUseCase,
@@ -38,6 +42,8 @@ class TimerNotifier extends ChangeNotifier {
     required this.notificationService,
     this.markTaskCompletedUseCase,
     this.prefs,
+    this.widgetSyncService,
+    this.getDailySummaryUseCase,
   }) {
     unawaited(_loadRecentGoals());
   }
@@ -297,6 +303,29 @@ class TimerNotifier extends ChangeNotifier {
           (failure) => _errorMessage = failure.message,
           (_) {},
         );
+      }
+
+      final syncService = widgetSyncService;
+      final summaryUseCase = getDailySummaryUseCase;
+      if (syncService != null) {
+        if (summaryUseCase != null) {
+          final summaryResult = await summaryUseCase(DateTime.now());
+          await summaryResult.fold(
+            (_) async {},
+            (summary) async {
+              await syncService.updateGlanceableWidget(
+                todayMinutes: summary.totalFocusMinutes,
+                activeStreak: summary.currentStreakDays,
+              );
+            },
+          );
+        } else {
+          final sessionMinutes = (actualDuration / 60).round();
+          await syncService.updateGlanceableWidget(
+            todayMinutes: sessionMinutes,
+            activeStreak: lockedIn ? 1 : 0,
+          );
+        }
       }
     }
 

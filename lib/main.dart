@@ -53,6 +53,7 @@ import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_useca
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
+import 'package:focusmaxxing/features/widget/data/services/widget_sync_service_impl.dart';
 import 'package:focusmaxxing/main_scaffold.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -117,6 +118,8 @@ void main() async {
 
   final markTaskCompletedUseCase =
       MarkTaskCompletedUseCase(backlogRepository);
+  final widgetSyncService = WidgetSyncServiceImpl();
+  final getDailySummaryUseCase = GetDailySummaryUseCase(insightsRepository);
 
   final timerNotifier = TimerNotifier(
     startSessionUseCase: StartSessionUseCase(sessionRepository),
@@ -125,6 +128,8 @@ void main() async {
     notificationService: notificationService,
     markTaskCompletedUseCase: markTaskCompletedUseCase,
     prefs: sharedPreferences,
+    widgetSyncService: widgetSyncService,
+    getDailySummaryUseCase: getDailySummaryUseCase,
   );
 
   final backlogNotifier = BacklogNotifier(
@@ -135,10 +140,11 @@ void main() async {
   );
 
   final insightsNotifier = InsightsNotifier(
-    getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepository),
+    getDailySummaryUseCase: getDailySummaryUseCase,
     getRecentSessionsUseCase: GetRecentSessionsUseCase(insightsRepository),
     notificationService: notificationService,
     sharedPreferences: sharedPreferences,
+    widgetSyncService: widgetSyncService,
   );
 
   final checkScheduleActiveNowUseCase =
@@ -311,8 +317,11 @@ class FocusmaxxingApp extends StatelessWidget {
     final backlogDataSource = BacklogLocalDataSource();
     final sessionRepo =
         SessionRepositoryImpl(localDataSource: sessionDataSource);
+    final insightsRepo =
+        InsightsRepositoryImpl(localDataSource: sessionDataSource);
     final backlogRepo =
         BacklogRepositoryImpl(localDataSource: backlogDataSource);
+    final widgetSyncService = WidgetSyncServiceImpl();
 
     return TimerNotifier(
       startSessionUseCase: StartSessionUseCase(sessionRepo),
@@ -320,6 +329,8 @@ class FocusmaxxingApp extends StatelessWidget {
       cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
       notificationService: NotificationService(),
       markTaskCompletedUseCase: MarkTaskCompletedUseCase(backlogRepo),
+      widgetSyncService: widgetSyncService,
+      getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepo),
     );
   }
 
@@ -340,11 +351,13 @@ class FocusmaxxingApp extends StatelessWidget {
     final sessionDataSource = SessionLocalDataSource();
     final insightsRepo =
         InsightsRepositoryImpl(localDataSource: sessionDataSource);
+    final widgetSyncService = WidgetSyncServiceImpl();
 
     return InsightsNotifier(
       getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepo),
       getRecentSessionsUseCase: GetRecentSessionsUseCase(insightsRepo),
       notificationService: NotificationService(),
+      widgetSyncService: widgetSyncService,
     );
   }
 
