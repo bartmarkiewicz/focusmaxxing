@@ -15,6 +15,17 @@ import 'package:focusmaxxing/features/insights/data/repositories/insights_reposi
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_installed_apps_source.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_local_data_source.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_native_bridge_source.dart';
+import 'package:focusmaxxing/features/shield/data/repositories/shield_repository_impl.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/data/datasources/session_local_data_source.dart';
 import 'package:focusmaxxing/features/timer/data/repositories/session_repository_impl.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
@@ -44,6 +55,9 @@ void main() async {
 
   final sessionLocalDataSource = SessionLocalDataSource();
   final backlogLocalDataSource = BacklogLocalDataSource();
+  final shieldLocalDataSource = ShieldLocalDataSource();
+  const shieldInstalledAppsSource = ShieldInstalledAppsSourceImpl();
+  final shieldNativeBridgeSource = ShieldNativeBridgeSourceImpl();
 
   final sessionRepository =
       SessionRepositoryImpl(localDataSource: sessionLocalDataSource);
@@ -51,6 +65,11 @@ void main() async {
       BacklogRepositoryImpl(localDataSource: backlogLocalDataSource);
   final insightsRepository =
       InsightsRepositoryImpl(localDataSource: sessionLocalDataSource);
+  final shieldRepository = ShieldRepositoryImpl(
+    localDataSource: shieldLocalDataSource,
+    installedAppsSource: shieldInstalledAppsSource,
+    nativeBridgeSource: shieldNativeBridgeSource,
+  );
 
   final markTaskCompletedUseCase =
       MarkTaskCompletedUseCase(backlogRepository);
@@ -78,11 +97,25 @@ void main() async {
     sharedPreferences: sharedPreferences,
   );
 
+  final shieldNotifier = ShieldNotifier(
+    getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepository),
+    getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepository),
+    toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepository),
+    checkShieldPermissionsUseCase:
+        CheckShieldPermissionsUseCase(shieldRepository),
+    requestPermissionUseCase: RequestPermissionUseCase(shieldRepository),
+    syncShieldWithOverlayUseCase:
+        SyncShieldWithOverlayUseCase(shieldRepository),
+    repository: shieldRepository,
+    sharedPreferences: sharedPreferences,
+  )..attachTimerNotifier(timerNotifier);
+
   runApp(
     FocusmaxxingApp(
       timerNotifier: timerNotifier,
       backlogNotifier: backlogNotifier,
       insightsNotifier: insightsNotifier,
+      shieldNotifier: shieldNotifier,
     ),
   );
 }
@@ -93,11 +126,13 @@ class FocusmaxxingApp extends StatelessWidget {
     this.timerNotifier,
     this.backlogNotifier,
     this.insightsNotifier,
+    this.shieldNotifier,
   });
 
   final TimerNotifier? timerNotifier;
   final BacklogNotifier? backlogNotifier;
   final InsightsNotifier? insightsNotifier;
+  final ShieldNotifier? shieldNotifier;
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +155,17 @@ class FocusmaxxingApp extends StatelessWidget {
         else
           ChangeNotifierProvider<InsightsNotifier>(
             create: (_) => _createDefaultInsightsNotifier(),
+          ),
+        if (shieldNotifier case final notifier?)
+          ChangeNotifierProvider<ShieldNotifier>.value(value: notifier)
+        else
+          ChangeNotifierProxyProvider<TimerNotifier, ShieldNotifier>(
+            create: (_) => _createDefaultShieldNotifier(),
+            update: (_, timer, shield) {
+              final resolved = shield ?? _createDefaultShieldNotifier();
+              resolved.attachTimerNotifier(timer);
+              return resolved;
+            },
           ),
       ],
       child: DynamicColorBuilder(
@@ -176,6 +222,25 @@ class FocusmaxxingApp extends StatelessWidget {
       getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepo),
       getRecentSessionsUseCase: GetRecentSessionsUseCase(insightsRepo),
       notificationService: NotificationService(),
+    );
+  }
+
+  static ShieldNotifier _createDefaultShieldNotifier() {
+    final shieldRepo = ShieldRepositoryImpl(
+      localDataSource: ShieldLocalDataSource(),
+      installedAppsSource: const ShieldInstalledAppsSourceImpl(),
+      nativeBridgeSource: ShieldNativeBridgeSourceImpl(),
+    );
+
+    return ShieldNotifier(
+      getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
+      getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
+      toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+      checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
+      requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+      syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
+      repository: shieldRepo,
+      autoInitialize: false,
     );
   }
 }

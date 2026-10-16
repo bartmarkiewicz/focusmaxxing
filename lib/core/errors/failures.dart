@@ -16,3 +16,7 @@ final class DatabaseFailure extends Failure {
 final class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
+
+final class PlatformFailure extends Failure {
+  const PlatformFailure(super.message);
+}

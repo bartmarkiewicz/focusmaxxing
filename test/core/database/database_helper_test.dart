@@ -3,6 +3,7 @@ import 'package:focusmaxxing/core/database/database_helper.dart';
 import 'package:focusmaxxing/core/database/migrations/migration.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_runner.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v1.dart';
+import 'package:focusmaxxing/core/database/migrations/migration_v2.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _FailingMigration extends Migration {
@@ -12,15 +13,6 @@ class _FailingMigration extends Migration {
   Future<void> up(DatabaseExecutor db) async {
     await db.execute('CREATE TABLE should_rollback (id INTEGER PRIMARY KEY);');
     throw StateError('Simulated migration crash');
-  }
-}
-
-class _MigrationV2 extends Migration {
-  const _MigrationV2() : super(2, 'Test version 2 migration');
-
-  @override
-  Future<void> up(DatabaseExecutor db) async {
-    await db.execute('CREATE TABLE test_v2 (id INTEGER PRIMARY KEY, note TEXT);');
   }
 }
 
@@ -51,26 +43,26 @@ void main() {
       await db.close();
     });
 
-    test('applies sequential upgrade from v1 to v2', () async {
+    test('applies sequential upgrade from v1 to v2 with MigrationV2', () async {
       final factory = databaseFactoryFfi;
       final db = await factory.openDatabase(inMemoryDatabasePath);
 
       final runner = MigrationRunner(
         migrations: const [
           MigrationV1(),
-          _MigrationV2(),
+          MigrationV2(),
         ],
       );
 
       await runner.run(db, oldVersion: 0, targetVersion: 1);
       var tables = await db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='test_v2';",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='${DatabaseHelper.tableShieldedApps}';",
       );
       expect(tables, isEmpty);
 
       await runner.run(db, oldVersion: 1, targetVersion: 2);
       tables = await db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='test_v2';",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='${DatabaseHelper.tableShieldedApps}';",
       );
       expect(tables, hasLength(1));
 
@@ -112,7 +104,9 @@ void main() {
         options: OpenDatabaseOptions(
           version: DatabaseHelper.databaseVersion,
           onCreate: (database, version) async {
-            final runner = MigrationRunner(migrations: const [MigrationV1()]);
+            final runner = MigrationRunner(
+              migrations: const [MigrationV1(), MigrationV2()],
+            );
             await runner.run(database, oldVersion: 0, targetVersion: version);
           },
         ),

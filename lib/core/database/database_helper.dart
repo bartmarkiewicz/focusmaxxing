@@ -1,14 +1,16 @@
 import 'package:focusmaxxing/core/database/migrations/migration_runner.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v1.dart';
+import 'package:focusmaxxing/core/database/migrations/migration_v2.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
   static const String databaseName = 'focusmaxxing.db';
-  static const int databaseVersion = 1;
+  static const int databaseVersion = 2;
 
   static const String tableSessions = 'sessions';
   static const String tableBacklogTasks = 'backlog_tasks';
+  static const String tableShieldedApps = 'shielded_apps';
 
   static Database? _database;
   static Future<Database>? _initFuture;
@@ -33,6 +35,7 @@ class DatabaseHelper {
       _customMigrationRunner ??
       MigrationRunner(migrations: const [
         MigrationV1(),
+        MigrationV2(),
       ]);
 
   Future<Database> get database async {
