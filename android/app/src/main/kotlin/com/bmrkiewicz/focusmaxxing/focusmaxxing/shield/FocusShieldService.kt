@@ -65,6 +65,9 @@ class FocusShieldService : Service() {
         var currentIsMaximumFocus: Boolean = false
 
         @Volatile
+        var targetEndTimeEpochMs: Long = 0L
+
+        @Volatile
         var dismissGraceUntilMs: Long = 0L
 
         @Volatile
@@ -97,16 +100,30 @@ class FocusShieldService : Service() {
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getInitialOverlayState" -> {
+                        val now = System.currentTimeMillis()
+                        val computedRemaining = if (targetEndTimeEpochMs > 0L) {
+                            ((targetEndTimeEpochMs - now) / 1000).toInt().coerceAtLeast(0)
+                        } else {
+                            currentRemainingSeconds
+                        }
+                        if (computedRemaining <= 0) {
+                            currentIsMaximumFocus = false
+                        }
                         result.success(
                             mapOf(
                                 "goal" to currentGoal,
-                                "remainingSeconds" to currentRemainingSeconds,
+                                "remainingSeconds" to computedRemaining,
                                 "isBreak" to currentIsBreak,
-                                "isMaximumFocus" to currentIsMaximumFocus
+                                "isMaximumFocus" to currentIsMaximumFocus,
+                                "targetEndTimeEpochMs" to targetEndTimeEpochMs
                             )
                         )
                     }
                     "returnToFocusmaxxing" -> {
+                        val now = System.currentTimeMillis()
+                        if (currentRemainingSeconds <= 0 || (targetEndTimeEpochMs > 0L && now >= targetEndTimeEpochMs)) {
+                            currentIsMaximumFocus = false
+                        }
                         dismissOverlayAndReturnToApp(appContext)
                         result.success(true)
                     }
@@ -130,13 +147,23 @@ class FocusShieldService : Service() {
             goal: String,
             remainingSeconds: Int,
             isBreak: Boolean,
-            isMaximumFocus: Boolean = currentIsMaximumFocus
+            isMaximumFocus: Boolean = currentIsMaximumFocus,
+            targetEndTime: Long = 0L
         ) {
             val wasMaximumFocus = currentIsMaximumFocus
+            if (targetEndTime > 0L) {
+                targetEndTimeEpochMs = targetEndTime
+            }
+            val now = System.currentTimeMillis()
+            val effectiveRemaining = if (targetEndTimeEpochMs > 0L) {
+                ((targetEndTimeEpochMs - now) / 1000).toInt().coerceAtLeast(0)
+            } else {
+                remainingSeconds.coerceAtLeast(0)
+            }
             currentGoal = goal.ifBlank { "Deep Work" }
-            currentRemainingSeconds = remainingSeconds.coerceAtLeast(0)
+            currentRemainingSeconds = effectiveRemaining
             currentIsBreak = isBreak
-            currentIsMaximumFocus = isMaximumFocus && !isBreak
+            currentIsMaximumFocus = isMaximumFocus && !isBreak && (currentRemainingSeconds > 0)
 
             Handler(Looper.getMainLooper()).post {
                 try {
@@ -152,7 +179,8 @@ class FocusShieldService : Service() {
                                 "goal" to currentGoal,
                                 "remainingSeconds" to currentRemainingSeconds,
                                 "isBreak" to currentIsBreak,
-                                "isMaximumFocus" to currentIsMaximumFocus
+                                "isMaximumFocus" to currentIsMaximumFocus,
+                                "targetEndTimeEpochMs" to targetEndTimeEpochMs
                             )
                         )
                     }
@@ -165,7 +193,7 @@ class FocusShieldService : Service() {
                             activeService.triggerOverlay()
                         }
                     } else if (wasMaximumFocus && !currentIsMaximumFocus && OverlayService.isRunning) {
-                        dismissOverlayOnly(context.applicationContext)
+                        dismissOverlayAndReturnToApp(context.applicationContext)
                     }
 
                     if (!activeService.isDegraded && !activeService.isScheduled) {
@@ -297,6 +325,19 @@ class FocusShieldService : Service() {
                     }
 
                     if (currentIsMaximumFocus) {
+                        val nowTime = System.currentTimeMillis()
+                        if (targetEndTimeEpochMs > 0L && nowTime >= targetEndTimeEpochMs) {
+                            currentIsMaximumFocus = false
+                            currentRemainingSeconds = 0
+                            if (OverlayService.isRunning) {
+                                withContext(Dispatchers.Main) {
+                                    dismissOverlayAndReturnToApp(applicationContext)
+                                }
+                            }
+                            delay(500)
+                            continue
+                        }
+
                         if (!OverlayService.isRunning) {
                             triggerOverlay()
                         }

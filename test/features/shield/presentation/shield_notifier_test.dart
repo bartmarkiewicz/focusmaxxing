@@ -139,12 +139,15 @@ class _FakeShieldRepository implements IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    int? targetEndTimeEpochMs,
   }) async {
     syncedOverlayPayloads.add({
       'goal': goal,
       'remainingSeconds': remainingSeconds,
       'isBreak': isBreak,
       'isMaximumFocus': isMaximumFocus,
+      if (targetEndTimeEpochMs != null)
+        'targetEndTimeEpochMs': targetEndTimeEpochMs,
     });
     return const Right(null);
   }
@@ -475,6 +478,8 @@ void main() {
             'remainingSeconds': 0,
             'isBreak': true,
             'isMaximumFocus': false,
+            'targetEndTimeEpochMs':
+                timerNotifier.targetEndTime?.millisecondsSinceEpoch,
           }),
         );
 

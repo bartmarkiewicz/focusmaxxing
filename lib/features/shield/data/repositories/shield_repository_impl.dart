@@ -226,6 +226,7 @@ class ShieldRepositoryImpl implements IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    int? targetEndTimeEpochMs,
   }) async {
     try {
       await nativeBridgeSource.shareOverlayData(<String, dynamic>{
@@ -233,6 +234,8 @@ class ShieldRepositoryImpl implements IShieldRepository {
         'remainingSeconds': remainingSeconds,
         'isBreak': isBreak,
         'isMaximumFocus': isMaximumFocus,
+        if (targetEndTimeEpochMs != null)
+          'targetEndTimeEpochMs': targetEndTimeEpochMs,
       });
       return const Right(null);
     } catch (e) {

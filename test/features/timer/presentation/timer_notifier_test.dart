@@ -326,5 +326,18 @@ void main() {
       expect(notificationService.isCancelled, isTrue);
       expect(notificationService.isCompletionAlarmCancelled, isTrue);
     });
+
+    test('pause when targetEndTime has passed completes session cleanly instead of freezing at 00:00', () async {
+      notifier.setDurationPreset(1);
+      await notifier.startFocusSession('Expire and pause');
+      expect(notifier.status, TimerStatus.running);
+      expect(notifier.targetEndTime, isNotNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      notifier.pause();
+
+      expect(notifier.status, TimerStatus.completed);
+      expect(notifier.remainingSeconds, 0);
+    });
   });
 }

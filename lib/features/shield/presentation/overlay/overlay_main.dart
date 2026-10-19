@@ -90,14 +90,32 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
       _localCountdownTimer = Timer.periodic(
         const Duration(seconds: 1),
         (_) {
-          if (mounted && _remainingSeconds > 0) {
+          if (!mounted) return;
+          if (_remainingSeconds > 0) {
             setState(() {
               _remainingSeconds--;
             });
+            if (_remainingSeconds <= 0 && !_isBreakMode) {
+              _onSessionCountdownComplete();
+            }
+          } else if (!_isBreakMode) {
+            _onSessionCountdownComplete();
           }
         },
       );
     }
+  }
+
+  void _onSessionCountdownComplete() {
+    _localCountdownTimer?.cancel();
+    _localCountdownTimer = null;
+    if (mounted) {
+      setState(() {
+        _remainingSeconds = 0;
+        _isMaximumFocus = false;
+      });
+    }
+    unawaited(_handleReturn());
   }
 
   Future<dynamic> _handleBridgeMethodCall(MethodCall call) async {
@@ -164,6 +182,10 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
         _isMaximumFocus = isMaxFocus;
       }
     });
+
+    if (_remainingSeconds <= 0 && !_isBreakMode && widget.dataStream == null) {
+      _onSessionCountdownComplete();
+    }
   }
 
   @override
@@ -237,7 +259,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     final clampedSeconds = _remainingSeconds > 0 ? _remainingSeconds : 0;
     final minutes = (clampedSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (clampedSeconds % 60).toString().padLeft(2, '0');
-    final isMaxFocusActive = _isMaximumFocus && !_isBreakMode;
+    final isMaxFocusActive =
+        _isMaximumFocus && !_isBreakMode && clampedSeconds > 0;
+    final isSessionFinished = clampedSeconds <= 0 && !_isBreakMode;
 
     return PopScope(
       canPop: false,
@@ -256,17 +280,25 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      isMaxFocusActive
-                          ? Icons.gpp_maybe_rounded
-                          : Icons.lock_rounded,
+                      isSessionFinished
+                          ? Icons.celebration_rounded
+                          : (isMaxFocusActive
+                              ? Icons.gpp_maybe_rounded
+                              : Icons.lock_rounded),
                       size: 64,
-                      color: _alertColor,
+                      color: isSessionFinished
+                          ? _actionGreen
+                          : (isMaxFocusActive ? _alertColor : _alertColor),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _isBreakMode
-                          ? 'RECHARGE YOUR BRAIN'
-                          : (isMaxFocusActive ? 'MAXIMUM FOCUS' : 'LOCKED IN'),
+                      isSessionFinished
+                          ? 'SESSION COMPLETE 🎉'
+                          : (_isBreakMode
+                              ? 'RECHARGE YOUR BRAIN'
+                              : (isMaxFocusActive
+                                  ? 'MAXIMUM FOCUS'
+                                  : 'LOCKED IN')),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -276,9 +308,11 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _isBreakMode
-                          ? 'Social feeds remain locked during your break.'
-                          : '"$_taskGoal"',
+                      isSessionFinished
+                          ? 'Great job locking in! Tap below to check in.'
+                          : (_isBreakMode
+                              ? 'Social feeds remain locked during your break.'
+                              : '"$_taskGoal"'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
@@ -390,9 +424,11 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                             ),
                           ),
                           onPressed: _handleReturn,
-                          child: const Text(
-                            'RETURN TO FOCUSMAXXING',
-                            style: TextStyle(
+                          child: Text(
+                            isSessionFinished
+                                ? 'COMPLETE CHECK-IN 🎉'
+                                : 'RETURN TO FOCUSMAXXING',
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),

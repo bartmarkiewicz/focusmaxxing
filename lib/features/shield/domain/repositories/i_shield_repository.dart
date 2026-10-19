@@ -47,6 +47,7 @@ abstract interface class IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    int? targetEndTimeEpochMs,
   });
 
   Future<Either<Failure, bool>> bringAppToForeground();

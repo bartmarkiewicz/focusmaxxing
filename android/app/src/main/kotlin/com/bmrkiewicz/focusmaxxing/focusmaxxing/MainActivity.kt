@@ -94,12 +94,14 @@ class MainActivity : FlutterActivity() {
                 val remaining = call.argument<Int>("remainingSeconds") ?: call.argument<Int>("remaining") ?: 1500
                 val isBreak = call.argument<Boolean>("isBreak") ?: call.argument<Boolean>("isBreakMode") ?: false
                 val isMaximumFocus = call.argument<Boolean>("isMaximumFocus") ?: false
+                val targetEndTime = (call.argument<Number>("targetEndTimeEpochMs"))?.toLong() ?: 0L
                 FocusShieldService.updateOverlaySessionState(
                     applicationContext,
                     goal,
                     remaining,
                     isBreak,
-                    isMaximumFocus
+                    isMaximumFocus,
+                    targetEndTime
                 )
                 result.success(true)
             }

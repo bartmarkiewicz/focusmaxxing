@@ -272,4 +272,86 @@ void main() {
 
     expect(calls, contains('cancelSessionFromOverlay'));
   });
+
+  testWidgets(
+      'HardLockOverlayWidget replaces cancel button with COMPLETE CHECK-IN when remaining seconds is 0 in maximum focus',
+      (tester) async {
+    final controller = StreamController<dynamic>(sync: true);
+    addTearDown(controller.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: controller.stream,
+          initialIsMaximumFocus: true,
+          initialRemainingSeconds: 60,
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsOneWidget);
+    expect(find.text('HOLD 5S TO CANCEL SESSION'), findsOneWidget);
+
+    controller.add({
+      'remainingSeconds': 0,
+      'isMaximumFocus': true,
+      'isBreak': false,
+    });
+    await tester.pump();
+
+    // Cancel button must be completely gone when timer hits 00:00
+    expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsNothing);
+    expect(find.text('HOLD 5S TO CANCEL SESSION'), findsNothing);
+    expect(find.text('SESSION COMPLETE 🎉'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'COMPLETE CHECK-IN 🎉'), findsOneWidget);
+  });
+
+  testWidgets(
+      'HardLockOverlayWidget countdown reaching 0 automatically triggers returnToFocusmaxxing',
+      (tester) async {
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('com.focusmaxxing/overlay_bridge'),
+      (call) async {
+        calls.add(call.method);
+        if (call.method == 'returnToFocusmaxxing') return true;
+        if (call.method == 'getInitialOverlayState') {
+          return <String, dynamic>{
+            'goal': 'Fast test',
+            'remainingSeconds': 1,
+            'isBreak': false,
+            'isMaximumFocus': true,
+          };
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('com.focusmaxxing/overlay_bridge'),
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HardLockOverlayWidget(
+          initialRemainingSeconds: 1,
+          initialIsMaximumFocus: true,
+        ),
+      ),
+    );
+
+    expect(find.text('00:01'), findsOneWidget);
+    expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsOneWidget);
+
+    // Advance 1 second to let local countdown timer reach 0
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('00:00'), findsOneWidget);
+    expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsNothing);
+    expect(find.text('SESSION COMPLETE 🎉'), findsOneWidget);
+    expect(calls, contains('returnToFocusmaxxing'));
+  });
 }

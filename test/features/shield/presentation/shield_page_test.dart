@@ -129,6 +129,7 @@ class _TestShieldRepository implements IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    int? targetEndTimeEpochMs,
   }) async =>
       const Right(null);
 

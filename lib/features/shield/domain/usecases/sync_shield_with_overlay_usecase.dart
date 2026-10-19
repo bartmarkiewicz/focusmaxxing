@@ -12,12 +12,14 @@ class SyncShieldWithOverlayUseCase {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    int? targetEndTimeEpochMs,
   }) {
     return repository.syncOverlayState(
       goal: goal,
       remainingSeconds: remainingSeconds,
       isBreak: isBreak,
       isMaximumFocus: isMaximumFocus,
+      targetEndTimeEpochMs: targetEndTimeEpochMs,
     );
   }
 }

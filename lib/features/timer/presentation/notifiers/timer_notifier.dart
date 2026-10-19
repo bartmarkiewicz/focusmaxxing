@@ -94,6 +94,7 @@ class TimerNotifier extends ChangeNotifier {
   double get cancelHoldProgress => cancelHoldProgressNotifier.value;
   int? get activeSessionId => _activeSessionId;
   String? get errorMessage => _errorMessage;
+  DateTime? get targetEndTime => _targetEndTime;
 
   double get timerProgress {
     if (_targetDurationSeconds == 0) return 0.0;
@@ -201,12 +202,16 @@ class TimerNotifier extends ChangeNotifier {
   void pause() {
     if (_status != TimerStatus.running) return;
 
-    _periodicTicker?.cancel();
     final targetEnd = _targetEndTime;
     if (targetEnd != null) {
-      _remainingDuration = targetEnd.difference(DateTime.now());
-      if (_remainingDuration.isNegative) _remainingDuration = Duration.zero;
+      final diff = targetEnd.difference(DateTime.now());
+      if (diff.isNegative || diff.inMilliseconds <= 0) {
+        syncWithWallClock();
+        return;
+      }
+      _remainingDuration = diff;
     }
+    _periodicTicker?.cancel();
     _remainingSeconds = (_remainingDuration.inMilliseconds / 1000).ceil();
     _status = TimerStatus.paused;
     _updateNotification();

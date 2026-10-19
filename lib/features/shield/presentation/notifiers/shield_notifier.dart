@@ -391,6 +391,7 @@ class ShieldNotifier extends ChangeNotifier {
         remainingSeconds: timer.remainingSeconds,
         isBreak: isBreak,
         isMaximumFocus: enabled && isFocusRunningOrPaused,
+        targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
       );
       await _reconcileNativeShieldForActiveSession();
     }
@@ -441,6 +442,7 @@ class ShieldNotifier extends ChangeNotifier {
         remainingSeconds: remaining,
         isBreak: isBreak,
         isMaximumFocus: effectiveMaximumFocus,
+        targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
       );
     }
 
