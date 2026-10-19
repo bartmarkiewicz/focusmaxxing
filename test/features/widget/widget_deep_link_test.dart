@@ -145,7 +145,8 @@ void main() {
   testWidgets(
       'cold start with focusmaxxing://lockin launches GoalInputDialog and starts session',
       (tester) async {
-    final completer = Completer<Uri?>()..complete(Uri.parse('focusmaxxing://lockin'));
+    final completer = Completer<Uri?>()
+      ..complete(Uri.parse('focusmaxxing://lockin'));
 
     await tester.pumpWidget(
       buildTestApp(initialUriFuture: completer.future, initialIndex: 1),
@@ -188,8 +189,7 @@ void main() {
     timerNotifier.dispose();
   });
 
-  testWidgets(
-      'does not reopen GoalInputDialog if timer is already running',
+  testWidgets('does not reopen GoalInputDialog if timer is already running',
       (tester) async {
     final streamController = StreamController<Uri?>.broadcast();
     addTearDown(streamController.close);
@@ -266,7 +266,8 @@ void main() {
     timerNotifier.dispose();
   });
 
-  testWidgets('rapid consecutive duplicate clicks do not stack duplicate modals',
+  testWidgets(
+      'rapid consecutive duplicate clicks do not stack duplicate modals',
       (tester) async {
     final streamController = StreamController<Uri?>.broadcast();
     addTearDown(streamController.close);

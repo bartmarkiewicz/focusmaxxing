@@ -57,7 +57,9 @@ class _TimerPageState extends State<TimerPage> {
 
   void _handleTimerStatusChange() {
     final notifier = _timerNotifier;
-    if (notifier != null && notifier.status == TimerStatus.completed && !_isCheckingIn) {
+    if (notifier != null &&
+        notifier.status == TimerStatus.completed &&
+        !_isCheckingIn) {
       _isCheckingIn = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _timerNotifier?.status == TimerStatus.completed) {
@@ -129,7 +131,8 @@ class _TimerPageState extends State<TimerPage> {
     }
   }
 
-  Future<void> _openBacklog(BuildContext context, TimerNotifier timerNotifier) async {
+  Future<void> _openBacklog(
+      BuildContext context, TimerNotifier timerNotifier) async {
     final task = await BacklogModalSheet.show(context);
     if (!mounted) return;
     if (task != null) {
@@ -243,7 +246,8 @@ class _TimerPageState extends State<TimerPage> {
                               ),
                             ),
                             onPressed: () {
-                              final newVal = (currentMinutes + delta).clamp(5, 120);
+                              final newVal =
+                                  (currentMinutes + delta).clamp(5, 120);
                               if (newVal != currentMinutes) {
                                 try {
                                   unawaited(HapticFeedback.selectionClick());
@@ -407,8 +411,9 @@ class _TimerPageState extends State<TimerPage> {
               final isRunningOrPaused =
                   timerNotifier.status == TimerStatus.running ||
                       timerNotifier.status == TimerStatus.paused;
-              final isRestMode = timerNotifier.status == TimerStatus.breakRunning ||
-                  timerNotifier.status == TimerStatus.breakCompleted;
+              final isRestMode =
+                  timerNotifier.status == TimerStatus.breakRunning ||
+                      timerNotifier.status == TimerStatus.breakCompleted;
 
               return Column(
                 children: [
@@ -451,7 +456,8 @@ class _TimerPageState extends State<TimerPage> {
                     _DurationPresets(
                       selectedSeconds: timerNotifier.targetDurationSeconds,
                       onPresetSelected: timerNotifier.setDurationPreset,
-                      onCustomTapped: () => _promptCustomDuration(timerNotifier),
+                      onCustomTapped: () =>
+                          _promptCustomDuration(timerNotifier),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -523,9 +529,8 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-
-
-  Widget _buildControlActions(BuildContext context, TimerNotifier timerNotifier) {
+  Widget _buildControlActions(
+      BuildContext context, TimerNotifier timerNotifier) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -689,7 +694,7 @@ class _TimerPageState extends State<TimerPage> {
     }
   }
 }
- 
+
 class _GoalAnchorPill extends StatelessWidget {
   const _GoalAnchorPill({
     required this.goal,
@@ -899,9 +904,7 @@ class _DurationPresets extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: ChoiceChip(
               label: Text(
-                isCustom
-                    ? '${(selectedSeconds / 60).round()}m'
-                    : 'Custom',
+                isCustom ? '${(selectedSeconds / 60).round()}m' : 'Custom',
               ),
               selected: isCustom,
               onSelected: (_) => onCustomTapped(),
@@ -913,7 +916,9 @@ class _DurationPresets extends StatelessWidget {
                     : colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
               labelStyle: theme.textTheme.labelMedium?.copyWith(
-                color: isCustom ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                color: isCustom
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1088,7 +1093,9 @@ class _MaximumFocusPill extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isEnabled ? Icons.gpp_maybe_rounded : Icons.lock_outline_rounded,
+                isEnabled
+                    ? Icons.gpp_maybe_rounded
+                    : Icons.lock_outline_rounded,
                 size: 16,
                 color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
               ),
@@ -1107,5 +1114,3 @@ class _MaximumFocusPill extends StatelessWidget {
     );
   }
 }
-
-

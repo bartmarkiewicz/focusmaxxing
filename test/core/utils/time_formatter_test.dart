@@ -3,7 +3,9 @@ import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
 void main() {
   group('TimeFormatter', () {
-    test('formatMMSS formats positive seconds into standard digital clock format', () {
+    test(
+        'formatMMSS formats positive seconds into standard digital clock format',
+        () {
       expect(TimeFormatter.formatMMSS(1500), '25:00');
       expect(TimeFormatter.formatMMSS(59), '00:59');
       expect(TimeFormatter.formatMMSS(60), '01:00');

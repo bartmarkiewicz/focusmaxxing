@@ -42,7 +42,8 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   void didUpdateWidget(covariant HoldToCancelButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.progressListenable != widget.progressListenable) {
-      oldWidget.progressListenable?.removeListener(_handleProgressListenableChanged);
+      oldWidget.progressListenable
+          ?.removeListener(_handleProgressListenableChanged);
       widget.progressListenable?.addListener(_handleProgressListenableChanged);
     }
     if (widget.progressListenable == null) {
@@ -60,7 +61,8 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
     if (progress == 0.0) {
       _lastHapticTier = 0;
     } else {
-      final currentTier = (progress * 4).floor(); // 0: 0-25%, 1: 25-50%, 2: 50-75%, 3: 75-100%
+      final currentTier =
+          (progress * 4).floor(); // 0: 0-25%, 1: 25-50%, 2: 50-75%, 3: 75-100%
       if (currentTier > _lastHapticTier) {
         _lastHapticTier = currentTier;
         unawaited(HapticFeedback.lightImpact());
@@ -158,7 +160,8 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
 
     return Semantics(
       button: true,
-      label: 'Hold for 5 seconds to cancel session. Progress: $percent percent.',
+      label:
+          'Hold for 5 seconds to cancel session. Progress: $percent percent.',
       hint: 'Double tap to open cancellation confirmation',
       onTap: () => _showAccessibleCancelConfirmation(context),
       customSemanticsActions: {

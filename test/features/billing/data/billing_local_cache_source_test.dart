@@ -22,7 +22,8 @@ void main() {
       expect(status.purchaseDateMs, isNull);
     });
 
-    test('persists verified Pro unlock and restores identical status', () async {
+    test('persists verified Pro unlock and restores identical status',
+        () async {
       const original = ProUnlockStatusEntity(
         isUnlocked: true,
         purchaseDateMs: 1729000000000,
@@ -37,20 +38,29 @@ void main() {
       expect(restored.orderId, 'GPA.9999-1111-2222');
 
       // Verifies synchronization of cross-feature flags
-      expect(prefs.getBool(BillingLocalCacheSourceImpl.proUnlockedPrefsKey), isTrue);
-      expect(prefs.getBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey), isTrue);
+      expect(prefs.getBool(BillingLocalCacheSourceImpl.proUnlockedPrefsKey),
+          isTrue);
+      expect(
+          prefs.getBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey),
+          isTrue);
     });
 
-    test('evaluates to locked when encrypted receipt is absent even if legacy boolean keys are true', () async {
-      await prefs.setBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey, true);
-      await prefs.setBool(BillingLocalCacheSourceImpl.proUnlockedPrefsKey, true);
+    test(
+        'evaluates to locked when encrypted receipt is absent even if legacy boolean keys are true',
+        () async {
+      await prefs.setBool(
+          BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey, true);
+      await prefs.setBool(
+          BillingLocalCacheSourceImpl.proUnlockedPrefsKey, true);
 
       final status = await cacheSource.getProUnlockStatus();
       expect(status.isUnlocked, isFalse);
       expect(status, equals(ProUnlockStatusEntity.locked));
     });
 
-    test('safely falls back to locked when encrypted receipt signature is tampered even if plaintext boolean is true', () async {
+    test(
+        'safely falls back to locked when encrypted receipt signature is tampered even if plaintext boolean is true',
+        () async {
       const original = ProUnlockStatusEntity(
         isUnlocked: true,
         purchaseDateMs: 1729000000000,
@@ -63,8 +73,10 @@ void main() {
         BillingLocalCacheSourceImpl.encryptedReceiptPrefsKey,
         'INVALID_CORRUPTED_BASE64_CIPHER',
       );
-      await prefs.setBool(BillingLocalCacheSourceImpl.proUnlockedPrefsKey, true);
-      await prefs.setBool(BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey, true);
+      await prefs.setBool(
+          BillingLocalCacheSourceImpl.proUnlockedPrefsKey, true);
+      await prefs.setBool(
+          BillingLocalCacheSourceImpl.lifetimeProLegacyPrefsKey, true);
 
       final status = await cacheSource.getProUnlockStatus();
       expect(status.isUnlocked, isFalse);

@@ -26,7 +26,8 @@ void main() {
   }
 
   group('ProAccentColorSection Widget Tests', () {
-    testWidgets('renders header, all 4 accent variants, and correct default selection',
+    testWidgets(
+        'renders header, all 4 accent variants, and correct default selection',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -90,7 +91,8 @@ void main() {
       );
 
       // Tap Cyber Amber (Pro only)
-      await tester.tap(find.byKey(const ValueKey('accent_variant_cyber_amber')));
+      await tester
+          .tap(find.byKey(const ValueKey('accent_variant_cyber_amber')));
       await tester.pumpAndSettle();
 
       // Modal bottom sheet with LifetimeProBanner opens
@@ -115,7 +117,8 @@ void main() {
       );
 
       // Tap Hyper Violet
-      await tester.tap(find.byKey(const ValueKey('accent_variant_hyper_violet')));
+      await tester
+          .tap(find.byKey(const ValueKey('accent_variant_hyper_violet')));
       await tester.pumpAndSettle();
 
       // No modal sheet opened

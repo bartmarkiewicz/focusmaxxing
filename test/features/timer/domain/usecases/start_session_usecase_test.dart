@@ -56,7 +56,8 @@ void main() {
       expect(repository.lastCreatedSession, isNull);
     });
 
-    test('returns ValidationFailure when taskGoal exceeds 60 characters', () async {
+    test('returns ValidationFailure when taskGoal exceeds 60 characters',
+        () async {
       final longGoal = 'A' * 61;
       final result = await useCase(
         taskGoal: longGoal,
@@ -86,7 +87,9 @@ void main() {
       expect(repository.lastCreatedSession?.status, SessionStatus.cancelled);
     });
 
-    test('initial session status is CANCELLED to prevent uncompleted streak poisoning', () async {
+    test(
+        'initial session status is CANCELLED to prevent uncompleted streak poisoning',
+        () async {
       final result = await useCase(
         taskGoal: 'Prevent Poisoning',
         sessionType: SessionType.focus,

@@ -347,7 +347,11 @@ class ShieldNotifier extends ChangeNotifier {
     _isScheduledShieldActive = true;
     final activePackages = activePackageNames.toList();
     if (activePackages.isNotEmpty) {
-      await repository.startShieldService(activePackages);
+      await repository.startShieldService(
+        activePackages,
+        isScheduled: true,
+        timeRange: timeRange,
+      );
     }
     notifyListeners();
   }
@@ -419,9 +423,8 @@ class ShieldNotifier extends ChangeNotifier {
             status == TimerStatus.breakCompleted)
         ? 0
         : timer.remainingSeconds;
-    final goal = timer.currentTaskGoal.isNotEmpty
-        ? timer.currentTaskGoal
-        : 'Deep Work';
+    final goal =
+        timer.currentTaskGoal.isNotEmpty ? timer.currentTaskGoal : 'Deep Work';
     final effectiveMaximumFocus = _isMaximumFocusEnabled &&
         (status == TimerStatus.running || status == TimerStatus.paused);
 

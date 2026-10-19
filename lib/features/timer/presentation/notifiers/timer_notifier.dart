@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
+import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
@@ -35,6 +36,7 @@ class TimerNotifier extends ChangeNotifier {
   final SharedPreferences? prefs;
   final IWidgetSyncService? widgetSyncService;
   final GetDailySummaryUseCase? getDailySummaryUseCase;
+  BacklogNotifier? backlogNotifier;
 
   TimerNotifier({
     required this.startSessionUseCase,
@@ -45,8 +47,20 @@ class TimerNotifier extends ChangeNotifier {
     this.prefs,
     this.widgetSyncService,
     this.getDailySummaryUseCase,
+    this.backlogNotifier,
   }) {
     unawaited(_loadRecentGoals());
+  }
+
+  void attachBacklogNotifier(BacklogNotifier? notifier) {
+    backlogNotifier = notifier;
+  }
+
+  void clearLinkedBacklogTaskIfMatches(int taskId) {
+    if (_linkedBacklogTaskId == taskId) {
+      _linkedBacklogTaskId = null;
+      notifyListeners();
+    }
   }
 
   TimerStatus _status = TimerStatus.idle;
@@ -58,7 +72,8 @@ class TimerNotifier extends ChangeNotifier {
   String _currentTaskGoal = '';
   int? _linkedBacklogTaskId;
   int? _activeSessionId;
-  final ValueNotifier<double> cancelHoldProgressNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> cancelHoldProgressNotifier =
+      ValueNotifier<double>(0.0);
   List<String> _recentGoals = const [];
   String? _errorMessage;
 
@@ -129,27 +144,17 @@ class TimerNotifier extends ChangeNotifier {
     final previousStatus = _status;
 
     try {
-      _periodicTicker?.cancel();
       final trimmed = goal.trim();
-      _currentTaskGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
-      _linkedBacklogTaskId = backlogTaskId;
-      _targetDurationSeconds = _focusDurationSeconds;
-      _remainingSeconds = _targetDurationSeconds;
-      _remainingDuration = Duration(seconds: _remainingSeconds);
-      _targetEndTime = DateTime.now().add(_remainingDuration);
-      cancelHoldProgressNotifier.value = 0.0;
-      _errorMessage = null;
-
-      await _cacheRecentGoal(_currentTaskGoal);
+      final effectiveGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
 
       final result = await startSessionUseCase(
-        taskGoal: _currentTaskGoal,
+        taskGoal: effectiveGoal,
         sessionType: SessionType.focus,
-        targetDurationSeconds: _targetDurationSeconds,
+        targetDurationSeconds: _focusDurationSeconds,
       );
 
-      final isSuccess = result.fold(
-        (failure) {
+      final isSuccess = await result.fold(
+        (failure) async {
           _errorMessage = failure.message;
           _status = (previousStatus == TimerStatus.idle)
               ? TimerStatus.idle
@@ -157,7 +162,19 @@ class TimerNotifier extends ChangeNotifier {
           notifyListeners();
           return false;
         },
-        (sessionId) {
+        (sessionId) async {
+          _periodicTicker?.cancel();
+          _currentTaskGoal = effectiveGoal;
+          _linkedBacklogTaskId = backlogTaskId;
+          _targetDurationSeconds = _focusDurationSeconds;
+          _remainingSeconds = _targetDurationSeconds;
+          _remainingDuration = Duration(seconds: _remainingSeconds);
+          _targetEndTime = DateTime.now().add(_remainingDuration);
+          cancelHoldProgressNotifier.value = 0.0;
+          _errorMessage = null;
+
+          await _cacheRecentGoal(_currentTaskGoal);
+
           _activeSessionId = sessionId;
           _status = TimerStatus.running;
           _startTicker();
@@ -233,8 +250,7 @@ class TimerNotifier extends ChangeNotifier {
           return;
         }
 
-        final elapsedMs =
-            DateTime.now().difference(startTime).inMilliseconds;
+        final elapsedMs = DateTime.now().difference(startTime).inMilliseconds;
         final progress = (elapsedMs / cancelHoldTotalMs).clamp(0.0, 1.0);
         cancelHoldProgressNotifier.value = progress;
 
@@ -255,12 +271,14 @@ class TimerNotifier extends ChangeNotifier {
     _cancelHoldStartTime = null;
 
     if (startTime != null &&
-        DateTime.now().difference(startTime).inMilliseconds >= cancelHoldTotalMs) {
+        DateTime.now().difference(startTime).inMilliseconds >=
+            cancelHoldTotalMs) {
       unawaited(cancelSession());
       return;
     }
 
-    if (cancelHoldProgressNotifier.value > 0.0 && cancelHoldProgressNotifier.value < 1.0) {
+    if (cancelHoldProgressNotifier.value > 0.0 &&
+        cancelHoldProgressNotifier.value < 1.0) {
       cancelHoldProgressNotifier.value = 0.0;
     }
   }
@@ -307,7 +325,9 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<void> checkInSession({required bool lockedIn}) async {
-    if (_status != TimerStatus.completed && _status != TimerStatus.running) return;
+    if (_status != TimerStatus.completed && _status != TimerStatus.running) {
+      return;
+    }
     final sessionId = _activeSessionId;
     final actualDuration = _targetDurationSeconds;
     final outcomeStatus =
@@ -339,13 +359,19 @@ class TimerNotifier extends ChangeNotifier {
           (failure) => _errorMessage = failure.message,
           (_) {},
         );
+        unawaited(backlogNotifier?.loadPendingTasks(showLoading: false));
       }
 
       final syncService = widgetSyncService;
       final summaryUseCase = getDailySummaryUseCase;
       if (syncService != null) {
         if (summaryUseCase != null) {
-          final summaryResult = await summaryUseCase(DateTime.now());
+          final includeWeekends =
+              prefs?.getBool('insights_include_weekends') ?? false;
+          final summaryResult = await summaryUseCase(
+            DateTime.now(),
+            includeWeekendsInStreak: includeWeekends,
+          );
           await summaryResult.fold(
             (_) async {},
             (summary) async {
@@ -374,6 +400,15 @@ class TimerNotifier extends ChangeNotifier {
     _remainingSeconds = defaultBreakSeconds;
     _remainingDuration = const Duration(seconds: defaultBreakSeconds);
     _targetEndTime = DateTime.now().add(_remainingDuration);
+    final breakEnd = _targetEndTime;
+    if (breakEnd != null) {
+      unawaited(
+        notificationService.scheduleSessionCompletionNotification(
+          targetEndTime: breakEnd,
+          goal: '5-Minute Recharge Break',
+        ),
+      );
+    }
     _startTicker();
     notifyListeners();
   }
@@ -448,7 +483,8 @@ class TimerNotifier extends ChangeNotifier {
     syncWithWallClock();
     if (_status == TimerStatus.running &&
         _remainingSeconds != previousSeconds &&
-        _remainingSeconds > 0) {
+        _remainingSeconds > 0 &&
+        _remainingSeconds % 30 == 0) {
       _updateNotification();
     }
   }

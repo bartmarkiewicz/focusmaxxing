@@ -36,7 +36,8 @@ class _MockInsightsRepository implements IInsightsRepository {
   }
 
   @override
-  Future<Either<Failure, List<SessionEntity>>> getRecentSessions({int days = 7}) async {
+  Future<Either<Failure, List<SessionEntity>>> getRecentSessions(
+      {int days = 7}) async {
     if (sessionsFailure != null) return Left(sessionsFailure!);
     return Right(sessionsToReturn ?? const []);
   }
@@ -106,7 +107,8 @@ void main() {
     expect(notifier.errorMessage, isNull);
   });
 
-  test('loadInsights fetches summary and recent sessions successfully', () async {
+  test('loadInsights fetches summary and recent sessions successfully',
+      () async {
     const session = SessionEntity(
       id: 1,
       taskGoal: 'Clean Architecture Test',
@@ -136,7 +138,8 @@ void main() {
     expect(notifier.errorMessage, 'DB read failed');
   });
 
-  test('setStreakEnabled updates state and persists to SharedPreferences', () async {
+  test('setStreakEnabled updates state and persists to SharedPreferences',
+      () async {
     await notifier.setStreakEnabled(false);
 
     expect(notifier.isStreakEnabled, isFalse);
@@ -156,7 +159,8 @@ void main() {
     expect(repository.capturedIncludeWeekends, isTrue);
   });
 
-  test('setDailyReminderEnabled toggles notification scheduling and persists', () async {
+  test('setDailyReminderEnabled toggles notification scheduling and persists',
+      () async {
     await notifier.setDailyReminderEnabled(true);
 
     expect(notifier.isDailyReminderEnabled, isTrue);
@@ -170,7 +174,8 @@ void main() {
     expect(prefs.getBool(InsightsNotifier.keyDailyReminderEnabled), isFalse);
   });
 
-  test('setDailyReminderTime updates time, persists, and reschedules if active', () async {
+  test('setDailyReminderTime updates time, persists, and reschedules if active',
+      () async {
     await notifier.setDailyReminderEnabled(true);
     notificationService.didScheduleDailyReminder = false;
 

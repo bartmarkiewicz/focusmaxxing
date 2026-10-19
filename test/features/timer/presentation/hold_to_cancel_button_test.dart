@@ -20,21 +20,25 @@ void main() {
   }
 
   group('HoldToCancelButton', () {
-    testWidgets('renders default 5s label when progress is 0.0', (tester) async {
+    testWidgets('renders default 5s label when progress is 0.0',
+        (tester) async {
       await tester.pumpWidget(buildWidget(progress: 0.0));
       await tester.pumpAndSettle();
 
       expect(find.text('Hold to Cancel (5s)'), findsOneWidget);
     });
 
-    testWidgets('renders countdown and warning color when progress > 0.0', (tester) async {
+    testWidgets('renders countdown and warning color when progress > 0.0',
+        (tester) async {
       await tester.pumpWidget(buildWidget(progress: 0.5));
       await tester.pumpAndSettle();
 
       expect(find.text('HOLD TO CANCEL (2.5s)'), findsOneWidget);
     });
 
-    testWidgets('triggers onHoldStart immediately on pointer down without 500ms lag', (tester) async {
+    testWidgets(
+        'triggers onHoldStart immediately on pointer down without 500ms lag',
+        (tester) async {
       var holdStarted = false;
       var holdEnded = false;
 
@@ -57,10 +61,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(holdEnded, isTrue);
-      expect(find.text('Hold for 5 full seconds to cancel session'), findsOneWidget);
+      expect(find.text('Hold for 5 full seconds to cancel session'),
+          findsOneWidget);
     });
 
-    testWidgets('triggers accessible confirmation dialog on tap and confirms cancel', (tester) async {
+    testWidgets(
+        'triggers accessible confirmation dialog on tap and confirms cancel',
+        (tester) async {
       var cancelledImmediate = false;
 
       await tester.pumpWidget(MaterialApp(
@@ -95,7 +102,9 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('updates progress and countdown dynamically via progressListenable (MED-02)', (tester) async {
+    testWidgets(
+        'updates progress and countdown dynamically via progressListenable (MED-02)',
+        (tester) async {
       final progressNotifier = ValueNotifier<double>(0.0);
       addTearDown(progressNotifier.dispose);
 

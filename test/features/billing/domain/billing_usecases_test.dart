@@ -88,7 +88,8 @@ void main() {
       expect(status.orderId, 'GPA.1234-5678');
     });
 
-    test('RestorePurchasesUseCase triggers restore flow on repository', () async {
+    test('RestorePurchasesUseCase triggers restore flow on repository',
+        () async {
       final useCase = RestorePurchasesUseCase(repository);
       final status = await useCase();
 

@@ -18,7 +18,8 @@ void main() {
       dataSource = ScheduleLocalDataSourceImpl(prefs: prefs);
     });
 
-    test('getSchedule returns default ScheduleConfigModel when no data saved', () async {
+    test('getSchedule returns default ScheduleConfigModel when no data saved',
+        () async {
       final result = await dataSource.getSchedule();
       expect(result.isEnabled, isFalse);
       expect(result.startHour, equals(9));

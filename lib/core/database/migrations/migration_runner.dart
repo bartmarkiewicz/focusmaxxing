@@ -10,15 +10,24 @@ class MigrationRunner {
 
   List<Migration> get migrations => List.unmodifiable(_migrations);
 
-  Future<void> run(Database db, {required int oldVersion, required int targetVersion}) async {
+  Future<void> run(
+    DatabaseExecutor db, {
+    required int oldVersion,
+    required int targetVersion,
+    bool useTransaction = true,
+  }) async {
     final pending = _migrations.where(
       (m) => m.version > oldVersion && m.version <= targetVersion,
     );
 
     for (final migration in pending) {
-      await db.transaction((txn) async {
-        await migration.up(txn);
-      });
+      if (db is Database && useTransaction) {
+        await db.transaction((txn) async {
+          await migration.up(txn);
+        });
+      } else {
+        await migration.up(db);
+      }
     }
   }
 }

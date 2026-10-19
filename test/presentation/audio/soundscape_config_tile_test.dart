@@ -136,7 +136,8 @@ void main() {
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
     });
 
-    testWidgets('tapping a locked Pro option prompts pro requirement banner cleanly',
+    testWidgets(
+        'tapping a locked Pro option prompts pro requirement banner cleanly',
         (tester) async {
       await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
 
@@ -159,10 +160,12 @@ void main() {
       // Dismiss banner
       await tester.tap(find.byKey(const ValueKey('soundscape_error_dismiss')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('soundscape_error_banner')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('soundscape_error_banner')), findsNothing);
     });
 
-    testWidgets('pro user selecting soundscape updates active state and preview button toggles playback',
+    testWidgets(
+        'pro user selecting soundscape updates active state and preview button toggles playback',
         (tester) async {
       notifier.setProUnlocked(true);
       await tester.pumpWidget(buildTestWidget(isProUnlocked: true));

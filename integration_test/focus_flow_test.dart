@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/database/database_helper.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_runner.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v1.dart';
+import 'package:focusmaxxing/core/database/migrations/migration_v2.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/features/backlog/data/datasources/backlog_local_data_source.dart';
 import 'package:focusmaxxing/features/backlog/data/repositories/backlog_repository_impl.dart';
@@ -88,8 +89,11 @@ void main() {
     sharedPreferences = await SharedPreferences.getInstance();
 
     db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
-    final migrationRunner = MigrationRunner(migrations: const [MigrationV1()]);
-    await migrationRunner.run(db, oldVersion: 0, targetVersion: 1);
+    final migrationRunner = MigrationRunner(migrations: const [
+      MigrationV1(),
+      MigrationV2(),
+    ]);
+    await migrationRunner.run(db, oldVersion: 0, targetVersion: 2);
     DatabaseHelper.setMockDatabase(db);
 
     notificationSpy = SpyNotificationService();
@@ -164,7 +168,8 @@ void main() {
         await tester.tap(find.text('🚀 LOCK IN'));
         await tester.pumpAndSettle();
 
-        expect(find.text('What ONE thing are you locking in on?'), findsOneWidget);
+        expect(
+            find.text('What ONE thing are you locking in on?'), findsOneWidget);
 
         final goalInput = find.byType(TextField);
         await tester.enterText(goalInput, 'Finish clean architecture');
@@ -231,7 +236,8 @@ void main() {
         await tester.tap(find.byType(HoldToCancelButton));
         await tester.pump();
 
-        expect(find.text('Hold for 5 full seconds to cancel session'), findsOneWidget);
+        expect(find.text('Hold for 5 full seconds to cancel session'),
+            findsOneWidget);
         expect(timerNotifier.status, TimerStatus.paused);
 
         final gesture = await tester.startGesture(

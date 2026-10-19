@@ -121,7 +121,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('WidgetSyncServiceImpl Unit Tests', () {
-    test('pushes today_minutes and active_streak with GlanceableDialWidgetProvider target',
+    test(
+        'pushes today_minutes and active_streak with GlanceableDialWidgetProvider target',
         () async {
       final savedData = <String, dynamic>{};
       final updateParams = <String, dynamic>{};
@@ -163,11 +164,13 @@ void main() {
       );
       expect(
         updateParams['qualifiedAndroidName'],
-        equals('com.bmrkiewicz.focusmaxxing.focusmaxxing.widget.GlanceableDialWidgetProvider'),
+        equals(
+            'com.bmrkiewicz.focusmaxxing.focusmaxxing.widget.GlanceableDialWidgetProvider'),
       );
     });
 
-    test('handles PlatformException and MissingPluginException gracefully', () async {
+    test('handles PlatformException and MissingPluginException gracefully',
+        () async {
       final service = WidgetSyncServiceImpl(
         saveWidgetData: <T>(
           String id,
@@ -207,7 +210,8 @@ void main() {
       );
     });
 
-    test('dispatches updated today_minutes and active_streak to widget on checkInSession',
+    test(
+        'dispatches updated today_minutes and active_streak to widget on checkInSession',
         () async {
       final timerNotifier = TimerNotifier(
         startSessionUseCase: StartSessionUseCase(sessionRepository),

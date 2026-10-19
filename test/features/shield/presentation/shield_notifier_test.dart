@@ -112,10 +112,17 @@ class _FakeShieldRepository implements IShieldRepository {
     return const Right(true);
   }
 
+  bool? lastStartIsScheduled;
+  String? lastStartTimeRange;
+
   @override
   Future<Either<Failure, bool>> startShieldService(
-    List<String> blockedPackages,
-  ) async {
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async {
+    lastStartIsScheduled = isScheduled;
+    lastStartTimeRange = timeRange;
     startedPackagesHistory.add(List<String>.from(blockedPackages));
     return const Right(true);
   }
@@ -571,7 +578,8 @@ void main() {
           isTrue,
         );
 
-        repository.overlayController.add('{"action":"cancelSessionFromOverlay"}');
+        repository.overlayController
+            .add('{"action":"cancelSessionFromOverlay"}');
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
         expect(timerNotifier.status, TimerStatus.idle);
@@ -644,6 +652,27 @@ void main() {
         expect(saved, contains('com.test.emptyapps'));
       },
     );
+
+    test(
+      'startShieldForSchedule passes isScheduled: true and timeRange to repository',
+      () async {
+        await notifier.toggleApp(
+          packageName: 'com.test.scheduled',
+          appName: 'Scheduled App',
+          isPreset: true,
+        );
+
+        await notifier.startShieldForSchedule(timeRange: '09:00 - 17:00');
+
+        expect(notifier.isScheduledShieldActive, isTrue);
+        expect(repository.lastStartIsScheduled, isTrue);
+        expect(repository.lastStartTimeRange, equals('09:00 - 17:00'));
+        expect(
+          repository.startedPackagesHistory.last,
+          contains('com.test.scheduled'),
+        );
+      },
+    );
   });
 }
 
@@ -654,7 +683,8 @@ class _FakeScheduleRepo implements IScheduleRepository {
   Future<Either<Failure, bool>> isScheduleActiveNow() async => Right(isActive);
 
   @override
-  Future<Either<Failure, void>> armAlarms(ScheduleConfigEntity schedule) async =>
+  Future<Either<Failure, void>> armAlarms(
+          ScheduleConfigEntity schedule) async =>
       const Right(null);
 
   @override
@@ -665,6 +695,7 @@ class _FakeScheduleRepo implements IScheduleRepository {
       const Right(ScheduleConfigEntity.initial);
 
   @override
-  Future<Either<Failure, void>> saveSchedule(ScheduleConfigEntity schedule) async =>
+  Future<Either<Failure, void>> saveSchedule(
+          ScheduleConfigEntity schedule) async =>
       const Right(null);
 }

@@ -35,8 +35,10 @@ abstract interface class IShieldRepository {
   );
 
   Future<Either<Failure, bool>> startShieldService(
-    List<String> blockedPackages,
-  );
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  });
 
   Future<Either<Failure, bool>> stopShieldService();
 

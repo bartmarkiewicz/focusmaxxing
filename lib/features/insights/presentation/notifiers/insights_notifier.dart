@@ -72,8 +72,7 @@ class InsightsNotifier extends ChangeNotifier {
   void _applyPreferences(SharedPreferences prefs) {
     _isStreakEnabled = prefs.getBool(keyStreakEnabled) ?? true;
     _includeWeekendsInStreak = prefs.getBool(keyIncludeWeekends) ?? false;
-    _isDailyReminderEnabled =
-        prefs.getBool(keyDailyReminderEnabled) ?? false;
+    _isDailyReminderEnabled = prefs.getBool(keyDailyReminderEnabled) ?? false;
     _dailyReminderHour = prefs.getInt(keyDailyReminderHour) ?? 9;
     _dailyReminderMinute = prefs.getInt(keyDailyReminderMinute) ?? 0;
   }
@@ -104,7 +103,10 @@ class InsightsNotifier extends ChangeNotifier {
       date,
       includeWeekendsInStreak: _includeWeekendsInStreak,
     );
+    if (_isDisposed) return;
+
     final sessionsResult = await getRecentSessionsUseCase(days: 7);
+    if (_isDisposed) return;
 
     summaryResult.fold(
       (failure) {

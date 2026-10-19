@@ -2,7 +2,8 @@ import 'package:focusmaxxing/core/database/migrations/migration.dart';
 import 'package:sqflite/sqflite.dart';
 
 class MigrationV2 extends Migration {
-  const MigrationV2() : super(2, 'Create shielded_apps table for Brainrot Shield');
+  const MigrationV2()
+      : super(2, 'Create shielded_apps table for Brainrot Shield');
 
   @override
   Future<void> up(DatabaseExecutor db) async {

@@ -51,8 +51,7 @@ class _FakeFlutterLocalNotificationsPlugin extends Fake
     bool? androidAllowWhileIdle,
     String? payload,
     DateTimeComponents? matchDateTimeComponents,
-    UILocalNotificationDateInterpretation
-        uiLocalNotificationDateInterpretation =
+    UILocalNotificationDateInterpretation uiLocalNotificationDateInterpretation =
         UILocalNotificationDateInterpretation.absoluteTime,
   }) async {
     if (shouldThrowOnSchedule) {
@@ -84,7 +83,9 @@ void main() {
         taskGoal: 'Deep Work',
         formattedTimeRemaining: '24:35',
         isPaused: false,
-        targetEndTimeEpochMs: DateTime.now().add(const Duration(minutes: 25)).millisecondsSinceEpoch,
+        targetEndTimeEpochMs: DateTime.now()
+            .add(const Duration(minutes: 25))
+            .millisecondsSinceEpoch,
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
@@ -92,7 +93,8 @@ void main() {
       expect(fakePlugin.lastShownBody, 'Deep Work');
     });
 
-    test('showOngoingTimer displays paused status when isPaused is true', () async {
+    test('showOngoingTimer displays paused status when isPaused is true',
+        () async {
       await service.showOngoingTimer(
         taskGoal: 'Clean Room',
         formattedTimeRemaining: '10:00',
@@ -106,10 +108,13 @@ void main() {
 
     test('cancelTimerNotification cancels ongoing notification', () async {
       await service.cancelTimerNotification();
-      expect(fakePlugin.lastCancelledId, NotificationService.ongoingNotificationId);
+      expect(fakePlugin.lastCancelledId,
+          NotificationService.ongoingNotificationId);
     });
 
-    test('scheduleSessionCompletionNotification schedules high-priority alarm for future time', () async {
+    test(
+        'scheduleSessionCompletionNotification schedules high-priority alarm for future time',
+        () async {
       final targetEndTime = DateTime.now().add(const Duration(minutes: 25));
 
       await service.scheduleSessionCompletionNotification(
@@ -117,13 +122,16 @@ void main() {
         goal: 'Write Architecture Spec',
       );
 
-      expect(fakePlugin.lastScheduledId, NotificationService.sessionCompletionNotificationId);
+      expect(fakePlugin.lastScheduledId,
+          NotificationService.sessionCompletionNotificationId);
       expect(fakePlugin.lastScheduledTitle, '🎉 Focus Block Complete!');
       expect(fakePlugin.lastScheduledBody, contains('Write Architecture Spec'));
       expect(fakePlugin.lastScheduledDate, isNotNull);
     });
 
-    test('scheduleSessionCompletionNotification defaults to Focus Block when goal is empty', () async {
+    test(
+        'scheduleSessionCompletionNotification defaults to Focus Block when goal is empty',
+        () async {
       final targetEndTime = DateTime.now().add(const Duration(minutes: 15));
 
       await service.scheduleSessionCompletionNotification(
@@ -134,7 +142,8 @@ void main() {
       expect(fakePlugin.lastScheduledBody, contains('Focus Block'));
     });
 
-    test('scheduleSessionCompletionNotification ignores past target end time', () async {
+    test('scheduleSessionCompletionNotification ignores past target end time',
+        () async {
       final pastTime = DateTime.now().subtract(const Duration(minutes: 5));
 
       await service.scheduleSessionCompletionNotification(
@@ -145,7 +154,9 @@ void main() {
       expect(fakePlugin.lastScheduledId, isNull);
     });
 
-    test('scheduleSessionCompletionNotification catches exact alarm exceptions safely without throwing', () async {
+    test(
+        'scheduleSessionCompletionNotification catches exact alarm exceptions safely without throwing',
+        () async {
       fakePlugin.shouldThrowOnSchedule = true;
       final targetEndTime = DateTime.now().add(const Duration(minutes: 20));
 
@@ -159,22 +170,29 @@ void main() {
       );
     });
 
-    test('cancelSessionCompletionNotification cancels session completion notification', () async {
+    test(
+        'cancelSessionCompletionNotification cancels session completion notification',
+        () async {
       await service.cancelSessionCompletionNotification();
-      expect(fakePlugin.lastCancelledId, NotificationService.sessionCompletionNotificationId);
+      expect(fakePlugin.lastCancelledId,
+          NotificationService.sessionCompletionNotificationId);
     });
 
     test('cancelDailyReminder cancels reminder notification', () async {
       await service.cancelDailyReminder();
-      expect(fakePlugin.lastCancelledId, NotificationService.dailyReminderNotificationId);
+      expect(fakePlugin.lastCancelledId,
+          NotificationService.dailyReminderNotificationId);
     });
 
-    test('cancelAutoShieldNotification cancels auto shield notification', () async {
+    test('cancelAutoShieldNotification cancels auto shield notification',
+        () async {
       await service.cancelAutoShieldNotification();
-      expect(fakePlugin.lastCancelledId, NotificationService.autoShieldNotificationId);
+      expect(fakePlugin.lastCancelledId,
+          NotificationService.autoShieldNotificationId);
     });
 
-    test('methods no-op when platform is not supported or not initialized', () async {
+    test('methods no-op when platform is not supported or not initialized',
+        () async {
       service.isSupportedPlatformOverride = false;
 
       await service.showOngoingTimer(

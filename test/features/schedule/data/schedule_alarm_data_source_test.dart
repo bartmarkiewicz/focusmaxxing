@@ -39,7 +39,9 @@ void main() {
       );
     });
 
-    test('scheduleAlarms throws ScheduleException for mathematically invalid schedule', () async {
+    test(
+        'scheduleAlarms throws ScheduleException for mathematically invalid schedule',
+        () async {
       const invalidSchedule = ScheduleConfigEntity(
         startHour: 10,
         endHour: 10,
@@ -51,7 +53,9 @@ void main() {
       );
     });
 
-    test('scheduleAlarms schedules start and end alarms and persists active days', () async {
+    test(
+        'scheduleAlarms schedules start and end alarms and persists active days',
+        () async {
       const validSchedule = ScheduleConfigEntity(
         isEnabled: true,
         startHour: 9,
@@ -65,11 +69,13 @@ void main() {
       expect(result, isTrue);
       expect(
         periodicScheduledIds,
-        containsAll([ScheduleConstants.startAlarmId, ScheduleConstants.endAlarmId]),
+        containsAll(
+            [ScheduleConstants.startAlarmId, ScheduleConstants.endAlarmId]),
       );
 
       final prefs = await SharedPreferences.getInstance();
-      final savedDays = prefs.getStringList(ScheduleConstants.scheduleActiveDaysPrefsKey);
+      final savedDays =
+          prefs.getStringList(ScheduleConstants.scheduleActiveDaysPrefsKey);
       expect(savedDays, equals(['1', '2', '3', '4', '5']));
     });
 
@@ -78,7 +84,8 @@ void main() {
       expect(result, isTrue);
       expect(
         cancelledIds,
-        containsAll([ScheduleConstants.startAlarmId, ScheduleConstants.endAlarmId]),
+        containsAll(
+            [ScheduleConstants.startAlarmId, ScheduleConstants.endAlarmId]),
       );
     });
   });

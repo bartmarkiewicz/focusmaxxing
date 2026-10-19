@@ -49,153 +49,155 @@ class ScheduleConfigSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-          SwitchListTile.adaptive(
-            key: const ValueKey('schedule_master_switch'),
-            secondary: Icon(
-              Icons.schedule_rounded,
-              color: colorScheme.onSurface,
-            ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Scheduled Auto-Shield',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
+              SwitchListTile.adaptive(
+                key: const ValueKey('schedule_master_switch'),
+                secondary: Icon(
+                  Icons.schedule_rounded,
+                  color: colorScheme.onSurface,
+                ),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Scheduled Auto-Shield',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (!proUnlocked) ...[
+                      const SizedBox(width: 8),
+                      const _ScheduleProBadge(
+                        key: ValueKey('schedule_pro_badge'),
+                      ),
+                    ],
+                  ],
                 ),
-                if (!proUnlocked) ...[
-                  const SizedBox(width: 8),
-                  const _ScheduleProBadge(
-                    key: ValueKey('schedule_pro_badge'),
-                  ),
-                ],
-              ],
-            ),
-            subtitle: Text(
-              isEnabled
-                  ? 'Active ${schedule.formattedTimeRange}'
-                  : 'Automatically block social feeds during work/study hours',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            value: isEnabled,
-            activeThumbColor: colorScheme.primary,
-            onChanged: (value) {
-              unawaited(scheduleNotifier.setEnabled(value));
-            },
-          ),
-          if (scheduleNotifier.requiresProPrompt) ...[
-            const SizedBox(height: 6),
-            _ScheduleProGateBanner(
-              onDismiss: scheduleNotifier.dismissProPrompt,
-            ),
-          ],
-          if (errorMessage != null) ...[
-            const SizedBox(height: 6),
-            _ScheduleErrorBanner(
-              message: errorMessage,
-              onDismiss: scheduleNotifier.clearError,
-            ),
-          ],
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TimePickerButton(
-                    key: const ValueKey('schedule_start_time_btn'),
-                    label: 'Start Time',
-                    timeText: formattedStart,
-                    onTap: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                          hour: schedule.startHour,
-                          minute: schedule.startMinute,
-                        ),
-                      );
-                      if (context.mounted && picked != null) {
-                        unawaited(
-                          scheduleNotifier.setStartTime(
-                            picked.hour,
-                            picked.minute,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TimePickerButton(
-                    key: const ValueKey('schedule_end_time_btn'),
-                    label: 'End Time',
-                    timeText: formattedEnd,
-                    onTap: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                          hour: schedule.endHour,
-                          minute: schedule.endMinute,
-                        ),
-                      );
-                      if (context.mounted && picked != null) {
-                        unawaited(
-                          scheduleNotifier.setEndTime(
-                            picked.hour,
-                            picked.minute,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Active Days',
+                subtitle: Text(
+                  isEnabled
+                      ? 'Active ${schedule.formattedTimeRange}'
+                      : 'Automatically block social feeds during work/study hours',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final item in _weekdays)
-                      _WeekdayChip(
-                        key: ValueKey('weekday_chip_${item.day}'),
-                        label: item.label,
-                        isSelected: schedule.isActiveOn(item.day),
-                        onTap: () {
-                          unawaited(scheduleNotifier.toggleWeekday(item.day));
-                        },
-                      ),
-                  ],
+                value: isEnabled,
+                activeThumbColor: colorScheme.primary,
+                onChanged: (value) {
+                  unawaited(scheduleNotifier.setEnabled(value));
+                },
+              ),
+              if (scheduleNotifier.requiresProPrompt) ...[
+                const SizedBox(height: 6),
+                _ScheduleProGateBanner(
+                  onDismiss: scheduleNotifier.dismissProPrompt,
                 ),
               ],
-            ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 6),
+                _ScheduleErrorBanner(
+                  message: errorMessage,
+                  onDismiss: scheduleNotifier.clearError,
+                ),
+              ],
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _TimePickerButton(
+                        key: const ValueKey('schedule_start_time_btn'),
+                        label: 'Start Time',
+                        timeText: formattedStart,
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay(
+                              hour: schedule.startHour,
+                              minute: schedule.startMinute,
+                            ),
+                          );
+                          if (context.mounted && picked != null) {
+                            unawaited(
+                              scheduleNotifier.setStartTime(
+                                picked.hour,
+                                picked.minute,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _TimePickerButton(
+                        key: const ValueKey('schedule_end_time_btn'),
+                        label: 'End Time',
+                        timeText: formattedEnd,
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay(
+                              hour: schedule.endHour,
+                              minute: schedule.endMinute,
+                            ),
+                          );
+                          if (context.mounted && picked != null) {
+                            unawaited(
+                              scheduleNotifier.setEndTime(
+                                picked.hour,
+                                picked.minute,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Active Days',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final item in _weekdays)
+                          _WeekdayChip(
+                            key: ValueKey('weekday_chip_${item.day}'),
+                            label: item.label,
+                            isSelected: schedule.isActiveOn(item.day),
+                            onTap: () {
+                              unawaited(
+                                  scheduleNotifier.toggleWeekday(item.day));
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
       },
     );
   }

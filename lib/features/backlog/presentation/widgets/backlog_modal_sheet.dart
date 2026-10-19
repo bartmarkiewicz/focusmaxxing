@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
 import 'package:focusmaxxing/features/backlog/presentation/widgets/backlog_task_item.dart';
+import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:provider/provider.dart';
 
 class BacklogModalSheet extends StatefulWidget {
@@ -57,9 +58,13 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
     }
   }
 
-  void _handleTaskDelete(BuildContext context, BacklogNotifier notifier, BacklogTaskEntity task) {
+  void _handleTaskDelete(
+      BuildContext context, BacklogNotifier notifier, BacklogTaskEntity task) {
     final taskId = task.id;
     if (taskId == null) return;
+
+    final timerNotifier = context.read<TimerNotifier?>();
+    timerNotifier?.clearLinkedBacklogTaskIfMatches(taskId);
 
     unawaited(notifier.deleteTask(taskId));
 
@@ -122,7 +127,8 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                           height: 4,
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
-                            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -140,7 +146,8 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                         ),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                          icon: Icon(Icons.close,
+                              color: colorScheme.onSurfaceVariant),
                           tooltip: 'Close',
                         ),
                       ],
@@ -253,7 +260,8 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                             widget.onTaskSelected?.call(task);
                             Navigator.of(context).pop(task);
                           },
-                          onDelete: () => _handleTaskDelete(context, notifier, task),
+                          onDelete: () =>
+                              _handleTaskDelete(context, notifier, task),
                         );
                       },
                       childCount: notifier.pendingTasks.length,

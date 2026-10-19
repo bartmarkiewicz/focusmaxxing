@@ -32,8 +32,9 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
   double get _progress {
     if (widget.totalSeconds <= 0) return 0.0;
     if (widget.onDurationChanged != null) {
-      // In interactive / setting mode, show selected duration on the 60-minute dial face
-      return (widget.totalSeconds / 3600.0).clamp(0.0, 1.0);
+      final dialMaxSeconds =
+          widget.totalSeconds > 3600 ? widget.totalSeconds.toDouble() : 3600.0;
+      return (widget.totalSeconds / dialMaxSeconds).clamp(0.0, 1.0);
     }
     final elapsed = widget.totalSeconds - widget.remainingSeconds;
     return (elapsed / widget.totalSeconds).clamp(0.0, 1.0);
@@ -75,9 +76,8 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
     final colorScheme = theme.colorScheme;
     final formattedTime = TimeFormatter.formatMMSS(widget.remainingSeconds);
 
-    final accentColor = widget.isRestMode
-        ? colorScheme.secondary
-        : colorScheme.primary;
+    final accentColor =
+        widget.isRestMode ? colorScheme.secondary : colorScheme.primary;
     final trackColor = colorScheme.outlineVariant.withValues(alpha: 0.35);
 
     final trimmedGoal = widget.taskGoal?.trim();
@@ -91,14 +91,17 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
           builder: (context, constraints) {
             final dialSize = math.min(constraints.maxWidth, 280.0);
             return GestureDetector(
-              behavior: isInteractive ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+              behavior: isInteractive
+                  ? HitTestBehavior.opaque
+                  : HitTestBehavior.deferToChild,
               onPanStart: isInteractive
                   ? (d) => _handleDialGesture(d.localPosition, dialSize)
                   : null,
               onPanUpdate: isInteractive
                   ? (d) => _handleDialGesture(d.localPosition, dialSize)
                   : null,
-              onPanEnd: isInteractive ? (_) => _lastSnappedMinutes = null : null,
+              onPanEnd:
+                  isInteractive ? (_) => _lastSnappedMinutes = null : null,
               child: SizedBox(
                 width: dialSize,
                 height: dialSize,
@@ -131,7 +134,8 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
                                 color: colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                  color: colorScheme.outlineVariant
+                                      .withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Text(
@@ -149,7 +153,9 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
                               color: colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -1.5,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ],
                             ),
                           ),
                           if (hasGoal) ...[
@@ -182,7 +188,8 @@ class _TimerDialWidgetState extends State<TimerDialWidget> {
                               'ROTATE TO SET TIME',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                color: colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.8,
                               ),

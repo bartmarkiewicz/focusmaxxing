@@ -47,17 +47,15 @@ class InsightsRepositoryImpl implements IInsightsRepository {
         includeWeekends: includeWeekendsInStreak,
       );
 
-      final currentStreak = streakResult.fold(
-        (failure) => 0,
-        (streak) => streak,
-      );
-
-      return Right(
-        DailySummaryEntity(
-          date: date,
-          totalFocusMinutes: totalFocusMinutes,
-          completedSessionsCount: completedSessionsCount,
-          currentStreakDays: currentStreak,
+      return streakResult.fold<Either<Failure, DailySummaryEntity>>(
+        Left.new,
+        (currentStreak) => Right(
+          DailySummaryEntity(
+            date: date,
+            totalFocusMinutes: totalFocusMinutes,
+            completedSessionsCount: completedSessionsCount,
+            currentStreakDays: currentStreak,
+          ),
         ),
       );
     } on DatabaseException catch (e) {

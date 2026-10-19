@@ -5,10 +5,13 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:focusmaxxing/core/constants/schedule_constants.dart';
+
 class NotificationService {
   static const int ongoingNotificationId = 1001;
   static const int dailyReminderNotificationId = 1002;
-  static const int autoShieldNotificationId = 1003;
+  static const int autoShieldNotificationId =
+      ScheduleConstants.autoShieldNotificationId;
   static const int sessionCompletionNotificationId = 1004;
 
   static const String timerChannelId = 'focusmaxxing_timer_channel';
@@ -26,10 +29,12 @@ class NotificationService {
   static const String reminderChannelDescription =
       'Scheduled notifications prompting daily focus blocks';
 
-  static const String autoShieldChannelId = 'focusmaxxing_schedule_channel';
-  static const String autoShieldChannelName = 'Scheduled Auto-Shield';
+  static const String autoShieldChannelId =
+      ScheduleConstants.scheduleNotificationChannelId;
+  static const String autoShieldChannelName =
+      ScheduleConstants.scheduleNotificationChannelName;
   static const String autoShieldChannelDescription =
-      'Notifications for scheduled work/study focus shielding';
+      ScheduleConstants.scheduleNotificationChannelDescription;
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
@@ -48,10 +53,7 @@ class NotificationService {
 
   bool get isSupportedPlatform =>
       isSupportedPlatformOverride ??
-      (!kIsWeb &&
-          (Platform.isAndroid ||
-              Platform.isIOS ||
-              Platform.isMacOS));
+      (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS));
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -82,8 +84,8 @@ class NotificationService {
 
     if (!kIsWeb && Platform.isAndroid) {
       try {
-        final androidImplementation = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
+        final androidImplementation =
+            _notificationsPlugin.resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
         await androidImplementation?.requestNotificationsPermission();
 
@@ -193,7 +195,12 @@ class NotificationService {
 
   Future<void> cancelTimerNotification() async {
     if (!isSupportedPlatform || !_isInitialized) return;
-    await _notificationsPlugin.cancel(ongoingNotificationId);
+    try {
+      await _notificationsPlugin.cancel(ongoingNotificationId);
+    } catch (e) {
+      debugPrint(
+          'NotificationService: failed to cancel timer notification: $e');
+    }
   }
 
   Future<void> scheduleSessionCompletionNotification({
@@ -266,7 +273,12 @@ class NotificationService {
 
   Future<void> cancelSessionCompletionNotification() async {
     if (!isSupportedPlatform || !_isInitialized) return;
-    await _notificationsPlugin.cancel(sessionCompletionNotificationId);
+    try {
+      await _notificationsPlugin.cancel(sessionCompletionNotificationId);
+    } catch (e) {
+      debugPrint(
+          'NotificationService: failed to cancel session completion notification: $e');
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
@@ -301,22 +313,30 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      dailyReminderNotificationId,
-      title,
-      body,
-      _nextInstanceOfTime(hour, minute),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        dailyReminderNotificationId,
+        title,
+        body,
+        _nextInstanceOfTime(hour, minute),
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint('NotificationService: failed to schedule daily reminder: $e');
+    }
   }
 
   Future<void> cancelDailyReminder() async {
     if (!isSupportedPlatform || !_isInitialized) return;
-    await _notificationsPlugin.cancel(dailyReminderNotificationId);
+    try {
+      await _notificationsPlugin.cancel(dailyReminderNotificationId);
+    } catch (e) {
+      debugPrint('NotificationService: failed to cancel daily reminder: $e');
+    }
   }
 
   Future<void> showAutoShieldNotification({required String timeRange}) async {
@@ -344,16 +364,26 @@ class NotificationService {
       ),
     );
 
-    await _notificationsPlugin.show(
-      autoShieldNotificationId,
-      'Brainrot Shield Active',
-      'Scheduled Auto-Shield Active ($timeRange)',
-      notificationDetails,
-    );
+    try {
+      await _notificationsPlugin.show(
+        autoShieldNotificationId,
+        'Brainrot Shield Active',
+        'Scheduled Auto-Shield Active ($timeRange)',
+        notificationDetails,
+      );
+    } catch (e) {
+      debugPrint(
+          'NotificationService: failed to show auto-shield notification: $e');
+    }
   }
 
   Future<void> cancelAutoShieldNotification() async {
     if (!isSupportedPlatform || !_isInitialized) return;
-    await _notificationsPlugin.cancel(autoShieldNotificationId);
+    try {
+      await _notificationsPlugin.cancel(autoShieldNotificationId);
+    } catch (e) {
+      debugPrint(
+          'NotificationService: failed to cancel auto-shield notification: $e');
+    }
   }
 }

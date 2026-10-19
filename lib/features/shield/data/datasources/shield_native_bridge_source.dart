@@ -10,7 +10,11 @@ import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_s
 abstract interface class IShieldNativeBridgeSource {
   Future<ShieldPermissionStatus> checkPermissions();
   Future<bool> requestPermission(ShieldPermissionType permissionType);
-  Future<bool> startShield(List<String> blockedPackages);
+  Future<bool> startShield(
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  });
   Future<bool> stopShield();
   Future<bool> isShieldRunning();
   Future<bool> bringToForeground();
@@ -121,14 +125,22 @@ class ShieldNativeBridgeSourceImpl implements IShieldNativeBridgeSource {
   }
 
   @override
-  Future<bool> startShield(List<String> blockedPackages) async {
+  Future<bool> startShield(
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async {
     if (!_canUseNativeChannel) {
       return true;
     }
     try {
       final started = await _channel.invokeMethod<bool>(
         'startShield',
-        <String, dynamic>{'packages': blockedPackages},
+        <String, dynamic>{
+          'packages': blockedPackages,
+          'isScheduled': isScheduled,
+          if (timeRange != null) 'timeRange': timeRange,
+        },
       );
       return started ?? false;
     } on MissingPluginException {

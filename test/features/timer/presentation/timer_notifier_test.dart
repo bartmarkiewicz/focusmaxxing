@@ -141,7 +141,8 @@ void main() {
   });
 
   group('TimerNotifier', () {
-    test('initial state defaults to 25 minutes, idle, and loads cached goals', () async {
+    test('initial state defaults to 25 minutes, idle, and loads cached goals',
+        () async {
       expect(notifier.status, TimerStatus.idle);
       expect(notifier.targetDurationSeconds, 1500);
       expect(notifier.remainingSeconds, 1500);
@@ -149,7 +150,9 @@ void main() {
       expect(notifier.recentGoals, contains('Recent 1'));
     });
 
-    test('setDurationPreset updates duration while idle but ignores while running', () async {
+    test(
+        'setDurationPreset updates duration while idle but ignores while running',
+        () async {
       notifier.setDurationPreset(45 * 60);
       expect(notifier.targetDurationSeconds, 2700);
       expect(notifier.remainingSeconds, 2700);
@@ -161,7 +164,8 @@ void main() {
       expect(notifier.targetDurationSeconds, 2700);
     });
 
-    test('startFocusSession starts active countdown and notification', () async {
+    test('startFocusSession starts active countdown and notification',
+        () async {
       final success = await notifier.startFocusSession('Fix Memory Leak');
 
       expect(success, isTrue);
@@ -172,7 +176,8 @@ void main() {
       expect(notifier.recentGoals.first, 'Fix Memory Leak');
     });
 
-    test('pause and resume correctly toggle running and paused states', () async {
+    test('pause and resume correctly toggle running and paused states',
+        () async {
       await notifier.startFocusSession('Deep Study');
 
       notifier.pause();
@@ -182,7 +187,8 @@ void main() {
       expect(notifier.status, TimerStatus.running);
     });
 
-    test('releaseHoldToCancel resets progress to 0.0 without side effects', () async {
+    test('releaseHoldToCancel resets progress to 0.0 without side effects',
+        () async {
       await notifier.startFocusSession('Goal');
       notifier.pause();
       expect(notifier.status, TimerStatus.paused);
@@ -196,7 +202,8 @@ void main() {
       expect(notifier.status, TimerStatus.paused);
     });
 
-    test('cancelSession updates session to CANCELLED and resets to idle', () async {
+    test('cancelSession updates session to CANCELLED and resets to idle',
+        () async {
       await notifier.startFocusSession('Abort Test');
       notifier.pause();
 
@@ -208,7 +215,9 @@ void main() {
       expect(notificationService.isCancelled, isTrue);
     });
 
-    test('checkInSession records outcome, completes backlog task, and starts break', () async {
+    test(
+        'checkInSession records outcome, completes backlog task, and starts break',
+        () async {
       await notifier.startFocusSession('Finish Feature', backlogTaskId: 42);
 
       await notifier.checkInSession(lockedIn: true);
@@ -224,7 +233,9 @@ void main() {
       expect(notifier.targetDurationSeconds, TimerNotifier.defaultFocusSeconds);
     });
 
-    test('checkInSession with lockedIn false records DERAILED and leaves backlog task pending (MED-03)', () async {
+    test(
+        'checkInSession with lockedIn false records DERAILED and leaves backlog task pending (MED-03)',
+        () async {
       await notifier.startFocusSession('Unfinished Task', backlogTaskId: 99);
 
       await notifier.checkInSession(lockedIn: false);
@@ -235,7 +246,9 @@ void main() {
       expect(notifier.status, TimerStatus.breakRunning);
     });
 
-    test('startFocusSession can start directly from break mode with saved focus duration preset (CRIT-02)', () async {
+    test(
+        'startFocusSession can start directly from break mode with saved focus duration preset (CRIT-02)',
+        () async {
       notifier.setDurationPreset(45 * 60);
       await notifier.startFocusSession('Session 1');
       await notifier.checkInSession(lockedIn: true);
@@ -251,7 +264,9 @@ void main() {
       expect(notifier.currentTaskGoal, 'Session 2');
     });
 
-    test('startHoldToCancel updates cancelHoldProgressNotifier without calling notifyListeners on TimerNotifier (MED-02)', () async {
+    test(
+        'startHoldToCancel updates cancelHoldProgressNotifier without calling notifyListeners on TimerNotifier (MED-02)',
+        () async {
       await notifier.startFocusSession('No Rebuild Storm');
       notifier.pause();
 
@@ -259,7 +274,8 @@ void main() {
       notifier.addListener(() => timerNotifierCallCount++);
 
       final progressValues = <double>[];
-      void onProgress() => progressValues.add(notifier.cancelHoldProgressNotifier.value);
+      void onProgress() =>
+          progressValues.add(notifier.cancelHoldProgressNotifier.value);
       notifier.cancelHoldProgressNotifier.addListener(onProgress);
 
       notifier.startHoldToCancel();
@@ -277,7 +293,9 @@ void main() {
       notifier.cancelHoldProgressNotifier.removeListener(onProgress);
     });
 
-    test('startFocusSession schedules completion alarm and pause/cancel/checkin cancel it', () async {
+    test(
+        'startFocusSession schedules completion alarm and pause/cancel/checkin cancel it',
+        () async {
       await notifier.startFocusSession('Test Alarm');
       expect(notificationService.lastScheduledCompletionGoal, 'Test Alarm');
       expect(notificationService.lastScheduledCompletionTime, isNotNull);
@@ -293,7 +311,9 @@ void main() {
       expect(notificationService.isCompletionAlarmCancelled, isTrue);
     });
 
-    test('syncWithWallClock transitions to completed if targetEndTime has passed', () async {
+    test(
+        'syncWithWallClock transitions to completed if targetEndTime has passed',
+        () async {
       notifier.setDurationPreset(1);
       await notifier.startFocusSession('Quick Test');
       expect(notifier.status, TimerStatus.running);

@@ -100,7 +100,8 @@ void main() {
       );
 
       // Monday at 10:30 (inside)
-      final mondayInside = DateTime(2026, 10, 19, 10, 30); // 2026-10-19 is Monday
+      final mondayInside =
+          DateTime(2026, 10, 19, 10, 30); // 2026-10-19 is Monday
       expect(schedule.isWithinSchedule(mondayInside), isTrue);
 
       // Monday at 08:59 (before)

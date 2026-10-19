@@ -128,7 +128,8 @@ void main() {
       await iapClient.dispose();
     });
 
-    test('getProDetails returns product metadata from store when available', () async {
+    test('getProDetails returns product metadata from store when available',
+        () async {
       final details = await repository.getProDetails();
 
       expect(details.id, ProUnlockStatusEntity.lifetimeProProductId);
@@ -136,7 +137,8 @@ void main() {
       expect(details.price, r'$9.99');
     });
 
-    test('getProDetails falls back to default pricing if store is unavailable', () async {
+    test('getProDetails falls back to default pricing if store is unavailable',
+        () async {
       iapClient.available = false;
 
       final details = await repository.getProDetails();
@@ -145,9 +147,11 @@ void main() {
       expect(details.price, ProUnlockStatusEntity.defaultFormattedPrice);
     });
 
-    test('purchaseLifetimePro completes successfully and persists receipt', () async {
+    test('purchaseLifetimePro completes successfully and persists receipt',
+        () async {
       iapClient.purchasesToEmitOnBuy = [
-        _createPurchase(status: PurchaseStatus.purchased, purchaseID: 'ORDER_555'),
+        _createPurchase(
+            status: PurchaseStatus.purchased, purchaseID: 'ORDER_555'),
       ];
 
       final status = await repository.purchaseLifetimePro();
@@ -162,7 +166,9 @@ void main() {
       expect(cached.orderId, 'ORDER_555');
     });
 
-    test('purchaseLifetimePro throws cancellation exception on PurchaseStatus.canceled', () async {
+    test(
+        'purchaseLifetimePro throws cancellation exception on PurchaseStatus.canceled',
+        () async {
       iapClient.purchasesToEmitOnBuy = [
         _createPurchase(status: PurchaseStatus.canceled),
       ];
@@ -179,7 +185,8 @@ void main() {
       );
     });
 
-    test('purchaseLifetimePro throws failure exception on PurchaseStatus.error', () async {
+    test('purchaseLifetimePro throws failure exception on PurchaseStatus.error',
+        () async {
       iapClient.purchasesToEmitOnBuy = [
         _createPurchase(
           status: PurchaseStatus.error,
@@ -199,11 +206,14 @@ void main() {
       );
     });
 
-    test('restorePurchases restores entitlement when store stream emits restored purchase', () async {
+    test(
+        'restorePurchases restores entitlement when store stream emits restored purchase',
+        () async {
       final restoreFuture = repository.restorePurchases();
 
       iapClient.emitPurchases([
-        _createPurchase(status: PurchaseStatus.restored, purchaseID: 'RESTORED_777'),
+        _createPurchase(
+            status: PurchaseStatus.restored, purchaseID: 'RESTORED_777'),
       ]);
 
       final status = await restoreFuture;
@@ -213,12 +223,16 @@ void main() {
       expect(await repository.isProPurchased(), isTrue);
     });
 
-    test('restorePurchases succeeds even if stream contains a past cancelled transaction', () async {
+    test(
+        'restorePurchases succeeds even if stream contains a past cancelled transaction',
+        () async {
       final restoreFuture = repository.restorePurchases();
 
       iapClient.emitPurchases([
-        _createPurchase(status: PurchaseStatus.canceled, purchaseID: 'OLD_CANCEL'),
-        _createPurchase(status: PurchaseStatus.restored, purchaseID: 'RESTORED_888'),
+        _createPurchase(
+            status: PurchaseStatus.canceled, purchaseID: 'OLD_CANCEL'),
+        _createPurchase(
+            status: PurchaseStatus.restored, purchaseID: 'RESTORED_888'),
       ]);
 
       final status = await restoreFuture;
@@ -227,7 +241,9 @@ void main() {
       expect(status.orderId, 'RESTORED_888');
     });
 
-    test('restorePurchases falls back to local cache if no purchases exist in store', () async {
+    test(
+        'restorePurchases falls back to local cache if no purchases exist in store',
+        () async {
       final status = await repository.restorePurchases();
 
       expect(status.isUnlocked, isFalse);

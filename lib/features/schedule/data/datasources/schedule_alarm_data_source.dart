@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -25,10 +26,30 @@ void autoShieldStartAlarmCallback() async {
   final blockedPackages =
       prefs.getStringList(ScheduleConstants.schedulePackagesPrefsKey) ??
           <String>[];
+  String? timeRange;
+  try {
+    final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+    final startHour = decoded['startHour'] as int?;
+    final startMinute = decoded['startMinute'] as int?;
+    final endHour = decoded['endHour'] as int?;
+    final endMinute = decoded['endMinute'] as int?;
+    if (startHour != null &&
+        startMinute != null &&
+        endHour != null &&
+        endMinute != null) {
+      final sH = startHour.toString().padLeft(2, '0');
+      final sM = startMinute.toString().padLeft(2, '0');
+      final eH = endHour.toString().padLeft(2, '0');
+      final eM = endMinute.toString().padLeft(2, '0');
+      timeRange = '$sH:$sM - $eH:$eM';
+    }
+  } catch (_) {}
+
   try {
     await channel.invokeMethod<bool>('startShield', {
       'packages': blockedPackages,
       'isScheduled': true,
+      if (timeRange != null) 'timeRange': timeRange,
     });
   } catch (_) {
     // Ignore native background startup errors
@@ -72,8 +93,7 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
     this.alarmCancelOverride,
   });
 
-  bool get _canUseAlarmManager =>
-      !isTestMode && !kIsWeb && Platform.isAndroid;
+  bool get _canUseAlarmManager => !isTestMode && !kIsWeb && Platform.isAndroid;
 
   @override
   Future<bool> scheduleAlarms(ScheduleConfigEntity schedule) async {
@@ -117,8 +137,8 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
         nextEnd = nextEnd.add(const Duration(days: 1));
       }
 
-      final schedulePeriodic = alarmPeriodicOverride ??
-          AndroidAlarmManager.periodic;
+      final schedulePeriodic =
+          alarmPeriodicOverride ?? AndroidAlarmManager.periodic;
 
       final startScheduled = await schedulePeriodic(
         const Duration(days: 1),

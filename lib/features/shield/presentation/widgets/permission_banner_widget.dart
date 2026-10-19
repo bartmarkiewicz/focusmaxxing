@@ -32,15 +32,15 @@ class PermissionBannerWidget extends StatelessWidget {
           type: ShieldPermissionType.overlay,
           icon: Icons.layers_rounded,
           title: 'Display Over Other Apps',
-          subtitle: 'Renders the full-screen Hard Lock Shield over distractions.',
+          subtitle:
+              'Renders the full-screen Hard Lock Shield over distractions.',
         ),
       if (!permissionStatus.isIgnoringBatteryOptimizations)
         const _MissingPermissionSpec(
           type: ShieldPermissionType.batteryOptimization,
           icon: Icons.battery_charging_full_rounded,
           title: 'Unrestricted Battery',
-          subtitle:
-              'Ensures the shield never sleeps during long focus blocks.',
+          subtitle: 'Ensures the shield never sleeps during long focus blocks.',
         ),
     ];
 

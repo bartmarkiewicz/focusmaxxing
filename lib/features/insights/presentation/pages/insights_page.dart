@@ -263,10 +263,7 @@ class _ProSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final billingNotifier = context.watch<BillingNotifier?>();
-    if (billingNotifier != null) {
-      return LifetimeProBanner(notifier: billingNotifier);
-    }
-    return const _ProBanner();
+    return LifetimeProBanner(notifier: billingNotifier);
   }
 }
 
@@ -446,59 +443,6 @@ class _PreferencesCard extends StatelessWidget {
             ),
           Divider(color: colorScheme.outlineVariant, height: 1),
           const ProAccentColorSection(),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProBanner extends StatelessWidget {
-  const _ProBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-        border: Border.all(
-          color: colorScheme.tertiary.withValues(alpha: 0.4),
-          width: 1.5,
-        ),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          Text(
-            '⭐',
-            style: theme.textTheme.headlineMedium,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'LIFETIME PRO: ACTIVE',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: colorScheme.tertiary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Zero subscriptions · Unlimited blocking & offline privacy',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

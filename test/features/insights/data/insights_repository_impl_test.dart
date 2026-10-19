@@ -29,8 +29,8 @@ class _FakeSessionLocalDataSource implements ISessionLocalDataSource {
   ) async {
     if (shouldThrow) throw const DatabaseException('Database read error');
     return sessions
-        .where((s) =>
-            s.startTimeEpochMs >= startMs && s.startTimeEpochMs <= endMs)
+        .where(
+            (s) => s.startTimeEpochMs >= startMs && s.startTimeEpochMs <= endMs)
         .toList();
   }
 
@@ -67,8 +67,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 14, 10, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 14, 10, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 14, 10, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -80,8 +79,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 14, 11, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 14, 11, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 14, 11, 25).millisecondsSinceEpoch,
         status: SessionStatus.derailed,
       );
@@ -93,8 +91,7 @@ void main() {
         sessionType: SessionType.shortBreak,
         targetDurationSeconds: 300,
         actualDurationSeconds: 300,
-        startTimeEpochMs:
-            DateTime(2026, 10, 14, 11, 30).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 14, 11, 30).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 14, 11, 35).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -106,8 +103,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 2700,
         actualDurationSeconds: 2700,
-        startTimeEpochMs:
-            DateTime(2026, 10, 14, 14, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 14, 14, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 14, 14, 45).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -156,8 +152,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 12, 10, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 12, 10, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 12, 10, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -166,8 +161,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 13, 10, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 13, 10, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 13, 10, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -176,8 +170,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 14, 10, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 14, 10, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 14, 10, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -202,8 +195,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 9, 15, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 9, 15, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 9, 15, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -212,8 +204,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 12, 9, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 12, 9, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 12, 9, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );
@@ -235,7 +226,8 @@ void main() {
       expect(resultStrict, const Right<Failure, int>(1));
     });
 
-    test('preserves active streak when today is in progress and has no sessions yet',
+    test(
+        'preserves active streak when today is in progress and has no sessions yet',
         () async {
       // Yesterday (Tuesday 2026-10-13): 1 completed session
       // Today (Wednesday 2026-10-14): 0 sessions so far
@@ -244,8 +236,7 @@ void main() {
         sessionType: SessionType.focus,
         targetDurationSeconds: 1500,
         actualDurationSeconds: 1500,
-        startTimeEpochMs:
-            DateTime(2026, 10, 13, 14, 0).millisecondsSinceEpoch,
+        startTimeEpochMs: DateTime(2026, 10, 13, 14, 0).millisecondsSinceEpoch,
         endTimeEpochMs: DateTime(2026, 10, 13, 14, 25).millisecondsSinceEpoch,
         status: SessionStatus.lockedIn,
       );

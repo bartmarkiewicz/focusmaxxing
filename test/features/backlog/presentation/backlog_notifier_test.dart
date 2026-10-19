@@ -128,7 +128,8 @@ void main() {
       expect(notifier.pendingTasks, isEmpty);
     });
 
-    test('addTask returns false for empty input without calling repository', () async {
+    test('addTask returns false for empty input without calling repository',
+        () async {
       final success = await notifier.addTask('   ');
 
       expect(success, isFalse);
@@ -157,7 +158,8 @@ void main() {
       expect(notifier.errorMessage, 'Delete failed');
     });
 
-    test('completeTask removes task and unsets selectedTask if matched', () async {
+    test('completeTask removes task and unsets selectedTask if matched',
+        () async {
       await notifier.addTask('Task B');
       final task = notifier.pendingTasks.first;
       notifier.selectTaskAsGoal(task);

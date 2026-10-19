@@ -90,14 +90,17 @@ void main() {
       await tester.pumpWidget(buildDialog());
       await tester.pumpAndSettle();
 
-      expect(find.text('What ONE thing are you locking in on?'), findsOneWidget);
+      expect(
+          find.text('What ONE thing are you locking in on?'), findsOneWidget);
       expect(find.text('⚡ Deep Work'), findsOneWidget);
       expect(find.text('Write Docs'), findsOneWidget);
       expect(find.text('Review PR'), findsOneWidget);
       expect(find.text('START FOCUS (25m)'), findsOneWidget);
     });
 
-    testWidgets('tapping recent goal chip auto-fills text and positions cursor at end', (tester) async {
+    testWidgets(
+        'tapping recent goal chip auto-fills text and positions cursor at end',
+        (tester) async {
       await tester.pumpWidget(buildDialog());
       await tester.pumpAndSettle();
 

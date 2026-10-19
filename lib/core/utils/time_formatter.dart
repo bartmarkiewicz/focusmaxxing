@@ -1,5 +1,4 @@
 abstract final class TimeFormatter {
-
   static String formatMMSS(int totalSeconds) {
     if (totalSeconds <= 0) return '00:00';
     final minutes = totalSeconds ~/ 60;
@@ -12,7 +11,9 @@ abstract final class TimeFormatter {
     if (minutes < 60) return '${minutes}m';
     final hours = minutes ~/ 60;
     final remainingMinutes = minutes % 60;
-    return remainingMinutes == 0 ? '${hours}h' : '${hours}h ${remainingMinutes}m';
+    return remainingMinutes == 0
+        ? '${hours}h'
+        : '${hours}h ${remainingMinutes}m';
   }
 
   static String formatTimestamp(int epochMs) {

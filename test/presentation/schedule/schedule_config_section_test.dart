@@ -54,7 +54,8 @@ void main() {
       );
     });
 
-    Widget buildTestWidget({ScheduleNotifier? customNotifier, bool? isProUnlocked}) {
+    Widget buildTestWidget(
+        {ScheduleNotifier? customNotifier, bool? isProUnlocked}) {
       return MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
@@ -76,9 +77,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Scheduled Auto-Shield'), findsOneWidget);
-      expect(find.byKey(const ValueKey('schedule_master_switch')), findsOneWidget);
-      expect(find.byKey(const ValueKey('schedule_start_time_btn')), findsOneWidget);
-      expect(find.byKey(const ValueKey('schedule_end_time_btn')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('schedule_master_switch')), findsOneWidget);
+      expect(find.byKey(const ValueKey('schedule_start_time_btn')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('schedule_end_time_btn')), findsOneWidget);
 
       // Verify all 7 weekday chips are rendered
       expect(find.text('Mon'), findsOneWidget);
@@ -90,7 +94,8 @@ void main() {
       expect(find.text('Sun'), findsOneWidget);
     });
 
-    testWidgets('renders PRO badge when isProUnlocked is false and shows pro gate banner on toggle',
+    testWidgets(
+        'renders PRO badge when isProUnlocked is false and shows pro gate banner on toggle',
         (tester) async {
       await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
       await tester.pumpAndSettle();
@@ -101,7 +106,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('schedule_master_switch')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('schedule_pro_gate_banner')), findsOneWidget);
+      expect(find.byKey(const ValueKey('schedule_pro_gate_banner')),
+          findsOneWidget);
       expect(
         find.text('Scheduled Auto-Shield is a Lifetime Pro feature.'),
         findsOneWidget,
@@ -147,7 +153,8 @@ void main() {
       expect(find.byType(TimePickerDialog), findsNothing);
     });
 
-    testWidgets('displays error banner when errorMessage is present and dismisses on tap',
+    testWidgets(
+        'displays error banner when errorMessage is present and dismisses on tap',
         (tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
@@ -156,7 +163,8 @@ void main() {
       await notifier.setStartTime(18, 0);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('schedule_error_banner')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('schedule_error_banner')), findsOneWidget);
       expect(find.text('Start time must precede end time'), findsOneWidget);
 
       // Tap clear error button

@@ -128,7 +128,8 @@ void main() {
   }
 
   group('TimerPage', () {
-    testWidgets('renders title, dial, presets, and LOCK IN button when idle', (tester) async {
+    testWidgets('renders title, dial, presets, and LOCK IN button when idle',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
@@ -141,7 +142,8 @@ void main() {
       expect(find.text('🚀 LOCK IN'), findsOneWidget);
     });
 
-    testWidgets('selecting duration preset updates dial countdown', (tester) async {
+    testWidgets('selecting duration preset updates dial countdown',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
@@ -161,18 +163,23 @@ void main() {
       expect(find.text('Backlog (Focus Scratchpad)'), findsOneWidget);
     });
 
-    testWidgets('tapping goal anchor pill opens GoalInputDialog for editing without starting timer', (tester) async {
+    testWidgets(
+        'tapping goal anchor pill opens GoalInputDialog for editing without starting timer',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Set Single Focus Anchor'));
       await tester.pumpAndSettle();
 
-      expect(find.text('What ONE thing are you locking in on?'), findsOneWidget);
+      expect(
+          find.text('What ONE thing are you locking in on?'), findsOneWidget);
       expect(timerNotifier.status, TimerStatus.idle);
     });
 
-    testWidgets('1-tap lock-in starts session immediately with Deep Work default and shows active lock-in banner', (tester) async {
+    testWidgets(
+        '1-tap lock-in starts session immediately with Deep Work default and shows active lock-in banner',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
@@ -193,7 +200,8 @@ void main() {
       expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsNothing);
     });
 
-    testWidgets('tapping Custom duration opens bottom sheet and updates preset', (tester) async {
+    testWidgets('tapping Custom duration opens bottom sheet and updates preset',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
@@ -214,7 +222,8 @@ void main() {
       expect(find.text('40:00'), findsOneWidget);
     });
 
-    testWidgets('tapping ambient soundscapes pill opens bottom sheet', (tester) async {
+    testWidgets('tapping ambient soundscapes pill opens bottom sheet',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
@@ -225,7 +234,9 @@ void main() {
       expect(find.text('🎧 Ambient Soundscapes'), findsOneWidget);
     });
 
-    testWidgets('recent goal chips render and tapping a chip updates the anchor', (tester) async {
+    testWidgets(
+        'recent goal chips render and tapping a chip updates the anchor',
+        (tester) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('recent_focus_goals', ['Coding', 'Deep Work']);
 
@@ -242,7 +253,8 @@ void main() {
         MultiProvider(
           providers: [
             ChangeNotifierProvider<TimerNotifier>.value(value: testNotifier),
-            ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier),
+            ChangeNotifierProvider<BacklogNotifier>.value(
+                value: backlogNotifier),
           ],
           child: const MaterialApp(
             home: TimerPage(),
@@ -262,7 +274,8 @@ void main() {
       testNotifier.dispose();
     });
 
-    testWidgets('tapping I\'M READY TO FOCUS during break returns to idle', (tester) async {
+    testWidgets('tapping I\'M READY TO FOCUS during break returns to idle',
+        (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 

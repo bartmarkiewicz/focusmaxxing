@@ -40,18 +40,26 @@ void main() {
       final result1 = await useCase('');
       final result2 = await useCase('   ');
 
-      expect(result1, const Left<Failure, int>(ValidationFailure('Task title cannot be empty')));
-      expect(result2, const Left<Failure, int>(ValidationFailure('Task title cannot be empty')));
+      expect(
+          result1,
+          const Left<Failure, int>(
+              ValidationFailure('Task title cannot be empty')));
+      expect(
+          result2,
+          const Left<Failure, int>(
+              ValidationFailure('Task title cannot be empty')));
       expect(repository.lastAddedTitle, isNull);
     });
 
-    test('returns ValidationFailure when title exceeds 60 characters', () async {
+    test('returns ValidationFailure when title exceeds 60 characters',
+        () async {
       final longTitle = 'A' * 61;
       final result = await useCase(longTitle);
 
       expect(
         result,
-        const Left<Failure, int>(ValidationFailure('Task title cannot exceed 60 characters')),
+        const Left<Failure, int>(
+            ValidationFailure('Task title cannot exceed 60 characters')),
       );
       expect(repository.lastAddedTitle, isNull);
     });

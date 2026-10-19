@@ -132,7 +132,8 @@ void main() {
       expect(alarmDataSource.alarmsScheduled, isFalse);
     });
 
-    test('saveSchedule returns ValidationFailure if schedule is invalid', () async {
+    test('saveSchedule returns ValidationFailure if schedule is invalid',
+        () async {
       const invalidSchedule = ScheduleConfigEntity(
         isEnabled: true,
         startHour: 10,

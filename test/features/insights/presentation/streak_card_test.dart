@@ -30,7 +30,8 @@ class _FakeInsightsRepository implements IInsightsRepository {
   }
 
   @override
-  Future<Either<Failure, List<SessionEntity>>> getRecentSessions({int days = 7}) async {
+  Future<Either<Failure, List<SessionEntity>>> getRecentSessions(
+      {int days = 7}) async {
     return const Right([]);
   }
 
@@ -71,7 +72,8 @@ void main() {
     );
   }
 
-  testWidgets('renders active streak and switches when enabled', (tester) async {
+  testWidgets('renders active streak and switches when enabled',
+      (tester) async {
     await tester.pumpWidget(buildWidget(5));
 
     expect(find.text('CURRENT STREAK: 5 DAYS'), findsOneWidget);
@@ -85,7 +87,8 @@ void main() {
     expect(find.text('CURRENT STREAK: 1 DAY'), findsOneWidget);
   });
 
-  testWidgets('renders zero-guilt hidden state when streak tracking is disabled',
+  testWidgets(
+      'renders zero-guilt hidden state when streak tracking is disabled',
       (tester) async {
     await notifier.setStreakEnabled(false);
     await tester.pumpWidget(buildWidget(5));

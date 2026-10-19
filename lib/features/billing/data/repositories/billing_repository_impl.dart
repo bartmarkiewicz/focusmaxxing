@@ -26,9 +26,9 @@ class BillingRepositoryImpl implements IBillingRepository {
     IInAppPurchaseClient? iapClient,
     IBillingLocalCacheSource? localCacheSource,
     this.restoreTimeout = const Duration(seconds: 8),
-  }) : _iapClient = iapClient ?? const InAppPurchaseClientImpl(),
-       _localCacheSource =
-           localCacheSource ?? const BillingLocalCacheSourceImpl() {
+  })  : _iapClient = iapClient ?? const InAppPurchaseClientImpl(),
+        _localCacheSource =
+            localCacheSource ?? const BillingLocalCacheSourceImpl() {
     _ensureStreamSubscribed();
   }
 
@@ -123,14 +123,15 @@ class BillingRepositoryImpl implements IBillingRepository {
           break;
         }
       }
-      productDetails ??= ProductDetails(
-        id: ProUnlockStatusEntity.lifetimeProProductId,
-        title: ProProductDetailsEntity.fallback.title,
-        description: ProProductDetailsEntity.fallback.description,
-        price: ProProductDetailsEntity.fallback.price,
-        rawPrice: ProProductDetailsEntity.fallback.rawPrice,
-        currencyCode: ProProductDetailsEntity.fallback.currencyCode,
-      );
+      if (productDetails == null) {
+        if (response.productDetails.isNotEmpty) {
+          productDetails = response.productDetails.first;
+        } else {
+          throw const BillingFailureException(
+            'Lifetime Pro product details could not be loaded from store.',
+          );
+        }
+      }
       _cachedProductDetails = productDetails;
     }
 
@@ -205,6 +206,15 @@ class BillingRepositoryImpl implements IBillingRepository {
     final relevantPurchases = purchaseDetailsList
         .where((p) => p.productID == ProUnlockStatusEntity.lifetimeProProductId)
         .toList(growable: false);
+
+    if (relevantPurchases.isEmpty) {
+      if (_pendingRestoreCompleter != null &&
+          !_pendingRestoreCompleter!.isCompleted) {
+        final current = await _localCacheSource.getProUnlockStatus();
+        _completePendingRestore(current);
+      }
+      return;
+    }
 
     // Prioritize active purchases and restorations before errors/cancellations
     final successfulPurchases = relevantPurchases.where(

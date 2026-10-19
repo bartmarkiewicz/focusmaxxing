@@ -42,8 +42,7 @@ class _LockedProBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final formattedPrice =
-        notifier?.productDetails.price ?? r'$9.99';
+    final formattedPrice = notifier?.productDetails.price ?? r'$9.99';
     final isLoading = notifier?.isLoading ?? false;
     final errorMessage = notifier?.errorMessage;
 

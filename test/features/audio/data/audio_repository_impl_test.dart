@@ -74,19 +74,25 @@ void main() {
   });
 
   group('AudioRepositoryImpl', () {
-    test('playLoop configures session once, sets asset, sets LoopMode.one, and plays', () async {
-      final result1 = await repository.playLoop('assets/audio/brown_noise_loop.ogg');
-      final result2 = await repository.playLoop('assets/audio/brown_noise_loop.ogg');
+    test(
+        'playLoop configures session once, sets asset, sets LoopMode.one, and plays',
+        () async {
+      final result1 =
+          await repository.playLoop('assets/audio/brown_noise_loop.ogg');
+      final result2 =
+          await repository.playLoop('assets/audio/brown_noise_loop.ogg');
 
       expect(result1.isRight(), isTrue);
       expect(result2.isRight(), isTrue);
       expect(engine.configureSessionCount, equals(1));
-      expect(engine.setAssetCalls, equals(['assets/audio/brown_noise_loop.ogg']));
+      expect(
+          engine.setAssetCalls, equals(['assets/audio/brown_noise_loop.ogg']));
       expect(engine.loopModes, equals([LoopMode.one, LoopMode.one]));
       expect(engine.playCount, equals(2));
     });
 
-    test('playLoop returns ValidationFailure when assetPath is empty', () async {
+    test('playLoop returns ValidationFailure when assetPath is empty',
+        () async {
       final result = await repository.playLoop('   ');
 
       expect(result.isLeft(), isTrue);
@@ -103,7 +109,8 @@ void main() {
         message: 'Failed to decode OGG stream',
       );
 
-      final result = await repository.playLoop('assets/audio/rain_canvas_loop.ogg');
+      final result =
+          await repository.playLoop('assets/audio/rain_canvas_loop.ogg');
 
       expect(result.isLeft(), isTrue);
       result.fold(
@@ -135,7 +142,8 @@ void main() {
       expect(engine.volumes, equals([0.75, 1.0, 0.0]));
     });
 
-    test('preloadAssets configures session and preloads first valid asset', () async {
+    test('preloadAssets configures session and preloads first valid asset',
+        () async {
       final result = await repository.preloadAssets([
         '',
         'assets/audio/gamma_40hz_loop.ogg',
@@ -143,7 +151,8 @@ void main() {
 
       expect(result.isRight(), isTrue);
       expect(engine.configureSessionCount, equals(1));
-      expect(engine.setAssetCalls, equals(['assets/audio/gamma_40hz_loop.ogg']));
+      expect(
+          engine.setAssetCalls, equals(['assets/audio/gamma_40hz_loop.ogg']));
       expect(engine.loopModes, equals([LoopMode.one]));
     });
 

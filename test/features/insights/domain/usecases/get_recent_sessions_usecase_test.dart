@@ -20,7 +20,8 @@ class _MockInsightsRepository implements IInsightsRepository {
   }
 
   @override
-  Future<Either<Failure, List<SessionEntity>>> getRecentSessions({int days = 7}) async {
+  Future<Either<Failure, List<SessionEntity>>> getRecentSessions(
+      {int days = 7}) async {
     capturedDays = days;
     if (mockFailure != null) {
       return Left(mockFailure!);

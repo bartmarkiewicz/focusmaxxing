@@ -21,7 +21,8 @@ class MockScheduleRepository implements IScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, void>> saveSchedule(ScheduleConfigEntity newSchedule) async {
+  Future<Either<Failure, void>> saveSchedule(
+      ScheduleConfigEntity newSchedule) async {
     if (shouldFailSave) {
       return const Left(ScheduleFailure('Failed to save schedule'));
     }
@@ -37,7 +38,8 @@ class MockScheduleRepository implements IScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, void>> armAlarms(ScheduleConfigEntity newSchedule) async {
+  Future<Either<Failure, void>> armAlarms(
+      ScheduleConfigEntity newSchedule) async {
     armAlarmsCalled = true;
     return const Right(null);
   }
@@ -84,7 +86,8 @@ void main() {
       expect(notifier.formattedTimeRange, equals('09:00 - 17:00'));
     });
 
-    test('enforcing Pro gating: non-pro user cannot enable auto-shield', () async {
+    test('enforcing Pro gating: non-pro user cannot enable auto-shield',
+        () async {
       SharedPreferences.setMockInitialValues({'is_lifetime_pro': false});
       final prefs = await SharedPreferences.getInstance();
 
@@ -195,7 +198,8 @@ void main() {
       expect(notifier.activeDays.contains(DateTime.friday), isFalse);
     });
 
-    test('toggleWeekday disallows removing all days when schedule is enabled', () async {
+    test('toggleWeekday disallows removing all days when schedule is enabled',
+        () async {
       repository.schedule = const ScheduleConfigEntity(
         isEnabled: true,
         activeDays: [DateTime.monday],
@@ -219,7 +223,9 @@ void main() {
       expect(notifier.activeDays, equals([DateTime.monday]));
     });
 
-    test('unlockLifetimePro updates isPro, dismisses prompt, and persists to SharedPreferences', () async {
+    test(
+        'unlockLifetimePro updates isPro, dismisses prompt, and persists to SharedPreferences',
+        () async {
       final prefs = await SharedPreferences.getInstance();
       final notifier = ScheduleNotifier(
         getScheduleUseCase: getScheduleUseCase,

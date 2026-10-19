@@ -24,7 +24,8 @@ void main() {
   }
 
   group('TimerDialWidget', () {
-    testWidgets('renders formatted time and task goal in active mode', (tester) async {
+    testWidgets('renders formatted time and task goal in active mode',
+        (tester) async {
       await tester.pumpWidget(buildWidget(
         remainingSeconds: 1475,
         totalSeconds: 1500,
@@ -49,7 +50,8 @@ void main() {
       expect(find.text('PAUSED'), findsOneWidget);
     });
 
-    testWidgets('renders rest mode prompt when isRestMode is true', (tester) async {
+    testWidgets('renders rest mode prompt when isRestMode is true',
+        (tester) async {
       await tester.pumpWidget(buildWidget(
         remainingSeconds: 300,
         totalSeconds: 300,
@@ -61,7 +63,9 @@ void main() {
       expect(find.text('RECHARGE YOUR BRAIN'), findsOneWidget);
     });
 
-    testWidgets('displays ROTATE TO SET TIME when onDurationChanged is provided and goal is empty', (tester) async {
+    testWidgets(
+        'displays ROTATE TO SET TIME when onDurationChanged is provided and goal is empty',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -78,7 +82,8 @@ void main() {
       expect(find.text('ROTATE TO SET TIME'), findsOneWidget);
     });
 
-    testWidgets('circular drag calls onDurationChanged with snapped seconds', (tester) async {
+    testWidgets('circular drag calls onDurationChanged with snapped seconds',
+        (tester) async {
       int? changedSeconds;
       await tester.pumpWidget(
         MaterialApp(
@@ -106,7 +111,9 @@ void main() {
       expect(changedSeconds, 15 * 60);
     });
 
-    testWidgets('renders correct dial progress for interactive setting mode vs active countdown', (tester) async {
+    testWidgets(
+        'renders correct dial progress for interactive setting mode vs active countdown',
+        (tester) async {
       // Interactive mode with 30 minutes (1800s) on 60m face -> 0.5 progress
       await tester.pumpWidget(
         MaterialApp(

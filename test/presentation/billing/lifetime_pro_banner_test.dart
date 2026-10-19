@@ -94,7 +94,8 @@ void main() {
       );
     }
 
-    testWidgets('displays \$9.99 price when locked and ProSupporterBadge is hidden',
+    testWidgets(
+        'displays \$9.99 price when locked and ProSupporterBadge is hidden',
         (tester) async {
       await notifier.initialize();
       await tester.pumpWidget(

@@ -125,7 +125,9 @@ void main() {
   });
 
   group('AudioNotifier', () {
-    test('initial state defaults to None soundscape, 0.5 volume, and not playing', () {
+    test(
+        'initial state defaults to None soundscape, 0.5 volume, and not playing',
+        () {
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
       expect(notifier.activeSoundscapeId, equals('none'));
       expect(notifier.volume, equals(0.5));
@@ -134,7 +136,8 @@ void main() {
       expect(notifier.errorMessage, isNull);
     });
 
-    test('non-pro user cannot select pro soundscapes and error is reported', () async {
+    test('non-pro user cannot select pro soundscapes and error is reported',
+        () async {
       await notifier.selectSoundscape('brown_noise');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
@@ -159,7 +162,9 @@ void main() {
       );
     });
 
-    test('selecting soundscape updates active state without premature autoplay when timer is not running', () async {
+    test(
+        'selecting soundscape updates active state without premature autoplay when timer is not running',
+        () async {
       notifier.setProUnlocked(true);
 
       await notifier.selectSoundscape('brown_noise');
@@ -183,7 +188,9 @@ void main() {
       );
     });
 
-    test('selecting soundscape starts playback immediately if timer is actively running', () async {
+    test(
+        'selecting soundscape starts playback immediately if timer is actively running',
+        () async {
       final sessionRepo = _FakeSessionRepository();
       final timerNotifier = TimerNotifier(
         startSessionUseCase: StartSessionUseCase(sessionRepo),
@@ -231,7 +238,9 @@ void main() {
       expect(notifier.volume, equals(0.0));
     });
 
-    test('setVolume with persist false defers SharedPreferences write until persistVolume', () async {
+    test(
+        'setVolume with persist false defers SharedPreferences write until persistVolume',
+        () async {
       await notifier.setVolume(0.35, persist: false);
       expect(notifier.volume, equals(0.35));
       expect(repository.volumeHistory.last, equals(0.35));
@@ -255,7 +264,9 @@ void main() {
       expect(repository.stopCallCount, equals(1));
     });
 
-    test('guards against race condition when selecting None while playLoop is in flight', () async {
+    test(
+        'guards against race condition when selecting None while playLoop is in flight',
+        () async {
       notifier.setProUnlocked(true);
       final gate = Completer<void>();
       repository.playLoopGate = gate;
@@ -270,7 +281,9 @@ void main() {
       expect(notifier.isPlaying, isFalse);
     });
 
-    test('togglePreview fails for free user on pro soundscape when active is none', () async {
+    test(
+        'togglePreview fails for free user on pro soundscape when active is none',
+        () async {
       expect(notifier.isProUnlocked, isFalse);
       await notifier.togglePreview();
 
@@ -282,7 +295,9 @@ void main() {
       );
     });
 
-    test('togglePreview selects Brown Noise when None is active and toggles playback for Pro user', () async {
+    test(
+        'togglePreview selects Brown Noise when None is active and toggles playback for Pro user',
+        () async {
       notifier.setProUnlocked(true);
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
 
@@ -299,7 +314,8 @@ void main() {
       expect(repository.playedAssets.length, equals(2));
     });
 
-    test('records errorMessage and sets isPlaying false when playback fails', () async {
+    test('records errorMessage and sets isPlaying false when playback fails',
+        () async {
       notifier.setProUnlocked(true);
       repository.failureToReturn =
           const PlatformFailure('Audio hardware unavailable');
@@ -311,7 +327,9 @@ void main() {
       expect(notifier.errorMessage, equals('Audio hardware unavailable'));
     });
 
-    test('loads persisted soundscape, volume, and Pro status and syncs volume to repository', () async {
+    test(
+        'loads persisted soundscape, volume, and Pro status and syncs volume to repository',
+        () async {
       SharedPreferences.setMockInitialValues({
         AudioNotifier.selectedSoundscapePrefsKey: 'rain',
         AudioNotifier.audioVolumePrefsKey: 0.75,
@@ -335,7 +353,8 @@ void main() {
       expect(freshRepo.volumeHistory, contains(0.75));
     });
 
-    test('synchronizes playback with attached TimerNotifier lifecycle', () async {
+    test('synchronizes playback with attached TimerNotifier lifecycle',
+        () async {
       final sessionRepo = _FakeSessionRepository();
       final timerNotifier = TimerNotifier(
         startSessionUseCase: StartSessionUseCase(sessionRepo),

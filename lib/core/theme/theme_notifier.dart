@@ -13,20 +13,23 @@ class ThemeNotifier extends ChangeNotifier {
 
   SharedPreferences? _prefs;
   ProAccentVariant _currentAccent = ProAccentVariant.electricEmerald;
+  bool _hasExplicitAccent = false;
 
   ProAccentVariant get currentAccent => _currentAccent;
 
   Future<SharedPreferences> _getPrefs() async {
     if (_prefs == null) {
       _prefs = await SharedPreferences.getInstance();
-      _loadAccent();
+      if (!_hasExplicitAccent) {
+        _loadAccent();
+      }
     }
     return _prefs!;
   }
 
   void _loadAccent() {
     final prefs = _prefs;
-    if (prefs != null) {
+    if (prefs != null && !_hasExplicitAccent) {
       final savedId = prefs.getString(prefThemeAccentColorKey);
       _currentAccent = ProAccentVariant.fromId(savedId);
     }
@@ -44,6 +47,7 @@ class ThemeNotifier extends ChangeNotifier {
       return true;
     }
 
+    _hasExplicitAccent = true;
     _currentAccent = variant;
     final prefs = await _getPrefs();
     await prefs.setString(prefThemeAccentColorKey, variant.id);
@@ -53,6 +57,7 @@ class ThemeNotifier extends ChangeNotifier {
 
   Future<void> validateProAccess({required bool isLifetimePro}) async {
     if (!isLifetimePro && _currentAccent.isProOnly) {
+      _hasExplicitAccent = true;
       _currentAccent = ProAccentVariant.electricEmerald;
       final prefs = await _getPrefs();
       await prefs.remove(prefThemeAccentColorKey);

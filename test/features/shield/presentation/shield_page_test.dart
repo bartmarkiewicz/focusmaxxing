@@ -114,8 +114,10 @@ class _TestShieldRepository implements IShieldRepository {
 
   @override
   Future<Either<Failure, bool>> startShieldService(
-    List<String> blockedPackages,
-  ) async =>
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async =>
       const Right(true);
 
   @override

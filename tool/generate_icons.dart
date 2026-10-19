@@ -120,7 +120,9 @@ bool isInsideLockGlyph(int x, int y, int size, {double scale = 1.0}) {
     final kx = nx;
     final ky = ny - 0.22;
     if (kx * kx + ky * ky <= 0.018) return false; // cutout circle
-    if (nx.abs() <= 0.05 && ny >= 0.22 && ny <= 0.48) return false; // cutout slot
+    if (nx.abs() <= 0.05 && ny >= 0.22 && ny <= 0.48) {
+      return false; // cutout slot
+    }
 
     return true;
   }

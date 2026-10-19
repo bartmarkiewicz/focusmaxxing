@@ -49,10 +49,19 @@ class _FakeNativeBridgeSource implements IShieldNativeBridgeSource {
     return true;
   }
 
+  bool? lastIsScheduled;
+  String? lastTimeRange;
+
   @override
-  Future<bool> startShield(List<String> blockedPackages) async {
+  Future<bool> startShield(
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async {
     shieldRunning = true;
     lastStartedPackages = List<String>.from(blockedPackages);
+    lastIsScheduled = isScheduled;
+    lastTimeRange = timeRange;
     return true;
   }
 

@@ -24,8 +24,7 @@ class SoundscapeConfigTile extends StatelessWidget {
     final soundscapes = audioNotifier?.soundscapes ?? SoundscapeEntity.presets;
     final volume = audioNotifier?.volume ?? AudioNotifier.defaultVolume;
     final isPlaying = audioNotifier?.isPlaying ?? false;
-    final proUnlocked =
-        isProUnlocked ?? audioNotifier?.isProUnlocked ?? false;
+    final proUnlocked = isProUnlocked ?? audioNotifier?.isProUnlocked ?? false;
     final errorMessage = audioNotifier?.errorMessage;
 
     return Padding(

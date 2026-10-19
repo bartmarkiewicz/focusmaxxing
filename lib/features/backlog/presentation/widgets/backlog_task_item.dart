@@ -22,7 +22,8 @@ class BacklogTaskItem extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Lock in on task: ${task.title}',
-      hint: 'Double tap to set as active session goal, or use accessibility action to delete',
+      hint:
+          'Double tap to set as active session goal, or use accessibility action to delete',
       customSemanticsActions: {
         const CustomSemanticsAction(label: 'Delete task'): onDelete,
       },

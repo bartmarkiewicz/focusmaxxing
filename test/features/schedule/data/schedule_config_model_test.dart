@@ -60,11 +60,13 @@ void main() {
       expect(fromJsonModel, equals(model));
     });
 
-    test('fromMap falls back to defaults when fields are missing or corrupted', () {
+    test('fromMap falls back to defaults when fields are missing or corrupted',
+        () {
       final model = ScheduleConfigModel.fromMap(const {});
       expect(model.isEnabled, isFalse);
       expect(model.startHour, equals(ScheduleConfigEntity.defaultStartHour));
-      expect(model.startMinute, equals(ScheduleConfigEntity.defaultStartMinute));
+      expect(
+          model.startMinute, equals(ScheduleConfigEntity.defaultStartMinute));
       expect(model.endHour, equals(ScheduleConfigEntity.defaultEndHour));
       expect(model.endMinute, equals(ScheduleConfigEntity.defaultEndMinute));
       expect(model.activeDays, equals(ScheduleConfigEntity.defaultActiveDays));

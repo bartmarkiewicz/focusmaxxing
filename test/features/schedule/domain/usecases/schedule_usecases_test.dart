@@ -19,13 +19,15 @@ class FakeScheduleRepository implements IScheduleRepository {
   }
 
   @override
-  Future<Either<Failure, void>> saveSchedule(ScheduleConfigEntity newSchedule) async {
+  Future<Either<Failure, void>> saveSchedule(
+      ScheduleConfigEntity newSchedule) async {
     schedule = newSchedule;
     return const Right(null);
   }
 
   @override
-  Future<Either<Failure, void>> armAlarms(ScheduleConfigEntity newSchedule) async {
+  Future<Either<Failure, void>> armAlarms(
+      ScheduleConfigEntity newSchedule) async {
     armAlarmsCalled = true;
     return const Right(null);
   }
@@ -56,10 +58,12 @@ void main() {
       toggleAutoShieldUseCase = ToggleAutoShieldUseCase(repository);
     });
 
-    test('GetScheduleUseCase returns current schedule from repository', () async {
+    test('GetScheduleUseCase returns current schedule from repository',
+        () async {
       final result = await getScheduleUseCase();
       expect(result.isRight(), isTrue);
-      expect(result.getOrElse(() => throw Exception()), equals(ScheduleConfigEntity.initial));
+      expect(result.getOrElse(() => throw Exception()),
+          equals(ScheduleConfigEntity.initial));
     });
 
     test('SaveScheduleUseCase succeeds for valid schedule', () async {
@@ -76,7 +80,9 @@ void main() {
       expect(repository.schedule, equals(validSchedule));
     });
 
-    test('SaveScheduleUseCase returns ValidationFailure when schedule is invalid', () async {
+    test(
+        'SaveScheduleUseCase returns ValidationFailure when schedule is invalid',
+        () async {
       const invalidSchedule = ScheduleConfigEntity(
         isEnabled: true,
         startHour: 10,
@@ -93,7 +99,8 @@ void main() {
       );
     });
 
-    test('ToggleAutoShieldUseCase toggles enabled state and persists', () async {
+    test('ToggleAutoShieldUseCase toggles enabled state and persists',
+        () async {
       final result = await toggleAutoShieldUseCase(true);
       expect(result.isRight(), isTrue);
       expect(repository.schedule.isEnabled, isTrue);
@@ -103,7 +110,8 @@ void main() {
       expect(repository.schedule.isEnabled, isFalse);
     });
 
-    test('CheckScheduleActiveNowUseCase returns repository evaluation', () async {
+    test('CheckScheduleActiveNowUseCase returns repository evaluation',
+        () async {
       final checkUseCase = CheckScheduleActiveNowUseCase(repository);
       repository.schedule = const ScheduleConfigEntity(isEnabled: true);
       final activeResult = await checkUseCase();

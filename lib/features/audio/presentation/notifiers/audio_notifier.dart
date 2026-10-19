@@ -216,8 +216,7 @@ class AudioNotifier extends ChangeNotifier {
     final targetSoundscape = _activeSoundscape;
     if (targetSoundscape.isNone) return;
     if (targetSoundscape.isProOnly && !_isProUnlocked) {
-      _errorMessage =
-          'Unlock Lifetime Pro to access ${targetSoundscape.title}';
+      _errorMessage = 'Unlock Lifetime Pro to access ${targetSoundscape.title}';
       notifyListeners();
       return;
     }

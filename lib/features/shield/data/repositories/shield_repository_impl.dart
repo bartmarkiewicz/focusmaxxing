@@ -33,7 +33,8 @@ class ShieldRepositoryImpl implements IShieldRepository {
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
     } catch (e) {
-      return Left(DatabaseFailure('Unexpected error loading shielded apps: $e'));
+      return Left(
+          DatabaseFailure('Unexpected error loading shielded apps: $e'));
     }
   }
 
@@ -65,7 +66,8 @@ class ShieldRepositoryImpl implements IShieldRepository {
           appName: info.name,
           iconBytes: info.icon,
           isActive: saved?.isActive ?? false,
-          isPreset: saved?.isPreset ?? presetPackages.contains(info.packageName),
+          isPreset:
+              saved?.isPreset ?? presetPackages.contains(info.packageName),
           createdAt: saved?.createdAt ?? now,
         );
       }).toList();
@@ -135,7 +137,8 @@ class ShieldRepositoryImpl implements IShieldRepository {
     } on PlatformBridgeException catch (e) {
       return Left(PlatformFailure(e.message));
     } catch (e) {
-      return Left(DatabaseFailure('Unexpected error swapping shielded app: $e'));
+      return Left(
+          DatabaseFailure('Unexpected error swapping shielded app: $e'));
     }
   }
 
@@ -173,7 +176,8 @@ class ShieldRepositoryImpl implements IShieldRepository {
     ShieldPermissionType permissionType,
   ) async {
     try {
-      final granted = await nativeBridgeSource.requestPermission(permissionType);
+      final granted =
+          await nativeBridgeSource.requestPermission(permissionType);
       return Right(granted);
     } on PlatformBridgeException catch (e) {
       return Left(PlatformFailure(e.message));
@@ -186,10 +190,16 @@ class ShieldRepositoryImpl implements IShieldRepository {
 
   @override
   Future<Either<Failure, bool>> startShieldService(
-    List<String> blockedPackages,
-  ) async {
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async {
     try {
-      final started = await nativeBridgeSource.startShield(blockedPackages);
+      final started = await nativeBridgeSource.startShield(
+        blockedPackages,
+        isScheduled: isScheduled,
+        timeRange: timeRange,
+      );
       return Right(started);
     } on PlatformBridgeException catch (e) {
       return Left(PlatformFailure(e.message));

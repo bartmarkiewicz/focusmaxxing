@@ -25,7 +25,8 @@ void main() {
     expect(find.text('RETURN TO FOCUSMAXXING'), findsOneWidget);
   });
 
-  testWidgets('HardLockOverlayWidget renders break mode copy when isBreak is true',
+  testWidgets(
+      'HardLockOverlayWidget renders break mode copy when isBreak is true',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -47,7 +48,8 @@ void main() {
     expect(find.text('"Write Unit Tests"'), findsNothing);
   });
 
-  testWidgets('HardLockOverlayWidget updates dynamically on JSON string stream event',
+  testWidgets(
+      'HardLockOverlayWidget updates dynamically on JSON string stream event',
       (tester) async {
     final controller = StreamController<dynamic>(sync: true);
     addTearDown(controller.close);
@@ -122,7 +124,8 @@ void main() {
     expect(find.text('"Deep Refactor"'), findsOneWidget);
   });
 
-  testWidgets('HardLockOverlayWidget clamps zero or negative remaining seconds to 00:00',
+  testWidgets(
+      'HardLockOverlayWidget clamps zero or negative remaining seconds to 00:00',
       (tester) async {
     final controller = StreamController<dynamic>(sync: true);
     addTearDown(controller.close);
@@ -168,7 +171,8 @@ void main() {
     expect(closeCalled, isTrue);
   });
 
-  testWidgets('HardLockOverlayWidget is protected by PopScope with canPop false (HIGH-04)',
+  testWidgets(
+      'HardLockOverlayWidget is protected by PopScope with canPop false (HIGH-04)',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

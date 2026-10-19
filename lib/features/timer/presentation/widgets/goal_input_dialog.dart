@@ -86,129 +86,131 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                child: ExcludeSemantics(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(2),
+                  child: ExcludeSemantics(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color:
+                            colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Text(
-                'What ONE thing are you locking in on?',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _controller,
-                autofocus: true,
-                maxLength: 60,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'e.g. Finish slides 3 and 4',
-                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  counterStyle: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                Text(
+                  'What ONE thing are you locking in on?',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Quick Anchors:',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ActionChip(
-                      label: const Text('⚡ Deep Work'),
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      side: BorderSide(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      labelStyle: theme.textTheme.labelMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      onPressed: () {
-                        _controller.text = 'Deep Work';
-                        _submit();
-                      },
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  maxLength: 60,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submit(),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Finish slides 3 and 4',
+                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                    for (final goal in recentGoals) ...[
-                      const SizedBox(width: 8),
+                    counterStyle: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Quick Anchors:',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
                       ActionChip(
-                        label: Text(goal),
+                        label: const Text('⚡ Deep Work'),
                         backgroundColor: colorScheme.surfaceContainerHighest,
                         side: BorderSide(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          color:
+                              colorScheme.outlineVariant.withValues(alpha: 0.5),
                         ),
                         labelStyle: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onSurface,
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                         onPressed: () {
-                          _controller.text = goal;
-                          _controller.selection = TextSelection.fromPosition(
-                            TextPosition(offset: goal.length),
-                          );
-                          setState(() {});
+                          _controller.text = 'Deep Work';
+                          _submit();
                         },
                       ),
+                      for (final goal in recentGoals) ...[
+                        const SizedBox(width: 8),
+                        ActionChip(
+                          label: Text(goal),
+                          backgroundColor: colorScheme.surfaceContainerHighest,
+                          side: BorderSide(
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.5),
+                          ),
+                          labelStyle: theme.textTheme.labelMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                          onPressed: () {
+                            _controller.text = goal;
+                            _controller.selection = TextSelection.fromPosition(
+                              TextPosition(offset: goal.length),
+                            );
+                            setState(() {});
+                          },
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    'START FOCUS (${widget.durationMinutes}m)',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      'START FOCUS (${widget.durationMinutes}m)',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

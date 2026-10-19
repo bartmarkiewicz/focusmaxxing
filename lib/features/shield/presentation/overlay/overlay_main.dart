@@ -81,7 +81,7 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     final stream = widget.dataStream ?? FlutterOverlayWindow.overlayListener;
     _subscription = stream.listen(
       _handleIncomingData,
-      onError: (Object _, [StackTrace? _]) {},
+      onError: (Object _, [StackTrace? __]) {},
     );
 
     if (widget.dataStream == null) {
@@ -348,7 +348,8 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                                     alignment: Alignment.centerLeft,
                                     widthFactor: progress,
                                     child: ColoredBox(
-                                      color: _alertColor.withValues(alpha: 0.35),
+                                      color:
+                                          _alertColor.withValues(alpha: 0.35),
                                     ),
                                   ),
                                   Center(

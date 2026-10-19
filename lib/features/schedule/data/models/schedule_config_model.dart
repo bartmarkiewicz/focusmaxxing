@@ -30,11 +30,13 @@ class ScheduleConfigModel extends ScheduleConfigEntity {
 
     return ScheduleConfigModel(
       isEnabled: map['isEnabled'] as bool? ?? false,
-      startHour: map['startHour'] as int? ?? ScheduleConfigEntity.defaultStartHour,
+      startHour:
+          map['startHour'] as int? ?? ScheduleConfigEntity.defaultStartHour,
       startMinute:
           map['startMinute'] as int? ?? ScheduleConfigEntity.defaultStartMinute,
       endHour: map['endHour'] as int? ?? ScheduleConfigEntity.defaultEndHour,
-      endMinute: map['endMinute'] as int? ?? ScheduleConfigEntity.defaultEndMinute,
+      endMinute:
+          map['endMinute'] as int? ?? ScheduleConfigEntity.defaultEndMinute,
       activeDays: activeDays,
     );
   }

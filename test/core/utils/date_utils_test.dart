@@ -45,7 +45,9 @@ void main() {
       expect(AppDateUtils.calendarDaysBetween(from, to), 4);
     });
 
-    test('calendarDaysBetween handles consecutive days even with 23h duration (DST)', () {
+    test(
+        'calendarDaysBetween handles consecutive days even with 23h duration (DST)',
+        () {
       // Simulating consecutive days with non-24h difference
       final from = DateTime(2026, 3, 29, 23, 30);
       final to = DateTime(2026, 3, 30, 0, 30);
@@ -53,7 +55,8 @@ void main() {
       expect(AppDateUtils.calendarDaysBetween(from, to), 1);
     });
 
-    test('isWeekend returns true for Saturday and Sunday, false for weekdays', () {
+    test('isWeekend returns true for Saturday and Sunday, false for weekdays',
+        () {
       // 2026-10-14 is Wednesday
       final wednesday = DateTime(2026, 10, 14);
       // 2026-10-17 is Saturday

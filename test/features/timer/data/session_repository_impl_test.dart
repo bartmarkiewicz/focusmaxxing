@@ -80,7 +80,8 @@ void main() {
       expect(rows.first['actual_duration_seconds'], 1200);
     });
 
-    test('getSessionsForDateRange queries sessions within time boundaries', () async {
+    test('getSessionsForDateRange queries sessions within time boundaries',
+        () async {
       const session1 = SessionEntity(
         taskGoal: 'Morning Session',
         sessionType: SessionType.focus,

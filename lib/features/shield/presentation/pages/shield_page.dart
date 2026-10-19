@@ -90,8 +90,6 @@ class _ShieldPageState extends State<ShieldPage> {
               final billingNotifier = context.read<BillingNotifier?>();
               if (billingNotifier != null) {
                 await billingNotifier.buyLifetimePro();
-              } else {
-                await notifier.unlockLifetimePro();
               }
               if (sheetContext.mounted) {
                 Navigator.of(sheetContext).pop();
@@ -127,8 +125,7 @@ class _ShieldPageState extends State<ShieldPage> {
     final hasAllPermissions = permissionStatus?.isAllGranted ?? true;
     final query = notifier?.searchQuery ?? '';
     final filteredApps = notifier?.filteredInstalledApps ?? const [];
-    final isScanning =
-        (notifier?.isLoading ?? false) &&
+    final isScanning = (notifier?.isLoading ?? false) &&
         (notifier?.allInstalledApps.isEmpty ?? true);
     final scheduleNotifier = context.watch<ScheduleNotifier?>();
     final schedule = scheduleNotifier?.schedule;
@@ -287,7 +284,7 @@ class _ShieldPageState extends State<ShieldPage> {
                   ),
                   sliver: SliverList.separated(
                     itemCount: filteredApps.length,
-                    separatorBuilder: (_, _) => const Divider(
+                    separatorBuilder: (_, __) => const Divider(
                       color: AppColors.surfaceHairline,
                       height: 1,
                       indent: 12,
@@ -634,8 +631,9 @@ class _MaximumFocusConfigCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: (isEnabled ? AppColors.accentHardLock : colorScheme.primary)
-                  .withValues(alpha: 0.15),
+              color:
+                  (isEnabled ? AppColors.accentHardLock : colorScheme.primary)
+                      .withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -688,4 +686,3 @@ class _MaximumFocusConfigCard extends StatelessWidget {
     );
   }
 }
-

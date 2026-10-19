@@ -117,8 +117,7 @@ void main() async {
     alarmDataSource: scheduleAlarmDataSource,
   );
 
-  final markTaskCompletedUseCase =
-      MarkTaskCompletedUseCase(backlogRepository);
+  final markTaskCompletedUseCase = MarkTaskCompletedUseCase(backlogRepository);
   final widgetSyncService = WidgetSyncServiceImpl();
   final getDailySummaryUseCase = GetDailySummaryUseCase(insightsRepository);
 
@@ -139,6 +138,9 @@ void main() async {
     deleteBacklogTaskUseCase: DeleteBacklogTaskUseCase(backlogRepository),
     markTaskCompletedUseCase: markTaskCompletedUseCase,
   );
+  await backlogNotifier.loadPendingTasks();
+
+  timerNotifier.attachBacklogNotifier(backlogNotifier);
 
   final insightsNotifier = InsightsNotifier(
     getDailySummaryUseCase: getDailySummaryUseCase,
@@ -189,8 +191,7 @@ void main() async {
 
   final billingNotifier = BillingNotifier(
     getProductDetailsUseCase: GetProductDetailsUseCase(billingRepository),
-    purchaseLifetimeProUseCase:
-        PurchaseLifetimeProUseCase(billingRepository),
+    purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(billingRepository),
     restorePurchasesUseCase: RestorePurchasesUseCase(billingRepository),
     repository: billingRepository,
     shieldNotifier: shieldNotifier,
@@ -450,4 +451,3 @@ class FocusmaxxingApp extends StatelessWidget {
     return ThemeNotifier();
   }
 }
-

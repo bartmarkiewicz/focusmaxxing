@@ -92,9 +92,11 @@ class BillingNotifier extends ChangeNotifier {
     }
   }
 
+  bool _isInitialized = false;
+
   void attachThemeNotifier(ThemeNotifier? notifier) {
     themeNotifier = notifier;
-    if (!_unlockStatus.isUnlocked) {
+    if (_isInitialized && !_unlockStatus.isUnlocked) {
       unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
     }
   }
@@ -104,9 +106,12 @@ class BillingNotifier extends ChangeNotifier {
     try {
       final cached = await repository.getCachedProStatus();
       _unlockStatus = cached;
+      _isInitialized = true;
       if (cached.isUnlocked) {
         _status = BillingStatus.purchased;
         _propagateProEntitlement();
+      } else {
+        unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
       }
 
       final details = await getProductDetailsUseCase();
@@ -139,7 +144,9 @@ class BillingNotifier extends ChangeNotifier {
         _errorMessage = e.isCancelled ? null : e.message;
         _status = _unlockStatus.isUnlocked
             ? BillingStatus.purchased
-            : (_errorMessage != null ? BillingStatus.error : BillingStatus.initial);
+            : (_errorMessage != null
+                ? BillingStatus.error
+                : BillingStatus.initial);
         notifyListeners();
       }
       return false;
@@ -164,7 +171,8 @@ class BillingNotifier extends ChangeNotifier {
       _handleEntitlementChanged(updatedStatus);
       if (!_isDisposed && !updatedStatus.isUnlocked) {
         _status = BillingStatus.initial;
-        _errorMessage = 'No previous Lifetime Pro purchase found for this Google account.';
+        _errorMessage =
+            'No previous Lifetime Pro purchase found for this Google account.';
         notifyListeners();
       }
       return updatedStatus.isUnlocked;

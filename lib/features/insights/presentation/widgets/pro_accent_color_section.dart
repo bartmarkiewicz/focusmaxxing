@@ -22,14 +22,12 @@ class ProAccentColorSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final activeThemeNotifier =
-        themeNotifier ?? context.read<ThemeNotifier?>();
+    final activeThemeNotifier = themeNotifier ?? context.read<ThemeNotifier?>();
     final activeBillingNotifier =
         billingNotifier ?? context.watch<BillingNotifier?>();
 
-    final proUnlocked = isProUnlocked ??
-        activeBillingNotifier?.isProUnlocked ??
-        false;
+    final proUnlocked =
+        isProUnlocked ?? activeBillingNotifier?.isProUnlocked ?? false;
 
     Widget buildSection(ProAccentVariant currentAccent) {
       return Padding(
@@ -86,8 +84,7 @@ class ProAccentColorSection extends StatelessWidget {
                       backgroundColor: Colors.transparent,
                       builder: (sheetContext) => Padding(
                         padding: EdgeInsets.only(
-                          bottom:
-                              MediaQuery.of(sheetContext).viewInsets.bottom,
+                          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -163,9 +160,8 @@ class _AccentVariantOptionTile extends StatelessWidget {
                     color: variant.color,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected
-                          ? Colors.white
-                          : AppColors.surfaceHairline,
+                      color:
+                          isSelected ? Colors.white : AppColors.surfaceHairline,
                       width: isSelected ? 2.5 : 1.0,
                     ),
                     boxShadow: isSelected

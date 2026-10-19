@@ -28,7 +28,8 @@ void main() {
     DatabaseHelper.setMockDatabase(null);
   });
 
-  testWidgets('FocusmaxxingApp launches and displays app title', (tester) async {
+  testWidgets('FocusmaxxingApp launches and displays app title',
+      (tester) async {
     await tester.pumpWidget(const FocusmaxxingApp());
     await tester.pumpAndSettle();
 

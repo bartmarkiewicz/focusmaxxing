@@ -26,7 +26,8 @@ class _MockInsightsRepository implements IInsightsRepository {
   }
 
   @override
-  Future<Either<Failure, List<SessionEntity>>> getRecentSessions({int days = 7}) {
+  Future<Either<Failure, List<SessionEntity>>> getRecentSessions(
+      {int days = 7}) {
     throw UnimplementedError();
   }
 
@@ -73,7 +74,8 @@ void main() {
 
     expect(
       result,
-      const Left<Failure, DailySummaryEntity>(DatabaseFailure('DB query error')),
+      const Left<Failure, DailySummaryEntity>(
+          DatabaseFailure('DB query error')),
     );
   });
 }

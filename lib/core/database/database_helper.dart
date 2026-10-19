@@ -43,18 +43,28 @@ class DatabaseHelper {
     final currentDb = _database;
     if (currentDb != null) {
       if (!currentDb.isOpen) {
+        _database = null;
+        _initFuture = null;
         throw const DatabaseException('Database is closed');
       }
       return currentDb;
     }
-    _initFuture ??= _initDatabase();
+    final future = _initFuture ??= _initDatabase();
     try {
-      _database = await _initFuture;
-      final readyDb = _database;
-      if (readyDb != null && readyDb.isOpen) return readyDb;
+      final db = await future;
+      if (_initFuture != future) {
+        if (db.isOpen) await db.close();
+        throw const DatabaseException(
+            'Database was closed during initialization');
+      }
+      _database = db;
+      if (db.isOpen) return db;
       throw const DatabaseException('Database failed to initialize');
     } catch (_) {
-      _initFuture = null;
+      if (_initFuture == future) {
+        _database = null;
+        _initFuture = null;
+      }
       rethrow;
     }
   }
@@ -85,11 +95,15 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await _runner.run(db, oldVersion: 0, targetVersion: version);
+    await _runner.run(db,
+        oldVersion: 0, targetVersion: version, useTransaction: false);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    await _runner.run(db, oldVersion: oldVersion, targetVersion: newVersion);
+    await _runner.run(db,
+        oldVersion: oldVersion,
+        targetVersion: newVersion,
+        useTransaction: false);
   }
 
   Future<void> close() async {

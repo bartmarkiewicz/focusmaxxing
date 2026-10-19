@@ -87,7 +87,8 @@ void main() {
       expect(pending, isEmpty);
     });
 
-    test('deleteTask with non-existent ID returns Left(DatabaseFailure)', () async {
+    test('deleteTask with non-existent ID returns Left(DatabaseFailure)',
+        () async {
       final deleteResult = await repository.deleteTask(99999);
       expect(deleteResult.isLeft(), isTrue);
       deleteResult.fold(
@@ -96,7 +97,9 @@ void main() {
       );
     });
 
-    test('repository returns Left(DatabaseFailure) when database operations encounter errors', () async {
+    test(
+        'repository returns Left(DatabaseFailure) when database operations encounter errors',
+        () async {
       await db.close();
 
       final result = await repository.addTask('Cannot add to closed db');

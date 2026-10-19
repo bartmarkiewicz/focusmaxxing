@@ -46,7 +46,8 @@ class _StubAudioRepository implements IAudioRepository {
 
 void main() {
   group('SoundscapeEntity & Audio UseCases', () {
-    test('SoundscapeEntity.fromId resolves known presets and defaults to none', () {
+    test('SoundscapeEntity.fromId resolves known presets and defaults to none',
+        () {
       expect(
         SoundscapeEntity.fromId('brown_noise'),
         equals(SoundscapeEntity.brownNoise),

@@ -35,7 +35,8 @@ class _FakeInsightsRepository implements IInsightsRepository {
   }
 
   @override
-  Future<Either<Failure, List<SessionEntity>>> getRecentSessions({int days = 7}) async {
+  Future<Either<Failure, List<SessionEntity>>> getRecentSessions(
+      {int days = 7}) async {
     if (failureToReturn != null) return Left(failureToReturn!);
     return Right([
       SessionEntity(
@@ -115,12 +116,13 @@ void main() {
     expect(find.text('Ambient Audio'), findsNothing);
     expect(find.text('Timer Intervals'), findsNothing);
 
-    expect(find.text('LIFETIME PRO: ACTIVE'), findsOneWidget);
+    expect(find.text('Unlock Lifetime Pro — \$9.99'), findsOneWidget);
   });
 
   testWidgets('renders error state with retry button when initial load fails',
       (tester) async {
-    repository.failureToReturn = const DatabaseFailure('Database connection lost');
+    repository.failureToReturn =
+        const DatabaseFailure('Database connection lost');
 
     await tester.pumpWidget(buildWidget());
     await tester.pumpAndSettle();

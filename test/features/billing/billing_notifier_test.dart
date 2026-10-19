@@ -144,7 +144,8 @@ void main() {
       );
     }
 
-    test('initial status reflects cached Pro purchase state when locked', () async {
+    test('initial status reflects cached Pro purchase state when locked',
+        () async {
       final notifier = createNotifier();
       await notifier.initialize();
 
@@ -155,7 +156,9 @@ void main() {
       expect(scheduleNotifier.unlockedLifetimeCalled, isFalse);
     });
 
-    test('initial status reflects cached Pro purchase state when already unlocked', () async {
+    test(
+        'initial status reflects cached Pro purchase state when already unlocked',
+        () async {
       repo.currentStatus = const ProUnlockStatusEntity(
         isUnlocked: true,
         orderId: 'PREVIOUS_ORDER',
@@ -171,7 +174,9 @@ void main() {
       expect(scheduleNotifier.unlockedLifetimeCalled, isTrue);
     });
 
-    test('purchase success dispatches isProUnlocked = true and unlocks dependent notifiers', () async {
+    test(
+        'purchase success dispatches isProUnlocked = true and unlocks dependent notifiers',
+        () async {
       final notifier = createNotifier();
       await notifier.initialize();
 
@@ -199,7 +204,8 @@ void main() {
       expect(notifier.isProUnlocked, isFalse);
     });
 
-    test('purchase failure sets BillingStatus.error and records errorMessage', () async {
+    test('purchase failure sets BillingStatus.error and records errorMessage',
+        () async {
       repo.failMessage = 'Payment declined by card issuer.';
       final notifier = createNotifier();
       await notifier.initialize();
@@ -216,7 +222,9 @@ void main() {
       expect(notifier.errorMessage, isNull);
     });
 
-    test('restore purchases fetches valid past purchase and updates local state', () async {
+    test(
+        'restore purchases fetches valid past purchase and updates local state',
+        () async {
       final notifier = createNotifier();
       await notifier.initialize();
 
@@ -239,6 +247,17 @@ void main() {
       notifier.attachThemeNotifier(customThemeNotifier);
 
       expect(customThemeNotifier.validatedProAccessArg, isFalse);
+    });
+
+    test(
+        'attachThemeNotifier before initialize does not validate Pro access prematurely',
+        () async {
+      final customThemeNotifier = _StubThemeNotifier();
+      final notifier = createNotifier();
+
+      notifier.attachThemeNotifier(customThemeNotifier);
+
+      expect(customThemeNotifier.validatedProAccessArg, isNull);
     });
   });
 }

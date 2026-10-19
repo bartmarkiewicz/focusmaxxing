@@ -78,7 +78,8 @@ void main() {
   }
 
   group('BacklogModalSheet', () {
-    testWidgets('renders empty state initially when repository has no tasks', (tester) async {
+    testWidgets('renders empty state initially when repository has no tasks',
+        (tester) async {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
@@ -89,7 +90,9 @@ void main() {
       );
     });
 
-    testWidgets('loads pre-existing tasks from repository on initialization post-frame', (tester) async {
+    testWidgets(
+        'loads pre-existing tasks from repository on initialization post-frame',
+        (tester) async {
       await repository.addTask('Preloaded Task 1');
       await repository.addTask('Preloaded Task 2');
 
@@ -100,7 +103,8 @@ void main() {
       expect(find.text('Preloaded Task 2'), findsOneWidget);
     });
 
-    testWidgets('adds a new task via input field and renders list tile', (tester) async {
+    testWidgets('adds a new task via input field and renders list tile',
+        (tester) async {
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();
 
@@ -112,7 +116,9 @@ void main() {
       expect(find.text('Finish slide deck'), findsOneWidget);
     });
 
-    testWidgets('tapping a task triggers onTaskSelected and sets selectedTask on notifier', (tester) async {
+    testWidgets(
+        'tapping a task triggers onTaskSelected and sets selectedTask on notifier',
+        (tester) async {
       BacklogTaskEntity? selected;
       await repository.addTask('Code review PR 42');
 
@@ -131,7 +137,9 @@ void main() {
       expect(notifier.selectedTask?.title, 'Code review PR 42');
     });
 
-    testWidgets('swiping item left deletes it and displays undo snackbar which restores item', (tester) async {
+    testWidgets(
+        'swiping item left deletes it and displays undo snackbar which restores item',
+        (tester) async {
       await repository.addTask('Task To Dismiss');
 
       await tester.pumpWidget(createWidget());
@@ -152,8 +160,10 @@ void main() {
       expect(find.text('Task To Dismiss'), findsOneWidget);
     });
 
-    testWidgets('displays error message when notifier has errorMessage', (tester) async {
-      repository.failureToThrow = const DatabaseFailure('Database connection timeout');
+    testWidgets('displays error message when notifier has errorMessage',
+        (tester) async {
+      repository.failureToThrow =
+          const DatabaseFailure('Database connection timeout');
 
       await tester.pumpWidget(createWidget());
       await tester.pumpAndSettle();

@@ -111,7 +111,7 @@ class _AppIcon extends StatelessWidget {
           cacheHeight: 72,
           gaplessPlayback: true,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const _FallbackIcon(),
+          errorBuilder: (_, __, ___) => const _FallbackIcon(),
         ),
       );
     }

@@ -13,7 +13,8 @@ class AddBacklogTaskUseCase {
       return const Left(ValidationFailure('Task title cannot be empty'));
     }
     if (trimmed.length > 60) {
-      return const Left(ValidationFailure('Task title cannot exceed 60 characters'));
+      return const Left(
+          ValidationFailure('Task title cannot exceed 60 characters'));
     }
     return repository.addTask(trimmed);
   }

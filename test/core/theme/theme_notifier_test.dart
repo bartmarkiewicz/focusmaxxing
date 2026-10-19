@@ -7,7 +7,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ThemeNotifier Unit Tests', () {
-    test('defaults to electricEmerald when SharedPreferences has no saved value',
+    test(
+        'defaults to electricEmerald when SharedPreferences has no saved value',
         () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -89,8 +90,7 @@ void main() {
       );
     });
 
-    test(
-        'allows non-pro user to select electricEmerald without error',
+    test('allows non-pro user to select electricEmerald without error',
         () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -105,8 +105,7 @@ void main() {
       expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
     });
 
-    test(
-        'does not re-persist or notify if setting current accent variant',
+    test('does not re-persist or notify if setting current accent variant',
         () async {
       SharedPreferences.setMockInitialValues({
         ThemeNotifier.prefThemeAccentColorKey: 'cyber_amber',
@@ -150,8 +149,7 @@ void main() {
       );
     });
 
-    test(
-        'validateProAccess does nothing if user has Lifetime Pro entitlement',
+    test('validateProAccess does nothing if user has Lifetime Pro entitlement',
         () async {
       SharedPreferences.setMockInitialValues({
         ThemeNotifier.prefThemeAccentColorKey: 'hyper_violet',
@@ -170,6 +168,21 @@ void main() {
         prefs.getString(ThemeNotifier.prefThemeAccentColorKey),
         'hyper_violet',
       );
+    });
+
+    test(
+        'setAccent with lazily initialized prefs retains chosen accent without overwriting',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final notifier = ThemeNotifier();
+
+      final result = await notifier.setAccent(
+        ProAccentVariant.glacierBlue,
+        isLifetimePro: true,
+      );
+
+      expect(result, isTrue);
+      expect(notifier.currentAccent, ProAccentVariant.glacierBlue);
     });
   });
 }

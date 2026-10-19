@@ -56,7 +56,8 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
         whereArgs: [sessionId],
       );
       if (count == 0) {
-        throw DatabaseException('No session found with ID $sessionId to update');
+        throw DatabaseException(
+            'No session found with ID $sessionId to update');
       }
     } catch (e) {
       if (e is DatabaseException) rethrow;
@@ -95,9 +96,7 @@ class SessionLocalDataSource implements ISessionLocalDataSource {
         whereArgs: ['FOCUS', 'LOCKED_IN'],
         orderBy: 'start_time_epoch_ms DESC',
       );
-      return results
-          .map((row) => row['start_time_epoch_ms'] as int)
-          .toList();
+      return results.map((row) => row['start_time_epoch_ms'] as int).toList();
     } catch (e) {
       if (e is DatabaseException) rethrow;
       throw DatabaseException(
