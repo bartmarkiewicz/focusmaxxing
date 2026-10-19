@@ -181,17 +181,18 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     if (widget.onClose != null) {
       await widget.onClose!();
     } else {
+      var bridgeHandled = false;
       try {
-        await _overlayBridgeChannel.invokeMethod<bool>('returnToFocusmaxxing');
+        final result =
+            await _overlayBridgeChannel.invokeMethod<bool>('returnToFocusmaxxing');
+        bridgeHandled = result ?? false;
       } catch (_) {}
-      try {
-        await FlutterOverlayWindow.shareData(
-          jsonEncode({'action': 'returnToFocusmaxxing'}),
-        );
-      } catch (_) {}
-      try {
-        await FlutterOverlayWindow.closeOverlay();
-      } catch (_) {}
+
+      if (!bridgeHandled) {
+        try {
+          await FlutterOverlayWindow.closeOverlay();
+        } catch (_) {}
+      }
     }
   }
 
@@ -200,18 +201,23 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     if (widget.onCancelSession != null) {
       await widget.onCancelSession!();
     } else {
+      var bridgeHandled = false;
       try {
-        await _overlayBridgeChannel
+        final result = await _overlayBridgeChannel
             .invokeMethod<bool>('cancelSessionFromOverlay');
+        bridgeHandled = result ?? false;
       } catch (_) {}
-      try {
-        await FlutterOverlayWindow.shareData(
-          jsonEncode({'action': 'cancelSessionFromOverlay'}),
-        );
-      } catch (_) {}
-      try {
-        await FlutterOverlayWindow.closeOverlay();
-      } catch (_) {}
+
+      if (!bridgeHandled) {
+        try {
+          await FlutterOverlayWindow.shareData(
+            jsonEncode({'action': 'cancelSessionFromOverlay'}),
+          );
+        } catch (_) {}
+        try {
+          await FlutterOverlayWindow.closeOverlay();
+        } catch (_) {}
+      }
     }
   }
 

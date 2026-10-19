@@ -70,6 +70,9 @@ class FocusShieldService : Service() {
         @Volatile
         var lastProcessedEventTime: Long = 0L
 
+        @Volatile
+        private var returnDebounceUntilMs: Long = 0L
+
         private var instance: FocusShieldService? = null
         private var bridgeChannel: MethodChannel? = null
 
@@ -182,12 +185,10 @@ class FocusShieldService : Service() {
         fun dismissOverlayOnly(context: Context) {
             val appContext = context.applicationContext
             try {
-                if (OverlayService.isRunning) {
-                    val closeIntent = Intent(appContext, OverlayService::class.java).apply {
-                        putExtra(OverlayService.INTENT_EXTRA_IS_CLOSE_WINDOW, true)
-                    }
-                    appContext.startService(closeIntent)
+                val closeIntent = Intent(appContext, OverlayService::class.java).apply {
+                    putExtra(OverlayService.INTENT_EXTRA_IS_CLOSE_WINDOW, true)
                 }
+                appContext.startService(closeIntent)
             } catch (_: Exception) {}
             try {
                 appContext.stopService(Intent(appContext, OverlayService::class.java))
@@ -197,39 +198,29 @@ class FocusShieldService : Service() {
         fun dismissOverlayAndReturnToApp(context: Context) {
             val appContext = context.applicationContext
             val now = System.currentTimeMillis()
+            if (now < returnDebounceUntilMs) return
+            returnDebounceUntilMs = now + 1000L
             dismissGraceUntilMs = now + 3000L
             lastProcessedEventTime = now
 
-            dismissOverlayOnly(appContext)
-
-            try {
-                val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-                am?.appTasks?.forEach { task ->
-                    try {
-                        task.moveToFront()
-                    } catch (_: Exception) {}
-                }
-            } catch (_: Exception) {}
-
+            // 1. Bring MainActivity to foreground while overlay is still alive (preserving Android 10+ BAL exemption)
             try {
                 val launchIntent = Intent(appContext, MainActivity::class.java).apply {
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                    )
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
                 appContext.startActivity(launchIntent)
             } catch (_: Exception) {
                 try {
                     val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                         addCategory(Intent.CATEGORY_HOME)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     appContext.startActivity(homeIntent)
                 } catch (_: Exception) {}
             }
+
+            // 2. Dismiss the overlay view after initiating activity foregrounding
+            dismissOverlayOnly(appContext)
         }
     }
 
@@ -299,6 +290,12 @@ class FocusShieldService : Service() {
                         continue
                     }
 
+                    val now = System.currentTimeMillis()
+                    if (now < dismissGraceUntilMs) {
+                        delay(400)
+                        continue
+                    }
+
                     if (currentIsMaximumFocus) {
                         if (!OverlayService.isRunning) {
                             triggerOverlay()
@@ -313,12 +310,6 @@ class FocusShieldService : Service() {
                             updateNotification("Shield Paused: Permission revoked. Tap to restore.")
                         }
                         delay(1000)
-                        continue
-                    }
-
-                    val now = System.currentTimeMillis()
-                    if (now < dismissGraceUntilMs) {
-                        delay(400)
                         continue
                     }
 

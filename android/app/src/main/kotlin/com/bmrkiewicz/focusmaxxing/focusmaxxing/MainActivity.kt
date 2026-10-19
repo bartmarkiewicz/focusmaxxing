@@ -14,11 +14,19 @@ import androidx.core.content.ContextCompat
 import com.bmrkiewicz.focusmaxxing.focusmaxxing.shield.FocusShieldService
 import flutter.overlay.window.flutter_overlay_window.OverlayService
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    override fun getRenderMode(): RenderMode = RenderMode.texture
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
 
     companion object {
         private const val SHIELD_CHANNEL = "com.focusmaxxing/shield"

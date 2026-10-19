@@ -74,7 +74,11 @@ void main() async {
   }
 
   final notificationService = NotificationService();
-  await notificationService.init();
+  try {
+    await notificationService.init();
+  } catch (e, st) {
+    debugPrint('Failed to initialize NotificationService: $e\n$st');
+  }
 
   final sharedPreferences = await SharedPreferences.getInstance();
 
@@ -138,7 +142,11 @@ void main() async {
     deleteBacklogTaskUseCase: DeleteBacklogTaskUseCase(backlogRepository),
     markTaskCompletedUseCase: markTaskCompletedUseCase,
   );
-  await backlogNotifier.loadPendingTasks();
+  try {
+    await backlogNotifier.loadPendingTasks();
+  } catch (e, st) {
+    debugPrint('Failed to load pending backlog tasks on startup: $e\n$st');
+  }
 
   timerNotifier.attachBacklogNotifier(backlogNotifier);
 

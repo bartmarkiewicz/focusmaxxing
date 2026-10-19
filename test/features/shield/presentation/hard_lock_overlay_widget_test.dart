@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/overlay_main.dart';
 
@@ -190,5 +191,85 @@ void main() {
     expect(popScopeFinder, findsOneWidget);
     final popScope = tester.widget<PopScope<Object?>>(popScopeFinder);
     expect(popScope.canPop, isFalse);
+  });
+
+  testWidgets(
+      'HardLockOverlayWidget invokes returnToFocusmaxxing via bridge channel when RETURN tapped with default onClose',
+      (tester) async {
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('com.focusmaxxing/overlay_bridge'),
+      (call) async {
+        calls.add(call.method);
+        if (call.method == 'returnToFocusmaxxing') return true;
+        if (call.method == 'getInitialOverlayState') {
+          return <String, dynamic>{};
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('com.focusmaxxing/overlay_bridge'),
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: Stream.empty(),
+        ),
+      ),
+    );
+
+    final button = find.widgetWithText(FilledButton, 'RETURN TO FOCUSMAXXING');
+    await tester.tap(button);
+    await tester.pump();
+
+    expect(calls, contains('returnToFocusmaxxing'));
+  });
+
+  testWidgets(
+      'HardLockOverlayWidget invokes cancelSessionFromOverlay via bridge channel on 5s hold completion',
+      (tester) async {
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('com.focusmaxxing/overlay_bridge'),
+      (call) async {
+        calls.add(call.method);
+        if (call.method == 'cancelSessionFromOverlay') return true;
+        if (call.method == 'getInitialOverlayState') {
+          return <String, dynamic>{};
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('com.focusmaxxing/overlay_bridge'),
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: Stream.empty(),
+          initialIsMaximumFocus: true,
+        ),
+      ),
+    );
+
+    final gestureFinder = find.byKey(const Key('overlay_hold_to_cancel_button'));
+    expect(gestureFinder, findsOneWidget);
+
+    final gesture = await tester.startGesture(tester.getCenter(gestureFinder));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 5, milliseconds: 100));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(calls, contains('cancelSessionFromOverlay'));
   });
 }
