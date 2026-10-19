@@ -9,11 +9,17 @@ class NotificationService {
   static const int ongoingNotificationId = 1001;
   static const int dailyReminderNotificationId = 1002;
   static const int autoShieldNotificationId = 1003;
+  static const int sessionCompletionNotificationId = 1004;
 
   static const String timerChannelId = 'focusmaxxing_timer_channel';
   static const String timerChannelName = 'Focus Countdown';
   static const String timerChannelDescription =
       'Ongoing countdown notification for active focus sessions';
+
+  static const String completionChannelId = 'focusmaxxing_completion_channel';
+  static const String completionChannelName = 'Session Completion Alarms';
+  static const String completionChannelDescription =
+      'High-priority alarms and notifications when a focus block finishes';
 
   static const String reminderChannelId = 'focusmaxxing_reminder_channel';
   static const String reminderChannelName = 'Daily Focus Reminders';
@@ -28,15 +34,24 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
 
+  @visibleForTesting
+  bool? isSupportedPlatformOverride;
+
+  @visibleForTesting
+  void setInitializedForTesting(bool value) {
+    _isInitialized = value;
+  }
+
   NotificationService({FlutterLocalNotificationsPlugin? notificationsPlugin})
       : _notificationsPlugin =
             notificationsPlugin ?? FlutterLocalNotificationsPlugin();
 
   bool get isSupportedPlatform =>
-      !kIsWeb &&
-      (Platform.isAndroid ||
-          Platform.isIOS ||
-          Platform.isMacOS);
+      isSupportedPlatformOverride ??
+      (!kIsWeb &&
+          (Platform.isAndroid ||
+              Platform.isIOS ||
+              Platform.isMacOS));
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -47,8 +62,8 @@ class NotificationService {
 
     tz.initializeTimeZones();
     try {
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
     } catch (e) {
       debugPrint('NotificationService: fallback to default timezone: $e');
     }
@@ -65,11 +80,56 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(initializationSettings);
 
-    if (Platform.isAndroid) {
-      final androidImplementation = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-      await androidImplementation?.requestNotificationsPermission();
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final androidImplementation = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+        await androidImplementation?.requestNotificationsPermission();
+
+        await androidImplementation?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            timerChannelId,
+            timerChannelName,
+            description: timerChannelDescription,
+            importance: Importance.high,
+            playSound: false,
+            enableVibration: false,
+            showBadge: false,
+          ),
+        );
+        await androidImplementation?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            completionChannelId,
+            completionChannelName,
+            description: completionChannelDescription,
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidImplementation?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            reminderChannelId,
+            reminderChannelName,
+            description: reminderChannelDescription,
+            importance: Importance.defaultImportance,
+          ),
+        );
+        await androidImplementation?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            autoShieldChannelId,
+            autoShieldChannelName,
+            description: autoShieldChannelDescription,
+            importance: Importance.low,
+            playSound: false,
+            enableVibration: false,
+            showBadge: false,
+          ),
+        );
+      } catch (e) {
+        debugPrint('NotificationService: Android channel setup error: $e');
+      }
     }
 
     _isInitialized = true;
@@ -95,9 +155,13 @@ class NotificationService {
       channelDescription: timerChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      category: AndroidNotificationCategory.stopwatch,
+      visibility: NotificationVisibility.public,
       ongoing: !isPaused,
       autoCancel: false,
       onlyAlertOnce: true,
+      playSound: false,
+      enableVibration: false,
       showWhen: true,
       when: useNativeChronometer ? targetEndTimeEpochMs : null,
       usesChronometer: useNativeChronometer,
@@ -114,17 +178,94 @@ class NotificationService {
       ),
     );
 
-    await _notificationsPlugin.show(
-      ongoingNotificationId,
-      title,
-      taskGoal.isNotEmpty ? taskGoal : 'Stay locked in',
-      notificationDetails,
-    );
+    try {
+      await _notificationsPlugin.show(
+        ongoingNotificationId,
+        title,
+        taskGoal.isNotEmpty ? taskGoal : 'Stay locked in',
+        notificationDetails,
+      );
+    } catch (e) {
+      debugPrint('NotificationService: failed to show ongoing timer: $e');
+    }
   }
 
   Future<void> cancelTimerNotification() async {
     if (!isSupportedPlatform || !_isInitialized) return;
     await _notificationsPlugin.cancel(ongoingNotificationId);
+  }
+
+  Future<void> scheduleSessionCompletionNotification({
+    required DateTime targetEndTime,
+    required String goal,
+  }) async {
+    if (!isSupportedPlatform || !_isInitialized) return;
+    await cancelSessionCompletionNotification();
+
+    final scheduledDate = tz.TZDateTime.from(targetEndTime, tz.local);
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      completionChannelId,
+      completionChannelName,
+      channelDescription: completionChannelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      fullScreenIntent: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    final cleanGoal = goal.trim().isNotEmpty ? goal.trim() : 'Focus Block';
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        sessionCompletionNotificationId,
+        '🎉 Focus Block Complete!',
+        'Great job locking in on "$cleanGoal". Tap to recharge.',
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint(
+        'NotificationService: exact alarm unavailable, falling back to inexact: $e',
+      );
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          sessionCompletionNotificationId,
+          '🎉 Focus Block Complete!',
+          'Great job locking in on "$cleanGoal". Tap to recharge.',
+          scheduledDate,
+          notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      } catch (fallbackError) {
+        debugPrint(
+          'NotificationService: failed to schedule session completion alarm: $fallbackError',
+        );
+      }
+    }
+  }
+
+  Future<void> cancelSessionCompletionNotification() async {
+    if (!isSupportedPlatform || !_isInitialized) return;
+    await _notificationsPlugin.cancel(sessionCompletionNotificationId);
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {

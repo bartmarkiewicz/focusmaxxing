@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
+import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
+import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/installed_app_tile.dart';
@@ -21,6 +23,7 @@ class ShieldPage extends StatefulWidget {
 
 class _ShieldPageState extends State<ShieldPage> {
   late final TextEditingController _searchController;
+  int _selectedSegment = 0;
 
   @override
   void initState() {
@@ -126,6 +129,11 @@ class _ShieldPageState extends State<ShieldPage> {
     final isScanning =
         (notifier?.isLoading ?? false) &&
         (notifier?.allInstalledApps.isEmpty ?? true);
+    final scheduleNotifier = context.watch<ScheduleNotifier?>();
+    final schedule = scheduleNotifier?.schedule;
+    final scheduleRange = (schedule != null && schedule.isEnabled)
+        ? schedule.formattedTimeRange
+        : null;
 
     if (_searchController.text != query) {
       _searchController.value = TextEditingValue(
@@ -174,45 +182,76 @@ class _ShieldPageState extends State<ShieldPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  _ShieldStatusBanner(
-                    activeCount: notifier?.activeAppCount ?? 0,
-                    isPro: notifier?.isPro ?? false,
-                  ),
-                  const SizedBox(height: 20),
-                  const _SectionHeader(title: 'QUICK PRESETS'),
-                  const SizedBox(height: 10),
-                  _QuickPresetsGrid(
-                    notifier: notifier,
-                    onPresetTap: (preset) {
-                      if (notifier != null) {
-                        unawaited(
-                          _handleToggleApp(
-                            context,
-                            notifier,
-                            packageName: preset.packageName,
-                            appName: preset.appName,
-                            isPreset: true,
-                          ),
-                        );
-                      }
+                  SegmentedButton<int>(
+                    segments: [
+                      ButtonSegment<int>(
+                        value: 0,
+                        icon: const Icon(Icons.shield_outlined, size: 18),
+                        label: Text('Apps (${notifier?.activeAppCount ?? 0})'),
+                      ),
+                      ButtonSegment<int>(
+                        value: 1,
+                        icon: const Icon(Icons.schedule_rounded, size: 18),
+                        label: Text(
+                          scheduleRange != null && scheduleRange.isNotEmpty
+                              ? 'Schedule ($scheduleRange)'
+                              : 'Schedule',
+                        ),
+                      ),
+                    ],
+                    selected: {_selectedSegment},
+                    onSelectionChanged: (newSelection) {
+                      setState(() {
+                        _selectedSegment = newSelection.first;
+                      });
                     },
                   ),
-                  const SizedBox(height: 24),
-                  const _SectionHeader(title: 'ALL INSTALLED APPS'),
-                  const SizedBox(height: 10),
-                  _AppSearchBar(
-                    controller: _searchController,
-                    query: query,
-                    onChanged: (value) => notifier?.setSearchQuery(value),
-                    onClear: () {
-                      _searchController.clear();
-                      notifier?.setSearchQuery('');
-                    },
-                  ),
+                  const SizedBox(height: 16),
+                  if (_selectedSegment == 1) ...[
+                    const ScheduleConfigSection(),
+                  ] else ...[
+                    _ShieldStatusBanner(
+                      activeCount: notifier?.activeAppCount ?? 0,
+                      isPro: notifier?.isPro ?? false,
+                    ),
+                    const SizedBox(height: 20),
+                    const _SectionHeader(title: 'QUICK PRESETS'),
+                    const SizedBox(height: 10),
+                    _QuickPresetsGrid(
+                      notifier: notifier,
+                      onPresetTap: (preset) {
+                        if (notifier != null) {
+                          unawaited(
+                            _handleToggleApp(
+                              context,
+                              notifier,
+                              packageName: preset.packageName,
+                              appName: preset.appName,
+                              isPreset: true,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    const _SectionHeader(title: 'ALL INSTALLED APPS'),
+                    const SizedBox(height: 10),
+                    _AppSearchBar(
+                      controller: _searchController,
+                      query: query,
+                      onChanged: (value) => notifier?.setSearchQuery(value),
+                      onClear: () {
+                        _searchController.clear();
+                        notifier?.setSearchQuery('');
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),
-            if (notifier == null)
+            if (_selectedSegment == 1)
+              const SliverToBoxAdapter(child: SizedBox.shrink())
+            else if (notifier == null)
               const SliverToBoxAdapter(child: SizedBox.shrink())
             else if (isScanning)
               const SliverPadding(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
@@ -161,6 +162,15 @@ class TimerNotifier extends ChangeNotifier {
           _status = TimerStatus.running;
           _startTicker();
           _updateNotification();
+          final targetEnd = _targetEndTime;
+          if (targetEnd != null) {
+            unawaited(
+              notificationService.scheduleSessionCompletionNotification(
+                targetEndTime: targetEnd,
+                goal: _currentTaskGoal,
+              ),
+            );
+          }
           notifyListeners();
           return true;
         },
@@ -183,6 +193,7 @@ class TimerNotifier extends ChangeNotifier {
     _remainingSeconds = (_remainingDuration.inMilliseconds / 1000).ceil();
     _status = TimerStatus.paused;
     _updateNotification();
+    unawaited(notificationService.cancelSessionCompletionNotification());
     notifyListeners();
   }
 
@@ -194,6 +205,15 @@ class TimerNotifier extends ChangeNotifier {
     cancelHoldProgressNotifier.value = 0.0;
     _startTicker();
     _updateNotification();
+    final targetEnd = _targetEndTime;
+    if (targetEnd != null) {
+      unawaited(
+        notificationService.scheduleSessionCompletionNotification(
+          targetEndTime: targetEnd,
+          goal: _currentTaskGoal,
+        ),
+      );
+    }
     notifyListeners();
   }
 
@@ -273,6 +293,7 @@ class TimerNotifier extends ChangeNotifier {
       }
 
       await notificationService.cancelTimerNotification();
+      await notificationService.cancelSessionCompletionNotification();
       _status = TimerStatus.idle;
       _remainingSeconds = _targetDurationSeconds;
       _remainingDuration = Duration(seconds: _targetDurationSeconds);
@@ -342,6 +363,7 @@ class TimerNotifier extends ChangeNotifier {
     }
 
     await notificationService.cancelTimerNotification();
+    await notificationService.cancelSessionCompletionNotification();
 
     // Transition into 5-minute rest mode
     _status = TimerStatus.breakRunning;
@@ -355,6 +377,7 @@ class TimerNotifier extends ChangeNotifier {
 
   void readyToFocusFromBreak() {
     _periodicTicker?.cancel();
+    unawaited(notificationService.cancelSessionCompletionNotification());
     _status = TimerStatus.idle;
     _targetDurationSeconds = _focusDurationSeconds;
     _remainingSeconds = _focusDurationSeconds;
@@ -363,6 +386,50 @@ class TimerNotifier extends ChangeNotifier {
     _currentTaskGoal = '';
     _linkedBacklogTaskId = null;
     notifyListeners();
+  }
+
+  void syncWithWallClock() {
+    if (_status != TimerStatus.running && _status != TimerStatus.breakRunning) {
+      return;
+    }
+
+    final targetEnd = _targetEndTime;
+    if (targetEnd == null) return;
+
+    final diff = targetEnd.difference(DateTime.now());
+    final isFinished = diff.isNegative || diff.inMilliseconds <= 0;
+
+    if (isFinished) {
+      _periodicTicker?.cancel();
+      _remainingSeconds = 0;
+      _remainingDuration = Duration.zero;
+
+      if (_status == TimerStatus.running) {
+        _status = TimerStatus.completed;
+        unawaited(notificationService.cancelTimerNotification());
+        unawaited(notificationService.cancelSessionCompletionNotification());
+        _triggerCompletionFeedback();
+      } else if (_status == TimerStatus.breakRunning) {
+        _status = TimerStatus.breakCompleted;
+        unawaited(notificationService.cancelTimerNotification());
+        unawaited(notificationService.cancelSessionCompletionNotification());
+        _triggerCompletionFeedback();
+      }
+      notifyListeners();
+    } else {
+      final secondsLeft = (diff.inMilliseconds / 1000).ceil();
+      if (secondsLeft != _remainingSeconds) {
+        _remainingSeconds = secondsLeft;
+        _remainingDuration = diff;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _triggerCompletionFeedback() {
+    try {
+      unawaited(HapticFeedback.heavyImpact());
+    } catch (_) {}
   }
 
   void _startTicker() {
@@ -374,30 +441,13 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void _onTick() {
-    final targetEnd = _targetEndTime;
-    if (targetEnd == null) return;
-
-    final diff = targetEnd.difference(DateTime.now());
-    final isFinished = diff.isNegative || diff.inMilliseconds <= 0;
-    final secondsLeft = isFinished ? 0 : (diff.inMilliseconds / 1000).ceil();
-
-    if (secondsLeft != _remainingSeconds) {
-      _remainingSeconds = secondsLeft;
-      notifyListeners();
-    }
-
-    if (isFinished) {
-      _periodicTicker?.cancel();
-      _remainingSeconds = 0;
-      _remainingDuration = Duration.zero;
-      if (_status == TimerStatus.running) {
-        _status = TimerStatus.completed;
-        unawaited(notificationService.cancelTimerNotification());
-      } else if (_status == TimerStatus.breakRunning) {
-        _status = TimerStatus.breakCompleted;
-        unawaited(notificationService.cancelTimerNotification());
-      }
-      notifyListeners();
+    final previousSeconds = _remainingSeconds;
+    syncWithWallClock();
+    if (_status == TimerStatus.running &&
+        _remainingSeconds != previousSeconds &&
+        _remainingSeconds > 0 &&
+        _remainingSeconds % 60 == 0) {
+      _updateNotification();
     }
   }
 

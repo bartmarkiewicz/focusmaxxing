@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
 class SessionCheckInDialog extends StatelessWidget {
@@ -82,7 +84,12 @@ class SessionCheckInDialog extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
+                    onPressed: () {
+                      try {
+                        unawaited(HapticFeedback.mediumImpact());
+                      } catch (_) {}
+                      Navigator.of(context).pop(false);
+                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colorScheme.error,
                       side: BorderSide(
@@ -117,7 +124,12 @@ class SessionCheckInDialog extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: () {
+                      try {
+                        unawaited(HapticFeedback.heavyImpact());
+                      } catch (_) {}
+                      Navigator.of(context).pop(true);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       foregroundColor: colorScheme.onPrimary,

@@ -106,6 +106,15 @@ class FakeNotificationService extends Fake implements NotificationService {
     required bool isPaused,
     int? targetEndTimeEpochMs,
   }) async {}
+
+  @override
+  Future<void> scheduleSessionCompletionNotification({
+    required DateTime targetEndTime,
+    required String goal,
+  }) async {}
+
+  @override
+  Future<void> cancelSessionCompletionNotification() async {}
 }
 
 void main() {

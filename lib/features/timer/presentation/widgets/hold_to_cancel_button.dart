@@ -71,10 +71,7 @@ class _HoldToCancelButtonState extends State<HoldToCancelButton> {
   @override
   void dispose() {
     widget.progressListenable?.removeListener(_handleProgressListenableChanged);
-    if (_touchStartTime != null) {
-      _touchStartTime = null;
-      widget.onHoldEnd();
-    }
+    _touchStartTime = null;
     super.dispose();
   }
 

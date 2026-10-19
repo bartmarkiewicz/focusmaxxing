@@ -112,8 +112,8 @@ void main() {
 
     expect(find.text('CONFIG & PREFERENCES'), findsOneWidget);
     expect(find.text('Daily Focus Reminder'), findsOneWidget);
-    expect(find.text('Ambient Audio'), findsOneWidget);
-    expect(find.text('Timer Intervals'), findsOneWidget);
+    expect(find.text('Ambient Audio'), findsNothing);
+    expect(find.text('Timer Intervals'), findsNothing);
 
     expect(find.text('LIFETIME PRO: ACTIVE'), findsOneWidget);
   });

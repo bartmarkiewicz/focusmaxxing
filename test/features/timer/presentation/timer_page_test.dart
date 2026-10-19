@@ -171,5 +171,117 @@ void main() {
       expect(find.text('What ONE thing are you locking in on?'), findsOneWidget);
       expect(timerNotifier.status, TimerStatus.idle);
     });
+
+    testWidgets('1-tap lock-in starts session immediately with Deep Work default and shows active lock-in banner', (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.running);
+      expect(timerNotifier.currentTaskGoal, 'Deep Work');
+      expect(sessionRepository.lastCreatedSession?.taskGoal, 'Deep Work');
+      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsOneWidget);
+
+      timerNotifier.pause();
+      await tester.pumpAndSettle();
+      expect(find.text('⏸ FOCUS SESSION PAUSED'), findsOneWidget);
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
+      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsNothing);
+    });
+
+    testWidgets('tapping Custom duration opens bottom sheet and updates preset', (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Custom'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set Custom Duration'), findsOneWidget);
+      expect(find.text('APPLY DURATION'), findsOneWidget);
+
+      await tester.tap(find.text('+15'));
+      await tester.pumpAndSettle();
+      expect(find.text('40 min'), findsOneWidget);
+
+      await tester.tap(find.text('APPLY DURATION'));
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.targetDurationSeconds, 40 * 60);
+      expect(find.text('40:00'), findsOneWidget);
+    });
+
+    testWidgets('tapping ambient soundscapes pill opens bottom sheet', (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ambient Audio: Off'), findsOneWidget);
+      await tester.tap(find.text('Ambient Audio: Off'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('🎧 Ambient Soundscapes'), findsOneWidget);
+    });
+
+    testWidgets('recent goal chips render and tapping a chip updates the anchor', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('recent_focus_goals', ['Coding', 'Deep Work']);
+
+      final testNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        markTaskCompletedUseCase: MarkTaskCompletedUseCase(backlogRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TimerNotifier>.value(value: testNotifier),
+            ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier),
+          ],
+          child: const MaterialApp(
+            home: TimerPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Coding'), findsOneWidget);
+      expect(find.text('Deep Work'), findsOneWidget);
+
+      await tester.tap(find.text('Coding'));
+      await tester.pumpAndSettle();
+
+      expect(testNotifier.currentTaskGoal, 'Coding');
+      expect(find.text('Coding'), findsWidgets); // chip and anchor pill
+      testNotifier.dispose();
+    });
+
+    testWidgets('tapping I\'M READY TO FOCUS during break returns to idle', (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      // Start session and check-in to trigger break
+      await timerNotifier.startFocusSession('Review PR');
+      await tester.pumpAndSettle();
+      expect(timerNotifier.status, TimerStatus.running);
+
+      await timerNotifier.checkInSession(lockedIn: true);
+      await tester.pumpAndSettle();
+      expect(timerNotifier.status, TimerStatus.breakRunning);
+      expect(find.text('I\'M READY TO FOCUS'), findsOneWidget);
+
+      // Tap ready to focus
+      await tester.tap(find.text('I\'M READY TO FOCUS'));
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.idle);
+      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+    });
   });
 }

@@ -77,7 +77,11 @@ class DatabaseHelper {
 
   Future<void> _onConfigure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON;');
-    await db.execute('PRAGMA journal_mode = WAL;');
+    try {
+      await db.rawQuery('PRAGMA journal_mode = WAL;');
+    } catch (_) {
+      // Ignore if WAL mode is unsupported on the current SQLite driver.
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

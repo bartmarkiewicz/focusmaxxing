@@ -31,7 +31,7 @@ class FocusShieldService : Service() {
 
     companion object {
         const val CHANNEL_ID = "focus_shield_channel"
-        const val NOTIFICATION_ID = 1001
+        const val NOTIFICATION_ID = 9001
         const val EXTRA_BLOCKED_PACKAGES = "BLOCKED_PACKAGES"
         const val EXTRA_TIME_RANGE = "SCHEDULE_TIME_RANGE"
         const val EXTRA_IS_SCHEDULED = "IS_SCHEDULED"

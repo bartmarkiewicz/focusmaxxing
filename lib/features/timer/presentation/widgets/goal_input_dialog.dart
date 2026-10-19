@@ -57,9 +57,7 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
-    final recentGoals = context.select<TimerNotifier, List<String>>(
-      (n) => n.recentGoals,
-    );
+    final recentGoals = context.read<TimerNotifier>().recentGoals;
 
     return SafeArea(
       child: ConstrainedBox(

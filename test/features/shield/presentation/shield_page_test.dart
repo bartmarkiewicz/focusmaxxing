@@ -16,6 +16,7 @@ import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_ov
 import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/pages/shield_page.dart';
+import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/permission_banner_widget.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/upgrade_modal_sheet.dart';
 import 'package:provider/provider.dart';
@@ -259,6 +260,13 @@ void main() {
     testWidgets(
       'entering text in app search bar filters installed apps in real-time',
       (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
         final notifier = await createInitializedNotifier();
 
         await tester.pumpWidget(buildSubject(notifier));
@@ -275,6 +283,39 @@ void main() {
 
         expect(find.text('Discord'), findsOneWidget);
         expect(find.text('Spotify'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'switches between Apps and Schedule tabs using segmented button',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final notifier = await createInitializedNotifier();
+
+        await tester.pumpWidget(buildSubject(notifier));
+        await tester.pumpAndSettle();
+
+        expect(find.text('QUICK PRESETS'), findsOneWidget);
+
+        // Tap Schedule tab
+        await tester.tap(find.text('Schedule'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('QUICK PRESETS'), findsNothing);
+        expect(find.byType(ScheduleConfigSection), findsOneWidget);
+
+        // Tap Apps tab
+        await tester.tap(find.byIcon(Icons.shield_outlined));
+        await tester.pumpAndSettle();
+
+        expect(find.text('QUICK PRESETS'), findsOneWidget);
+        expect(find.byType(ScheduleConfigSection), findsNothing);
       },
     );
   });

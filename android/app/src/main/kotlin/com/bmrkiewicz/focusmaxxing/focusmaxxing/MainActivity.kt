@@ -57,11 +57,9 @@ class MainActivity : FlutterActivity() {
             }
 
             "stopShield" -> {
-                val intent = Intent(this, FocusShieldService::class.java).apply {
-                    action = FocusShieldService.ACTION_STOP_SHIELD
+                if (FocusShieldService.isRunning) {
+                    stopService(Intent(this, FocusShieldService::class.java))
                 }
-                startService(intent)
-                stopService(Intent(this, FocusShieldService::class.java))
 
                 if (OverlayService.isRunning) {
                     stopService(Intent(this, OverlayService::class.java))

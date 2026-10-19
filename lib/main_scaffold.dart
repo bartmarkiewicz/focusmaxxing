@@ -151,6 +151,9 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
+      final timerNotifier = context.read<TimerNotifier?>();
+      timerNotifier?.syncWithWallClock();
+
       final shieldNotifier = context.read<ShieldNotifier?>();
       if (shieldNotifier != null) {
         unawaited(shieldNotifier.checkPermissions());

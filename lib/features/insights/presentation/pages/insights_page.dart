@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/features/audio/presentation/widgets/soundscape_config_tile.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
-import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/pro_accent_color_section.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
@@ -447,31 +445,7 @@ class _PreferencesCard extends StatelessWidget {
               ),
             ),
           Divider(color: colorScheme.outlineVariant, height: 1),
-          const SoundscapeConfigTile(),
-          Divider(color: colorScheme.outlineVariant, height: 1),
-          const ScheduleConfigSection(),
-          Divider(color: colorScheme.outlineVariant, height: 1),
           const ProAccentColorSection(),
-          Divider(color: colorScheme.outlineVariant, height: 1),
-          ListTile(
-            leading: Icon(
-              Icons.timer_outlined,
-              color: colorScheme.onSurface,
-            ),
-            title: Text(
-              'Timer Intervals',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              '25m Focus · 5m Rest Break',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
         ],
       ),
     );

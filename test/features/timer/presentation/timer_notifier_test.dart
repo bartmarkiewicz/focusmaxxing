@@ -72,6 +72,9 @@ class _FakeBacklogRepository implements IBacklogRepository {
 class _MockNotificationService extends NotificationService {
   String? lastShownGoal;
   bool isCancelled = false;
+  DateTime? lastScheduledCompletionTime;
+  String? lastScheduledCompletionGoal;
+  bool isCompletionAlarmCancelled = false;
 
   @override
   Future<void> showOngoingTimer({
@@ -87,6 +90,21 @@ class _MockNotificationService extends NotificationService {
   @override
   Future<void> cancelTimerNotification() async {
     isCancelled = true;
+  }
+
+  @override
+  Future<void> scheduleSessionCompletionNotification({
+    required DateTime targetEndTime,
+    required String goal,
+  }) async {
+    lastScheduledCompletionTime = targetEndTime;
+    lastScheduledCompletionGoal = goal;
+    isCompletionAlarmCancelled = false;
+  }
+
+  @override
+  Future<void> cancelSessionCompletionNotification() async {
+    isCompletionAlarmCancelled = true;
   }
 }
 
@@ -257,6 +275,36 @@ void main() {
       expect(notifier.cancelHoldProgress, 0.0);
 
       notifier.cancelHoldProgressNotifier.removeListener(onProgress);
+    });
+
+    test('startFocusSession schedules completion alarm and pause/cancel/checkin cancel it', () async {
+      await notifier.startFocusSession('Test Alarm');
+      expect(notificationService.lastScheduledCompletionGoal, 'Test Alarm');
+      expect(notificationService.lastScheduledCompletionTime, isNotNull);
+      expect(notificationService.isCompletionAlarmCancelled, isFalse);
+
+      notifier.pause();
+      expect(notificationService.isCompletionAlarmCancelled, isTrue);
+
+      notifier.resume();
+      expect(notificationService.isCompletionAlarmCancelled, isFalse);
+
+      await notifier.cancelSession();
+      expect(notificationService.isCompletionAlarmCancelled, isTrue);
+    });
+
+    test('syncWithWallClock transitions to completed if targetEndTime has passed', () async {
+      notifier.setDurationPreset(1);
+      await notifier.startFocusSession('Quick Test');
+      expect(notifier.status, TimerStatus.running);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      notifier.syncWithWallClock();
+
+      expect(notifier.status, TimerStatus.completed);
+      expect(notifier.remainingSeconds, 0);
+      expect(notificationService.isCancelled, isTrue);
+      expect(notificationService.isCompletionAlarmCancelled, isTrue);
     });
   });
 }

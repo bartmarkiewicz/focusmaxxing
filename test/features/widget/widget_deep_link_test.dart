@@ -56,6 +56,15 @@ class _FakeNotificationService extends Fake implements NotificationService {
 
   @override
   Future<void> cancelTimerNotification() async {}
+
+  @override
+  Future<void> scheduleSessionCompletionNotification({
+    required DateTime targetEndTime,
+    required String goal,
+  }) async {}
+
+  @override
+  Future<void> cancelSessionCompletionNotification() async {}
 }
 
 class _FakeInsightsRepo implements IInsightsRepository {
