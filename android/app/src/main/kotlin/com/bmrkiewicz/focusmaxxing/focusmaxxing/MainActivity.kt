@@ -22,26 +22,42 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val SHIELD_CHANNEL = "com.focusmaxxing/shield"
+        private var shieldMethodChannel: MethodChannel? = null
+
+        fun notifyOverlayAction(action: String) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    shieldMethodChannel?.invokeMethod(
+                        "onOverlayAction",
+                        mapOf("action" to action)
+                    )
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHIELD_CHANNEL)
-            .setMethodCallHandler { call, result ->
-                handleMethodCall(call, result)
-            }
+        FocusShieldService.ensureOverlayBridgeRegistered(applicationContext)
+
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHIELD_CHANNEL)
+        channel.setMethodCallHandler { call, result ->
+            handleMethodCall(call, result)
+        }
+        shieldMethodChannel = channel
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHIELD_CHANNEL)
-            .setMethodCallHandler(null)
+        shieldMethodChannel?.setMethodCallHandler(null)
+        shieldMethodChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 
     private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startShield" -> {
+                FocusShieldService.ensureOverlayBridgeRegistered(applicationContext)
                 val packages = call.argument<List<String>>("packages") ?: emptyList()
                 val isScheduled = call.argument<Boolean>("isScheduled") ?: false
                 val timeRange = call.argument<String>("timeRange")
@@ -57,13 +73,26 @@ class MainActivity : FlutterActivity() {
             }
 
             "stopShield" -> {
+                FocusShieldService.currentIsMaximumFocus = false
                 if (FocusShieldService.isRunning) {
                     stopService(Intent(this, FocusShieldService::class.java))
                 }
+                FocusShieldService.dismissOverlayOnly(applicationContext)
+                result.success(true)
+            }
 
-                if (OverlayService.isRunning) {
-                    stopService(Intent(this, OverlayService::class.java))
-                }
+            "syncOverlayData" -> {
+                val goal = call.argument<String>("goal") ?: call.argument<String>("taskGoal") ?: "Deep Work"
+                val remaining = call.argument<Int>("remainingSeconds") ?: call.argument<Int>("remaining") ?: 1500
+                val isBreak = call.argument<Boolean>("isBreak") ?: call.argument<Boolean>("isBreakMode") ?: false
+                val isMaximumFocus = call.argument<Boolean>("isMaximumFocus") ?: false
+                FocusShieldService.updateOverlaySessionState(
+                    applicationContext,
+                    goal,
+                    remaining,
+                    isBreak,
+                    isMaximumFocus
+                )
                 result.success(true)
             }
 
@@ -136,21 +165,12 @@ class MainActivity : FlutterActivity() {
             }
 
             "bringToForeground" -> {
-                bringToForeground()
+                FocusShieldService.dismissOverlayAndReturnToApp(applicationContext)
                 result.success(true)
             }
 
             else -> result.notImplemented()
         }
-    }
-
-    private fun bringToForeground() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        }
-        startActivity(intent)
     }
 
     private fun hasUsageStatsPermission(): Boolean {

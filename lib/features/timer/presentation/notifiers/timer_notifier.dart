@@ -292,12 +292,15 @@ class TimerNotifier extends ChangeNotifier {
         );
       }
 
-      await notificationService.cancelTimerNotification();
-      await notificationService.cancelSessionCompletionNotification();
       _status = TimerStatus.idle;
       _remainingSeconds = _targetDurationSeconds;
       _remainingDuration = Duration(seconds: _targetDurationSeconds);
       notifyListeners();
+
+      try {
+        await notificationService.cancelTimerNotification();
+        await notificationService.cancelSessionCompletionNotification();
+      } catch (_) {}
     } finally {
       _isCancelling = false;
     }
@@ -445,8 +448,7 @@ class TimerNotifier extends ChangeNotifier {
     syncWithWallClock();
     if (_status == TimerStatus.running &&
         _remainingSeconds != previousSeconds &&
-        _remainingSeconds > 0 &&
-        _remainingSeconds % 60 == 0) {
+        _remainingSeconds > 0) {
       _updateNotification();
     }
   }

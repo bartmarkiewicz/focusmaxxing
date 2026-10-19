@@ -6,6 +6,7 @@ import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_not
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
 import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
+import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/installed_app_tile.dart';
@@ -214,6 +215,8 @@ class _ShieldPageState extends State<ShieldPage> {
                       activeCount: notifier?.activeAppCount ?? 0,
                       isPro: notifier?.isPro ?? false,
                     ),
+                    const SizedBox(height: 12),
+                    _MaximumFocusConfigCard(notifier: notifier),
                     const SizedBox(height: 20),
                     const _SectionHeader(title: 'QUICK PRESETS'),
                     const SizedBox(height: 10),
@@ -599,3 +602,90 @@ class _RuleItem extends StatelessWidget {
     );
   }
 }
+
+class _MaximumFocusConfigCard extends StatelessWidget {
+  const _MaximumFocusConfigCard({required this.notifier});
+
+  final ShieldNotifier? notifier;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isEnabled = notifier?.isMaximumFocusEnabled ?? false;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isEnabled
+            ? AppColors.accentHardLock.withValues(alpha: 0.12)
+            : AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isEnabled
+              ? AppColors.accentHardLock.withValues(alpha: 0.6)
+              : AppColors.surfaceHairline,
+          width: isEnabled ? 1.5 : 1,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: (isEnabled ? AppColors.accentHardLock : colorScheme.primary)
+                  .withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isEnabled ? Icons.gpp_maybe_rounded : Icons.lock_person_rounded,
+              color: isEnabled ? AppColors.accentHardLock : colorScheme.primary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Maximum Focus Mode',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Forces an unclosable full-screen lock over your entire phone during focus sessions until the timer ends or you hold 5s to cancel.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            key: const Key('maximum_focus_switch'),
+            value: isEnabled,
+            activeThumbColor: AppColors.accentHardLock,
+            activeTrackColor: AppColors.accentHardLock.withValues(alpha: 0.35),
+            onChanged: notifier == null
+                ? null
+                : (value) async {
+                    await notifier!.setMaximumFocusEnabled(value);
+                    if (value &&
+                        !notifier!.permissionStatus.hasOverlayPermission) {
+                      await notifier!
+                          .requestPermission(ShieldPermissionType.overlay);
+                    }
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+}
+

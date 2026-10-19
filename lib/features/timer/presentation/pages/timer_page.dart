@@ -6,6 +6,7 @@ import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifie
 import 'package:focusmaxxing/features/audio/presentation/widgets/soundscape_config_tile.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
 import 'package:focusmaxxing/features/backlog/presentation/widgets/backlog_modal_sheet.dart';
+import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/goal_input_dialog.dart';
@@ -434,8 +435,16 @@ class _TimerPageState extends State<TimerPage> {
                         isIdle ? timerNotifier.setDurationPreset : null,
                   ),
                   const SizedBox(height: 14),
-                  _SoundscapePill(
-                    onTap: () => _showSoundscapeBottomSheet(context),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      _SoundscapePill(
+                        onTap: () => _showSoundscapeBottomSheet(context),
+                      ),
+                      const _MaximumFocusPill(),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   if (isIdle) ...[
@@ -962,15 +971,23 @@ class _ActiveLockInBanner extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final shieldNotifier = context.watch<ShieldNotifier?>();
     final activeShieldCount = shieldNotifier?.activeAppCount ?? 0;
+    final isMaxFocus = shieldNotifier?.isMaximumFocusEnabled ?? false;
 
-    final accentColor = isPaused ? colorScheme.tertiary : colorScheme.primary;
-    final statusTitle =
-        isPaused ? '⏸ FOCUS SESSION PAUSED' : '🔒 LOCKED IN · ACTIVE FOCUS';
+    final accentColor = isPaused
+        ? colorScheme.tertiary
+        : (isMaxFocus ? colorScheme.error : colorScheme.primary);
+    final statusTitle = isPaused
+        ? '⏸ FOCUS SESSION PAUSED'
+        : (isMaxFocus
+            ? '🔥 MAXIMUM FOCUS · PHONE LOCKED'
+            : '🔒 LOCKED IN · ACTIVE FOCUS');
     final statusSubtitle = isPaused
         ? 'Countdown paused · Resume below to keep your streak'
-        : activeShieldCount > 0
-            ? 'Brainrot Shield active ($activeShieldCount ${activeShieldCount == 1 ? "app" : "apps"} blocked) · Ongoing timer in notification bar'
-            : 'Focus countdown active in notification bar';
+        : isMaxFocus
+            ? 'Full-screen phone lock enforced until session completes'
+            : activeShieldCount > 0
+                ? 'Brainrot Shield active ($activeShieldCount ${activeShieldCount == 1 ? "app" : "apps"} blocked) · Ongoing timer in notification bar'
+                : 'Focus countdown active in notification bar';
 
     return Container(
       width: double.infinity,
@@ -986,7 +1003,9 @@ class _ActiveLockInBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            isPaused ? Icons.pause_circle_filled_rounded : Icons.shield_rounded,
+            isPaused
+                ? Icons.pause_circle_filled_rounded
+                : (isMaxFocus ? Icons.gpp_maybe_rounded : Icons.shield_rounded),
             color: accentColor,
             size: 22,
           ),
@@ -1018,4 +1037,75 @@ class _ActiveLockInBanner extends StatelessWidget {
     );
   }
 }
+
+class _MaximumFocusPill extends StatelessWidget {
+  const _MaximumFocusPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final shieldNotifier = context.watch<ShieldNotifier?>();
+    if (shieldNotifier == null) return const SizedBox.shrink();
+
+    final isEnabled = shieldNotifier.isMaximumFocusEnabled;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final activeColor = colorScheme.error;
+
+    return Semantics(
+      button: true,
+      toggled: isEnabled,
+      label: isEnabled
+          ? 'Maximum Focus enabled (full phone lock). Tap to disable.'
+          : 'Maximum Focus disabled. Tap to enable full phone lock.',
+      child: InkWell(
+        key: const Key('timer_maximum_focus_pill'),
+        onTap: () async {
+          try {
+            unawaited(HapticFeedback.selectionClick());
+          } catch (_) {}
+          final next = !isEnabled;
+          await shieldNotifier.setMaximumFocusEnabled(next);
+          if (next && !shieldNotifier.permissionStatus.hasOverlayPermission) {
+            await shieldNotifier
+                .requestPermission(ShieldPermissionType.overlay);
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? activeColor.withValues(alpha: 0.14)
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isEnabled
+                  ? activeColor.withValues(alpha: 0.55)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isEnabled ? Icons.gpp_maybe_rounded : Icons.lock_outline_rounded,
+                size: 16,
+                color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isEnabled ? 'Max Focus: ON' : 'Max Focus: OFF',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
+                  fontWeight: isEnabled ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 

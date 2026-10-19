@@ -306,6 +306,7 @@ void main() {
             'goal': 'Ship Milestone 2',
             'remainingSeconds': 900,
             'isBreak': false,
+            'isMaximumFocus': false,
           }),
         );
       },

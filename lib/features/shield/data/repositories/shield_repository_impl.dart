@@ -215,12 +215,14 @@ class ShieldRepositoryImpl implements IShieldRepository {
     required String goal,
     required int remainingSeconds,
     required bool isBreak,
+    bool isMaximumFocus = false,
   }) async {
     try {
       await nativeBridgeSource.shareOverlayData(<String, dynamic>{
         'goal': goal,
         'remainingSeconds': remainingSeconds,
         'isBreak': isBreak,
+        'isMaximumFocus': isMaximumFocus,
       });
       return const Right(null);
     } catch (e) {

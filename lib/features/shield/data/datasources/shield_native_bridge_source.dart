@@ -28,17 +28,31 @@ class ShieldNativeBridgeSourceImpl implements IShieldNativeBridgeSource {
     this.shareDataCallback,
   })  : _channel = channel ?? _defaultChannel,
         _hasCustomChannel = channel != null,
-        _customOverlayStream = overlayStream;
+        _customOverlayStream = overlayStream {
+    if (_canUseNativeChannel) {
+      _channel.setMethodCallHandler(_handleNativeMethodCall);
+    }
+  }
 
   final MethodChannel _channel;
   final bool _hasCustomChannel;
   final Stream<dynamic>? _customOverlayStream;
   final Future<dynamic> Function(dynamic data)? shareDataCallback;
 
-  static Stream<dynamic>? _sharedBroadcastOverlayStream;
+  static final StreamController<dynamic> _mergedOverlayController =
+      StreamController<dynamic>.broadcast();
+  static bool _isOverlayListenerAttached = false;
 
   bool get _canUseNativeChannel =>
       _hasCustomChannel || (!kIsWeb && Platform.isAndroid);
+
+  Future<dynamic> _handleNativeMethodCall(MethodCall call) async {
+    if (call.method == 'onOverlayAction') {
+      _mergedOverlayController.add(call.arguments);
+      return true;
+    }
+    return null;
+  }
 
   @override
   Stream<dynamic> get overlayEvents {
@@ -48,9 +62,13 @@ class ShieldNativeBridgeSourceImpl implements IShieldNativeBridgeSource {
     if (kIsWeb || !Platform.isAndroid) {
       return const Stream.empty();
     }
-    _sharedBroadcastOverlayStream ??=
-        FlutterOverlayWindow.overlayListener.asBroadcastStream();
-    return _sharedBroadcastOverlayStream!;
+    if (!_isOverlayListenerAttached) {
+      _isOverlayListenerAttached = true;
+      FlutterOverlayWindow.overlayListener
+          .asBroadcastStream()
+          .listen(_mergedOverlayController.add, onError: (_) {});
+    }
+    return _mergedOverlayController.stream;
   }
 
   @override
@@ -176,6 +194,14 @@ class ShieldNativeBridgeSourceImpl implements IShieldNativeBridgeSource {
     if (callback != null) {
       await callback(encoded);
       return;
+    }
+    if (!_canUseNativeChannel) {
+      return;
+    }
+    try {
+      await _channel.invokeMethod<bool>('syncOverlayData', payload);
+    } catch (_) {
+      // Ignore if native channel is unavailable in test environment
     }
     if (kIsWeb || !Platform.isAndroid) {
       return;

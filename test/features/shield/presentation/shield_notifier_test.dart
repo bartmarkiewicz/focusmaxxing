@@ -131,11 +131,13 @@ class _FakeShieldRepository implements IShieldRepository {
     required String goal,
     required int remainingSeconds,
     required bool isBreak,
+    bool isMaximumFocus = false,
   }) async {
     syncedOverlayPayloads.add({
       'goal': goal,
       'remainingSeconds': remainingSeconds,
       'isBreak': isBreak,
+      'isMaximumFocus': isMaximumFocus,
     });
     return const Right(null);
   }
@@ -182,6 +184,15 @@ class _NoOpNotificationService extends NotificationService {
 
   @override
   Future<void> cancelTimerNotification() async {}
+
+  @override
+  Future<void> scheduleSessionCompletionNotification({
+    required DateTime targetEndTime,
+    required String goal,
+  }) async {}
+
+  @override
+  Future<void> cancelSessionCompletionNotification() async {}
 }
 
 class _ControllableTimerNotifier extends TimerNotifier {
@@ -456,6 +467,7 @@ void main() {
             'goal': 'Write unit tests',
             'remainingSeconds': 0,
             'isBreak': true,
+            'isMaximumFocus': false,
           }),
         );
 
@@ -532,6 +544,40 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         expect(repository.bringToForegroundCount, 1);
+      },
+    );
+
+    test(
+      'Maximum Focus mode starts shield service even with 0 blocked apps and cancelSessionFromOverlay cancels active session',
+      () async {
+        final sessionRepo = _FakeSessionRepository();
+        final timerNotifier = _ControllableTimerNotifier(
+          startSessionUseCase: StartSessionUseCase(sessionRepo),
+          completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
+          cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+          notificationService: _NoOpNotificationService(),
+          prefs: prefs,
+        );
+
+        await notifier.setMaximumFocusEnabled(true);
+        expect(notifier.isMaximumFocusEnabled, isTrue);
+
+        await timerNotifier.startFocusSession('Deep Focus Lock');
+        await notifier.syncWithTimer(timerNotifier);
+
+        expect(repository.startedPackagesHistory, isNotEmpty);
+        expect(
+          repository.syncedOverlayPayloads.last['isMaximumFocus'],
+          isTrue,
+        );
+
+        repository.overlayController.add('{"action":"cancelSessionFromOverlay"}');
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(timerNotifier.status, TimerStatus.idle);
+        expect(repository.bringToForegroundCount, 1);
+
+        timerNotifier.dispose();
       },
     );
 

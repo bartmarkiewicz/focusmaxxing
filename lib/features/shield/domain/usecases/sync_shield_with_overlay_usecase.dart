@@ -11,11 +11,13 @@ class SyncShieldWithOverlayUseCase {
     required String goal,
     required int remainingSeconds,
     required bool isBreak,
+    bool isMaximumFocus = false,
   }) {
     return repository.syncOverlayState(
       goal: goal,
       remainingSeconds: remainingSeconds,
       isBreak: isBreak,
+      isMaximumFocus: isMaximumFocus,
     );
   }
 }

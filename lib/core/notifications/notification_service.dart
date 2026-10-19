@@ -160,6 +160,7 @@ class NotificationService {
       ongoing: !isPaused,
       autoCancel: false,
       onlyAlertOnce: true,
+      silent: true,
       playSound: false,
       enableVibration: false,
       showWhen: true,

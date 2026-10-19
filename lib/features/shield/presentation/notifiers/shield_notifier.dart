@@ -24,6 +24,7 @@ enum ShieldToggleResult {
 class ShieldNotifier extends ChangeNotifier {
   static const int freeTierAppCap = 2;
   static const String proUnlockedPrefsKey = 'is_lifetime_pro';
+  static const String maximumFocusPrefsKey = 'is_maximum_focus_enabled';
 
   final GetShieldedAppsUseCase getShieldedAppsUseCase;
   final GetInstalledAppsUseCase getInstalledAppsUseCase;
@@ -48,6 +49,8 @@ class ShieldNotifier extends ChangeNotifier {
     bool autoInitialize = true,
   }) {
     _isPro = sharedPreferences?.getBool(proUnlockedPrefsKey) ?? false;
+    _isMaximumFocusEnabled =
+        sharedPreferences?.getBool(maximumFocusPrefsKey) ?? false;
     _bindOverlayEvents();
     if (autoInitialize) {
       unawaited(refresh());
@@ -60,6 +63,7 @@ class ShieldNotifier extends ChangeNotifier {
       const ShieldPermissionStatus.allGranted();
   String _searchQuery = '';
   bool _isPro = false;
+  bool _isMaximumFocusEnabled = false;
   bool _isLoading = false;
   String? _errorMessage;
   bool _requiresUpgradePrompt = false;
@@ -82,6 +86,7 @@ class ShieldNotifier extends ChangeNotifier {
   ShieldPermissionStatus get permissionStatus => _permissionStatus;
   String get searchQuery => _searchQuery;
   bool get isPro => _isPro;
+  bool get isMaximumFocusEnabled => _isMaximumFocusEnabled;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get requiresUpgradePrompt => _requiresUpgradePrompt;
@@ -363,7 +368,33 @@ class ShieldNotifier extends ChangeNotifier {
     return result.getOrElse(() => false);
   }
 
+  Future<void> setMaximumFocusEnabled(bool enabled) async {
+    if (_isMaximumFocusEnabled == enabled) return;
+    _isMaximumFocusEnabled = enabled;
+    final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
+    await prefs.setBool(maximumFocusPrefsKey, enabled);
+
+    final timer = _attachedTimerNotifier;
+    if (timer != null && _isSessionShieldActive) {
+      final isBreak = timer.status == TimerStatus.breakRunning ||
+          timer.status == TimerStatus.breakCompleted;
+      final isFocusRunningOrPaused = timer.status == TimerStatus.running ||
+          timer.status == TimerStatus.paused;
+      await syncShieldWithOverlayUseCase(
+        goal: timer.currentTaskGoal.isNotEmpty
+            ? timer.currentTaskGoal
+            : 'Deep Work',
+        remainingSeconds: timer.remainingSeconds,
+        isBreak: isBreak,
+        isMaximumFocus: enabled && isFocusRunningOrPaused,
+      );
+      await _reconcileNativeShieldForActiveSession();
+    }
+    notifyListeners();
+  }
+
   Future<void> syncWithTimer(TimerNotifier timer) async {
+    _attachedTimerNotifier ??= timer;
     final status = timer.status;
 
     if (status == TimerStatus.idle) {
@@ -391,12 +422,8 @@ class ShieldNotifier extends ChangeNotifier {
     final goal = timer.currentTaskGoal.isNotEmpty
         ? timer.currentTaskGoal
         : 'Deep Work';
-
-    if (!_isSessionShieldActive) {
-      _isSessionShieldActive = true;
-      await _reconcileNativeShieldForActiveSession();
-      notifyListeners();
-    }
+    final effectiveMaximumFocus = _isMaximumFocusEnabled &&
+        (status == TimerStatus.running || status == TimerStatus.paused);
 
     final shouldSyncOverlay = _lastSyncedStatus != status ||
         _lastSyncedRemainingSeconds != remaining ||
@@ -410,14 +437,21 @@ class ShieldNotifier extends ChangeNotifier {
         goal: goal,
         remainingSeconds: remaining,
         isBreak: isBreak,
+        isMaximumFocus: effectiveMaximumFocus,
       );
+    }
+
+    if (!_isSessionShieldActive) {
+      _isSessionShieldActive = true;
+      await _reconcileNativeShieldForActiveSession();
+      notifyListeners();
     }
   }
 
   Future<void> _reconcileNativeShieldForActiveSession() async {
     if (!_isSessionShieldActive) return;
     final blocked = activePackageNames.toList();
-    if (blocked.isEmpty) {
+    if (blocked.isEmpty && !_isMaximumFocusEnabled) {
       await repository.stopShieldService();
     } else {
       await repository.startShieldService(blocked);
@@ -427,6 +461,8 @@ class ShieldNotifier extends ChangeNotifier {
   Future<void> _loadProStatus() async {
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
     _isPro = prefs.getBool(proUnlockedPrefsKey) ?? _isPro;
+    _isMaximumFocusEnabled =
+        prefs.getBool(maximumFocusPrefsKey) ?? _isMaximumFocusEnabled;
   }
 
   void _upsertLocalShieldedApp(ShieldedAppEntity updatedApp) {
@@ -477,6 +513,12 @@ class ShieldNotifier extends ChangeNotifier {
     final map = _decodePayload(rawEvent);
     if (map == null) return;
     if (map['action'] == 'returnToFocusmaxxing') {
+      unawaited(repository.bringAppToForeground());
+    } else if (map['action'] == 'cancelSessionFromOverlay') {
+      final timer = _attachedTimerNotifier;
+      if (timer != null) {
+        unawaited(timer.cancelSession());
+      }
       unawaited(repository.bringAppToForeground());
     }
   }
