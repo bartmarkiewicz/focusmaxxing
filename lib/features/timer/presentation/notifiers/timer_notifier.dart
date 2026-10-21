@@ -27,6 +27,7 @@ class TimerNotifier extends ChangeNotifier {
   static const int defaultBreakSeconds = 5 * 60;
   static const int cancelHoldTotalMs = 5000;
   static const String recentGoalsKey = 'recent_focus_goals';
+  static const String singleSessionModeKey = 'is_single_session_mode';
 
   final StartSessionUseCase startSessionUseCase;
   final CompleteSessionUseCase completeSessionUseCase;
@@ -49,6 +50,7 @@ class TimerNotifier extends ChangeNotifier {
     this.getDailySummaryUseCase,
     this.backlogNotifier,
   }) {
+    _isSingleSessionMode = prefs?.getBool(singleSessionModeKey) ?? false;
     unawaited(_loadRecentGoals());
   }
 
@@ -75,6 +77,8 @@ class TimerNotifier extends ChangeNotifier {
   final ValueNotifier<double> cancelHoldProgressNotifier =
       ValueNotifier<double>(0.0);
   List<String> _recentGoals = const [];
+  bool _isSingleSessionMode = false;
+  bool _hasUserModifiedSingleSessionMode = false;
   String? _errorMessage;
 
   Timer? _periodicTicker;
@@ -92,6 +96,7 @@ class TimerNotifier extends ChangeNotifier {
   String get currentTaskGoal => _currentTaskGoal;
   int? get linkedBacklogTaskId => _linkedBacklogTaskId;
   List<String> get recentGoals => _recentGoals;
+  bool get isSingleSessionMode => _isSingleSessionMode;
   double get cancelHoldProgress => cancelHoldProgressNotifier.value;
   int? get activeSessionId => _activeSessionId;
   String? get errorMessage => _errorMessage;
@@ -133,6 +138,21 @@ class TimerNotifier extends ChangeNotifier {
     _currentTaskGoal = goal;
     _linkedBacklogTaskId = backlogTaskId;
     notifyListeners();
+  }
+
+  Future<void> setSingleSessionMode(bool enabled) async {
+    _hasUserModifiedSingleSessionMode = true;
+    if (_isSingleSessionMode == enabled) return;
+    _isSingleSessionMode = enabled;
+    notifyListeners();
+    try {
+      final sharedPrefs = prefs ?? await SharedPreferences.getInstance();
+      await sharedPrefs.setBool(singleSessionModeKey, enabled);
+    } on Exception catch (_) {}
+  }
+
+  Future<void> toggleSingleSessionMode() async {
+    await setSingleSessionMode(!_isSingleSessionMode);
   }
 
   Future<bool> startFocusSession(String goal, {int? backlogTaskId}) async {
@@ -333,7 +353,10 @@ class TimerNotifier extends ChangeNotifier {
     }
   }
 
-  Future<void> checkInSession({required bool lockedIn}) async {
+  Future<void> checkInSession({
+    required bool lockedIn,
+    bool endAllSessions = false,
+  }) async {
     if (_isCheckingIn ||
         (_status != TimerStatus.completed && _status != TimerStatus.running)) {
       return;
@@ -349,7 +372,9 @@ class TimerNotifier extends ChangeNotifier {
     final taskId = _linkedBacklogTaskId;
 
     _activeSessionId = null;
-    _linkedBacklogTaskId = null;
+    if (lockedIn || endAllSessions || _isSingleSessionMode) {
+      _linkedBacklogTaskId = null;
+    }
     _targetEndTime = null;
 
     try {
@@ -419,31 +444,74 @@ class TimerNotifier extends ChangeNotifier {
     } finally {
       _isCheckingIn = false;
 
-      // Always transition into 5-minute rest mode so UI never stays stuck at 00:00
-      _status = TimerStatus.breakRunning;
-      _targetDurationSeconds = defaultBreakSeconds;
-      _remainingSeconds = defaultBreakSeconds;
-      _remainingDuration = const Duration(seconds: defaultBreakSeconds);
-      _targetEndTime = DateTime.now().add(_remainingDuration);
-      final breakEnd = _targetEndTime;
-      if (breakEnd != null) {
-        unawaited(
-          notificationService.scheduleSessionCompletionNotification(
-            targetEndTime: breakEnd,
-            goal: '5-Minute Recharge Break',
-          ),
-        );
+      if (endAllSessions || _isSingleSessionMode) {
+        _status = TimerStatus.idle;
+        _targetDurationSeconds = _focusDurationSeconds;
+        _remainingSeconds = _focusDurationSeconds;
+        _remainingDuration = Duration(seconds: _focusDurationSeconds);
+        _targetEndTime = null;
+        _currentTaskGoal = '';
+        notifyListeners();
+      } else {
+        // Transition into 5-minute rest mode so UI never stays stuck at 00:00
+        _status = TimerStatus.breakRunning;
+        _targetDurationSeconds = defaultBreakSeconds;
+        _remainingSeconds = defaultBreakSeconds;
+        _remainingDuration = const Duration(seconds: defaultBreakSeconds);
+        _targetEndTime = DateTime.now().add(_remainingDuration);
+        final breakEnd = _targetEndTime;
+        if (breakEnd != null) {
+          unawaited(
+            notificationService.scheduleSessionCompletionNotification(
+              targetEndTime: breakEnd,
+              goal: '5-Minute Recharge Break',
+            ),
+          );
+        }
+        _startTicker();
+        notifyListeners();
       }
-      _startTicker();
-      notifyListeners();
     }
   }
 
   void readyToFocusFromBreak() {
     _periodicTicker?.cancel();
+    _cancelHoldTimer?.cancel();
+    _cancelHoldTimer = null;
+    _cancelHoldStartTime = null;
+    cancelHoldProgressNotifier.value = 0.0;
     _targetEndTime = null;
-    unawaited(notificationService.cancelTimerNotification());
-    unawaited(notificationService.cancelSessionCompletionNotification());
+    unawaited(
+      notificationService.cancelTimerNotification().catchError((Object _) {}),
+    );
+    unawaited(
+      notificationService
+          .cancelSessionCompletionNotification()
+          .catchError((Object _) {}),
+    );
+    _status = TimerStatus.idle;
+    _targetDurationSeconds = _focusDurationSeconds;
+    _remainingSeconds = _focusDurationSeconds;
+    _remainingDuration = Duration(seconds: _focusDurationSeconds);
+    _activeSessionId = null;
+    notifyListeners();
+  }
+
+  void endAllSessions() {
+    _periodicTicker?.cancel();
+    _cancelHoldTimer?.cancel();
+    _cancelHoldTimer = null;
+    _cancelHoldStartTime = null;
+    cancelHoldProgressNotifier.value = 0.0;
+    _targetEndTime = null;
+    unawaited(
+      notificationService.cancelTimerNotification().catchError((Object _) {}),
+    );
+    unawaited(
+      notificationService
+          .cancelSessionCompletionNotification()
+          .catchError((Object _) {}),
+    );
     _status = TimerStatus.idle;
     _targetDurationSeconds = _focusDurationSeconds;
     _remainingSeconds = _focusDurationSeconds;
@@ -551,10 +619,16 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<void> _loadRecentGoals() async {
-    final sharedPrefs = prefs ?? await SharedPreferences.getInstance();
-    final cached = sharedPrefs.getStringList(recentGoalsKey) ?? const [];
-    _recentGoals = List.unmodifiable(cached);
-    notifyListeners();
+    try {
+      final sharedPrefs = prefs ?? await SharedPreferences.getInstance();
+      final cached = sharedPrefs.getStringList(recentGoalsKey) ?? const [];
+      _recentGoals = List.unmodifiable(cached);
+      if (!_hasUserModifiedSingleSessionMode) {
+        _isSingleSessionMode =
+            sharedPrefs.getBool(singleSessionModeKey) ?? _isSingleSessionMode;
+      }
+      notifyListeners();
+    } on Exception catch (_) {}
   }
 
   Future<void> _cacheRecentGoal(String goal) async {

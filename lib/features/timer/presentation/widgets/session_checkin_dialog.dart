@@ -3,6 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
+@immutable
+class SessionCheckInResult {
+  const SessionCheckInResult({
+    required this.lockedIn,
+    this.endAllSessions = false,
+  });
+
+  final bool lockedIn;
+  final bool endAllSessions;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionCheckInResult &&
+          runtimeType == other.runtimeType &&
+          lockedIn == other.lockedIn &&
+          endAllSessions == other.endAllSessions;
+
+  @override
+  int get hashCode => Object.hash(lockedIn, endAllSessions);
+}
+
 class SessionCheckInDialog extends StatelessWidget {
   const SessionCheckInDialog({
     super.key,
@@ -17,8 +39,21 @@ class SessionCheckInDialog extends StatelessWidget {
     BuildContext context, {
     required int durationSeconds,
     required String taskGoal,
+  }) async {
+    final result = await showWithOutcome(
+      context,
+      durationSeconds: durationSeconds,
+      taskGoal: taskGoal,
+    );
+    return result?.lockedIn;
+  }
+
+  static Future<SessionCheckInResult?> showWithOutcome(
+    BuildContext context, {
+    required int durationSeconds,
+    required String taskGoal,
   }) {
-    return showDialog<bool>(
+    return showDialog<SessionCheckInResult>(
       context: context,
       barrierDismissible: false,
       builder: (_) => PopScope(
@@ -86,10 +121,13 @@ class SessionCheckInDialog extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        try {
-                          unawaited(HapticFeedback.mediumImpact());
-                        } catch (_) {}
-                        Navigator.of(context).pop(false);
+                        unawaited(
+                          HapticFeedback.mediumImpact()
+                              .catchError((Object _) {}),
+                        );
+                        Navigator.of(context).pop(
+                          const SessionCheckInResult(lockedIn: false),
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colorScheme.error,
@@ -127,10 +165,13 @@ class SessionCheckInDialog extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        try {
-                          unawaited(HapticFeedback.heavyImpact());
-                        } catch (_) {}
-                        Navigator.of(context).pop(true);
+                        unawaited(
+                          HapticFeedback.heavyImpact()
+                              .catchError((Object _) {}),
+                        );
+                        Navigator.of(context).pop(
+                          const SessionCheckInResult(lockedIn: true),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.primary,
@@ -165,6 +206,47 @@ class SessionCheckInDialog extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('checkin_end_all_sessions_button'),
+                  onPressed: () {
+                    unawaited(
+                      HapticFeedback.heavyImpact().catchError((Object _) {}),
+                    );
+                    Navigator.of(context).pop(
+                      const SessionCheckInResult(
+                        lockedIn: true,
+                        endAllSessions: true,
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colorScheme.onSurface,
+                    side: BorderSide(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: Icon(
+                    Icons.stop_circle_outlined,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  label: Text(
+                    'LOCKED IN & END ALL SESSIONS',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

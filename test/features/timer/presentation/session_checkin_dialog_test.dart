@@ -42,6 +42,7 @@ void main() {
       expect(find.text('"Refactor Session"'), findsOneWidget);
       expect(find.text('DERAILED 💀'), findsOneWidget);
       expect(find.text('LOCKED IN 🚀'), findsOneWidget);
+      expect(find.text('LOCKED IN & END ALL SESSIONS'), findsOneWidget);
     });
 
     testWidgets('tapping LOCKED IN returns true', (tester) async {
@@ -80,6 +81,58 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(dialogResult, isFalse);
+    });
+
+    testWidgets(
+        'showWithOutcome returns lockedIn true and endAllSessions true when tapping LOCKED IN & END ALL SESSIONS',
+        (tester) async {
+      SessionCheckInResult? outcome;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  outcome = await SessionCheckInDialog.showWithOutcome(
+                    context,
+                    durationSeconds: 1500,
+                    taskGoal: 'Final Session',
+                  );
+                },
+                child: const Text('SHOW OUTCOME DIALOG'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('SHOW OUTCOME DIALOG'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('checkin_end_all_sessions_button')));
+      await tester.pumpAndSettle();
+
+      expect(outcome, isNotNull);
+      expect(
+        outcome,
+        equals(
+          const SessionCheckInResult(
+            lockedIn: true,
+            endAllSessions: true,
+          ),
+        ),
+      );
+      expect(
+        outcome.hashCode,
+        equals(
+          const SessionCheckInResult(
+            lockedIn: true,
+            endAllSessions: true,
+          ).hashCode,
+        ),
+      );
     });
   });
 }

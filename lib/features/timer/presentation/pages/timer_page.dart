@@ -76,14 +76,17 @@ class _TimerPageState extends State<TimerPage> {
     final goal = notifier.currentTaskGoal;
 
     try {
-      final result = await SessionCheckInDialog.show(
+      final result = await SessionCheckInDialog.showWithOutcome(
         context,
         durationSeconds: durationSeconds,
         taskGoal: goal,
       );
 
       if (!mounted) return;
-      await notifier.checkInSession(lockedIn: result ?? false);
+      await notifier.checkInSession(
+        lockedIn: result?.lockedIn ?? false,
+        endAllSessions: result?.endAllSessions ?? false,
+      );
     } finally {
       _isCheckingIn = false;
     }
@@ -447,6 +450,7 @@ class _TimerPageState extends State<TimerPage> {
                         onTap: () => _showSoundscapeBottomSheet(context),
                       ),
                       const _MaximumFocusPill(),
+                      const _SingleSessionModePill(),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -666,28 +670,70 @@ class _TimerPageState extends State<TimerPage> {
 
       case TimerStatus.breakRunning:
       case TimerStatus.breakCompleted:
-        return SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: () => timerNotifier.readyToFocusFromBreak(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.secondary,
-              foregroundColor: colorScheme.onSecondary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: timerNotifier.readyToFocusFromBreak,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.secondary,
+                  foregroundColor: colorScheme.onSecondary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  'I\'M READY TO FOCUS',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onSecondary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ),
-            child: Text(
-              'I\'M READY TO FOCUS',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: colorScheme.onSecondary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                key: const Key('timer_end_all_sessions_button'),
+                onPressed: () {
+                  unawaited(
+                    HapticFeedback.mediumImpact().catchError((Object _) {}),
+                  );
+                  timerNotifier.endAllSessions();
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colorScheme.onSurface,
+                  side: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                icon: Icon(
+                  Icons.stop_circle_outlined,
+                  size: 20,
+                  color: colorScheme.primary,
+                ),
+                label: Text(
+                  'END ALL SESSIONS',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         );
     }
   }
@@ -1100,6 +1146,71 @@ class _MaximumFocusPill extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 isEnabled ? 'Max Focus: ON' : 'Max Focus: OFF',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
+                  fontWeight: isEnabled ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SingleSessionModePill extends StatelessWidget {
+  const _SingleSessionModePill();
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = context.select<TimerNotifier, bool>(
+      (notifier) => notifier.isSingleSessionMode,
+    );
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final activeColor = colorScheme.primary;
+
+    return Semantics(
+      button: true,
+      toggled: isEnabled,
+      excludeSemantics: true,
+      label: isEnabled
+          ? 'Single Session Mode enabled. Session ends after check-in without starting a break. Tap to disable.'
+          : 'Single Session Mode disabled. Tap to enable single session mode.',
+      child: InkWell(
+        key: const Key('timer_single_session_mode_pill'),
+        onTap: () async {
+          unawaited(
+            HapticFeedback.selectionClick().catchError((Object _) {}),
+          );
+          await context.read<TimerNotifier>().toggleSingleSessionMode();
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? activeColor.withValues(alpha: 0.14)
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isEnabled
+                  ? activeColor.withValues(alpha: 0.55)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isEnabled ? Icons.looks_one_rounded : Icons.repeat_rounded,
+                size: 16,
+                color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isEnabled ? 'Single Session: ON' : 'Single Session: OFF',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: isEnabled ? activeColor : colorScheme.onSurfaceVariant,
                   fontWeight: isEnabled ? FontWeight.w600 : FontWeight.w500,

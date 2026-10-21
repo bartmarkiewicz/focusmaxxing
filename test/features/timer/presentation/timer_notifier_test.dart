@@ -398,6 +398,112 @@ void main() {
       expect(notifier.remainingSeconds, 45 * 60);
       expect(notifier.targetEndTime, isNull);
     });
+
+    test(
+        'singleSessionMode toggles, persists to SharedPreferences, and skips break after checkInSession',
+        () async {
+      expect(notifier.isSingleSessionMode, isFalse);
+
+      await notifier.toggleSingleSessionMode();
+      expect(notifier.isSingleSessionMode, isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(TimerNotifier.singleSessionModeKey), isTrue);
+
+      // Verify a newly instantiated TimerNotifier restores isSingleSessionMode from SharedPreferences
+      final restoredNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(restoredNotifier.dispose);
+      expect(restoredNotifier.isSingleSessionMode, isTrue);
+
+      notifier.setDurationPreset(30 * 60);
+      await notifier.startFocusSession('Single Block Goal', backlogTaskId: 7);
+
+      notificationService.lastScheduledCompletionGoal = null;
+      await notifier.checkInSession(lockedIn: true);
+
+      expect(sessionRepository.lastUpdatedStatus, SessionStatus.lockedIn);
+      expect(backlogRepository.lastCompletedTaskId, 7);
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.targetDurationSeconds, 30 * 60);
+      expect(notifier.remainingSeconds, 30 * 60);
+      expect(notifier.targetEndTime, isNull);
+      expect(notificationService.lastScheduledCompletionGoal, isNull);
+    });
+
+    test(
+        'checkInSession with lockedIn false in singleSessionMode records DERAILED, leaves backlog task pending, and skips break to idle',
+        () async {
+      await notifier.setSingleSessionMode(true);
+      await notifier.startFocusSession('Derailed Single Session',
+          backlogTaskId: 55);
+
+      notificationService.lastScheduledCompletionGoal = null;
+      await notifier.checkInSession(lockedIn: false);
+
+      expect(sessionRepository.lastUpdatedStatus, SessionStatus.derailed);
+      expect(backlogRepository.lastCompletedTaskId, isNull);
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.linkedBacklogTaskId, isNull);
+      expect(notificationService.lastScheduledCompletionGoal, isNull);
+    });
+
+    test(
+        'checkInSession with endAllSessions true returns directly to idle even when singleSessionMode is false',
+        () async {
+      expect(notifier.isSingleSessionMode, isFalse);
+
+      await notifier.startFocusSession('Lock In Then Done', backlogTaskId: 12);
+      notificationService.lastScheduledCompletionGoal = null;
+
+      await notifier.checkInSession(lockedIn: true, endAllSessions: true);
+
+      expect(sessionRepository.lastUpdatedStatus, SessionStatus.lockedIn);
+      expect(backlogRepository.lastCompletedTaskId, 12);
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.targetDurationSeconds, TimerNotifier.defaultFocusSeconds);
+      expect(notifier.remainingSeconds, TimerNotifier.defaultFocusSeconds);
+      expect(notificationService.lastScheduledCompletionGoal, isNull);
+    });
+
+    test(
+        'readyToFocusFromBreak preserves currentTaskGoal while endAllSessions clears goal and backlog link across breakRunning and breakCompleted',
+        () async {
+      notifier.setDurationPreset(45 * 60);
+      await notifier.startFocusSession('Retryable Task', backlogTaskId: 88);
+      await notifier.checkInSession(lockedIn: false);
+
+      expect(notifier.status, TimerStatus.breakRunning);
+      expect(notifier.currentTaskGoal, 'Retryable Task');
+      expect(notifier.linkedBacklogTaskId, 88);
+
+      // readyToFocusFromBreak keeps goal and uncompleted backlog task ID for next session
+      notifier.readyToFocusFromBreak();
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.currentTaskGoal, 'Retryable Task');
+      expect(notifier.linkedBacklogTaskId, 88);
+
+      // Start again, complete into breakRunning, then expire into breakCompleted
+      await notifier.startFocusSession(
+        notifier.currentTaskGoal,
+        backlogTaskId: notifier.linkedBacklogTaskId,
+      );
+      await notifier.checkInSession(lockedIn: false);
+      expect(notifier.status, TimerStatus.breakRunning);
+
+      // End all sessions from breakRunning
+      notifier.endAllSessions();
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.currentTaskGoal, isEmpty);
+      expect(notifier.linkedBacklogTaskId, isNull);
+      expect(notificationService.isCancelled, isTrue);
+      expect(notificationService.isCompletionAlarmCancelled, isTrue);
+    });
   });
 }
 

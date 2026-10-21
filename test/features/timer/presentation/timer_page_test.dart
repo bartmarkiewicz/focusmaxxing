@@ -296,5 +296,102 @@ void main() {
       expect(timerNotifier.status, TimerStatus.idle);
       expect(find.text('🚀 LOCK IN'), findsOneWidget);
     });
+
+    testWidgets(
+        'tapping Single Session pill toggles singleSessionMode on TimerNotifier',
+        (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Single Session: OFF'), findsOneWidget);
+      expect(timerNotifier.isSingleSessionMode, isFalse);
+
+      await tester.tap(find.byKey(const Key('timer_single_session_mode_pill')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Single Session: ON'), findsOneWidget);
+      expect(timerNotifier.isSingleSessionMode, isTrue);
+    });
+
+    testWidgets(
+        'tapping END ALL SESSIONS during break returns to idle',
+        (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await timerNotifier.startFocusSession('Lock In Phase');
+      await tester.pumpAndSettle();
+
+      await timerNotifier.checkInSession(lockedIn: true);
+      await tester.pumpAndSettle();
+      expect(timerNotifier.status, TimerStatus.breakRunning);
+      final endAllButton =
+          find.byKey(const Key('timer_end_all_sessions_button'));
+      expect(endAllButton, findsOneWidget);
+
+      await tester.ensureVisible(endAllButton);
+      await tester.pumpAndSettle();
+      await tester.tap(endAllButton);
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.idle);
+      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+    });
+
+    testWidgets(
+        'check-in dialog in Single Session Mode still prompts user and returns directly to idle upon check-in',
+        (tester) async {
+      await timerNotifier.setSingleSessionMode(true);
+      timerNotifier.setDurationPreset(1);
+
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 1100));
+      });
+      timerNotifier.syncWithWallClock();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Did you lock in?'), findsOneWidget);
+      await tester.tap(find.text('LOCKED IN 🚀'));
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.idle);
+      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping LOCKED IN & END ALL SESSIONS in check-in dialog ends all sessions and returns to idle',
+        (tester) async {
+      expect(timerNotifier.isSingleSessionMode, isFalse);
+      timerNotifier.setDurationPreset(1);
+
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 1100));
+      });
+      timerNotifier.syncWithWallClock();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Did you lock in?'), findsOneWidget);
+      final endAllBtn =
+          find.byKey(const Key('checkin_end_all_sessions_button'));
+      await tester.ensureVisible(endAllBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(endAllBtn);
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.idle);
+      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+    });
   });
 }
