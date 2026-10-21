@@ -14,10 +14,11 @@ class NotificationService {
       ScheduleConstants.autoShieldNotificationId;
   static const int sessionCompletionNotificationId = 1004;
 
-  static const String timerChannelId = 'focusmaxxing_timer_channel';
+  static const String legacyTimerChannelId = 'focusmaxxing_timer_channel';
+  static const String timerChannelId = 'focusmaxxing_timer_silent_channel';
   static const String timerChannelName = 'Focus Countdown';
   static const String timerChannelDescription =
-      'Ongoing countdown notification for active focus sessions';
+      'Silent ongoing countdown notification for active focus sessions';
 
   static const String completionChannelId = 'focusmaxxing_completion_channel';
   static const String completionChannelName = 'Session Completion Alarms';
@@ -93,12 +94,14 @@ class NotificationService {
                 AndroidFlutterLocalNotificationsPlugin>();
         await androidImplementation?.requestNotificationsPermission();
 
+        await androidImplementation
+            ?.deleteNotificationChannel(legacyTimerChannelId);
         await androidImplementation?.createNotificationChannel(
           const AndroidNotificationChannel(
             timerChannelId,
             timerChannelName,
             description: timerChannelDescription,
-            importance: Importance.high,
+            importance: Importance.low,
             playSound: false,
             enableVibration: false,
             showBadge: false,
@@ -150,22 +153,24 @@ class NotificationService {
     if (!isSupportedPlatform || !_isInitialized) return;
     final opId = ++_timerNotificationOpId;
 
-    final title = isPaused
-        ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
-        : '🚀 $formattedTimeRemaining Remaining';
-
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final remainingMs =
         targetEndTimeEpochMs != null ? targetEndTimeEpochMs - nowMs : null;
     final useNativeChronometer =
         !isPaused && remainingMs != null && remainingMs > 0;
 
+    final title = isPaused
+        ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
+        : (useNativeChronometer
+            ? '🚀 Locking In'
+            : '🚀 Locking In · $formattedTimeRemaining');
+
     final androidDetails = AndroidNotificationDetails(
       timerChannelId,
       timerChannelName,
       channelDescription: timerChannelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.low,
+      priority: Priority.low,
       category: AndroidNotificationCategory.stopwatch,
       visibility: NotificationVisibility.public,
       ongoing: !isPaused,
@@ -174,7 +179,7 @@ class NotificationService {
       silent: true,
       playSound: false,
       enableVibration: false,
-      showWhen: true,
+      showWhen: useNativeChronometer,
       when: useNativeChronometer ? targetEndTimeEpochMs : null,
       usesChronometer: useNativeChronometer,
       chronometerCountDown: useNativeChronometer,

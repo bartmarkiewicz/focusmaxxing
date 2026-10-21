@@ -230,15 +230,7 @@ class FocusShieldService : Service() {
                     }
 
                     if (!activeService.isDegraded && !activeService.isScheduled) {
-                        val mins = (currentRemainingSeconds / 60).toString().padStart(2, '0')
-                        val secs = (currentRemainingSeconds % 60).toString().padStart(2, '0')
-                        val modeLabel = when {
-                            currentIsBreak -> "Break Guard"
-                            currentIsMaximumFocus -> "Maximum Focus ($currentGoal)"
-                            currentIsPaused -> "Paused ($currentGoal)"
-                            else -> "Lock In ($currentGoal)"
-                        }
-                        activeService.updateNotification("$modeLabel · $mins:$secs remaining")
+                        activeService.updateNotification(activeService.formatSessionNotificationText())
                     }
                 }
             }
@@ -305,6 +297,32 @@ class FocusShieldService : Service() {
     @Volatile
     private var lastNotificationText: String? = null
 
+    @Volatile
+    private var lastNotificationTargetEndMs: Long = 0L
+
+    private fun formatSessionNotificationText(): String {
+        if (isScheduled && !scheduleTimeRange.isNullOrEmpty()) {
+            return "Scheduled Auto-Shield Active ($scheduleTimeRange)"
+        }
+        if (!currentIsPaused && currentRemainingSeconds <= 0 && targetEndTimeEpochMs <= 0L) {
+            return if (currentIsBreak) {
+                "Break Complete · Tap to lock in"
+            } else {
+                "Session Complete ($currentGoal) · Tap to check in"
+            }
+        }
+        return when {
+            currentIsBreak -> "Break Guard"
+            currentIsMaximumFocus -> "Maximum Focus ($currentGoal)"
+            currentIsPaused -> {
+                val mins = (currentRemainingSeconds / 60).toString().padStart(2, '0')
+                val secs = (currentRemainingSeconds % 60).toString().padStart(2, '0')
+                "Paused ($currentGoal) · $mins:$secs remaining"
+            }
+            else -> "Lock In ($currentGoal)"
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         instance = this
         if (intent?.action == ACTION_STOP_SHIELD) {
@@ -325,13 +343,7 @@ class FocusShieldService : Service() {
             scheduleTimeRange = null
         }
 
-        val notificationText = if (isScheduled && !scheduleTimeRange.isNullOrEmpty()) {
-            "Scheduled Auto-Shield Active ($scheduleTimeRange)"
-        } else {
-            val mins = (currentRemainingSeconds / 60).toString().padStart(2, '0')
-            val secs = (currentRemainingSeconds % 60).toString().padStart(2, '0')
-            "Lock In ($currentGoal) · $mins:$secs remaining"
-        }
+        val notificationText = formatSessionNotificationText()
 
         ensureOverlayBridgeRegistered(applicationContext)
 
@@ -340,6 +352,7 @@ class FocusShieldService : Service() {
             lastProcessedEventTime = System.currentTimeMillis() - 500L
             createNotificationChannel()
             lastNotificationText = notificationText
+            lastNotificationTargetEndMs = if (!isScheduled && !isDegraded && !currentIsPaused) targetEndTimeEpochMs else 0L
             startForeground(NOTIFICATION_ID, buildForegroundNotification(notificationText))
             startPollingLoop()
         } else {
@@ -372,15 +385,9 @@ class FocusShieldService : Service() {
                         if (now >= targetEndTimeEpochMs) {
                             targetEndTimeEpochMs = 0L
                             currentRemainingSeconds = 0
-                            val wasBreak = currentIsBreak
                             currentIsMaximumFocus = false
                             if (!isDegraded) {
-                                val doneText = if (wasBreak) {
-                                    "Break Complete · Tap to lock in"
-                                } else {
-                                    "Session Complete ($currentGoal) · Tap to check in"
-                                }
-                                updateNotification(doneText)
+                                updateNotification(formatSessionNotificationText())
                             }
                             if (OverlayService.isRunning) {
                                 withContext(Dispatchers.Main) {
@@ -489,14 +496,7 @@ class FocusShieldService : Service() {
 
                     if (isDegraded) {
                         isDegraded = false
-                        val currentText = if (isScheduled && !scheduleTimeRange.isNullOrEmpty()) {
-                            "Scheduled Auto-Shield Active ($scheduleTimeRange)"
-                        } else {
-                            val mins = (currentRemainingSeconds / 60).toString().padStart(2, '0')
-                            val secs = (currentRemainingSeconds % 60).toString().padStart(2, '0')
-                            "Lock In ($currentGoal) · $mins:$secs remaining"
-                        }
-                        updateNotification(currentText)
+                        updateNotification(formatSessionNotificationText())
                     }
                 } catch (securityEx: SecurityException) {
                     if (!isDegraded) {
@@ -596,7 +596,10 @@ class FocusShieldService : Service() {
         }
         val pendingIntent = PendingIntent.getActivity(this, 0, launchIntent, flags)
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val nowMs = System.currentTimeMillis()
+        val useChronometer = !isScheduled && !isDegraded && !currentIsPaused && targetEndTimeEpochMs > nowMs
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Brainrot Shield Active")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
@@ -605,12 +608,22 @@ class FocusShieldService : Service() {
             .setSilent(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setShowWhen(useChronometer)
+            .setUsesChronometer(useChronometer)
+            .setChronometerCountDown(useChronometer)
+
+        if (useChronometer) {
+            builder.setWhen(targetEndTimeEpochMs)
+        }
+
+        return builder.build()
     }
 
     private fun updateNotification(contentText: String) {
-        if (contentText == lastNotificationText) return
+        val effectiveTargetMs = if (!isScheduled && !isDegraded && !currentIsPaused) targetEndTimeEpochMs else 0L
+        if (contentText == lastNotificationText && effectiveTargetMs == lastNotificationTargetEndMs) return
         lastNotificationText = contentText
+        lastNotificationTargetEndMs = effectiveTargetMs
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
         manager?.notify(NOTIFICATION_ID, buildForegroundNotification(contentText))
     }
@@ -621,6 +634,7 @@ class FocusShieldService : Service() {
         currentIsPaused = false
         targetEndTimeEpochMs = 0L
         lastNotificationText = null
+        lastNotificationTargetEndMs = 0L
         if (instance === this) {
             instance = null
         }

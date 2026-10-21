@@ -596,14 +596,7 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void _onTick() {
-    final previousSeconds = _remainingSeconds;
     syncWithWallClock();
-    if (_status == TimerStatus.running &&
-        _remainingSeconds != previousSeconds &&
-        _remainingSeconds > 0 &&
-        _remainingSeconds % 30 == 0) {
-      _updateNotification();
-    }
   }
 
   void _updateNotification() {

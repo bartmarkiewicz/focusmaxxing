@@ -78,7 +78,9 @@ class ShieldNotifier extends ChangeNotifier {
   bool _isScheduledShieldActive = false;
   TimerStatus? _lastSyncedStatus;
   int? _lastSyncedRemainingSeconds;
+  int? _lastSyncedTargetEndTimeMs;
   String? _lastSyncedGoal;
+  bool? _lastSyncedMaximumFocus;
   bool _isDisposed = false;
 
   List<ShieldedAppEntity> get shieldedApps => _shieldedApps;
@@ -380,20 +382,7 @@ class ShieldNotifier extends ChangeNotifier {
 
     final timer = _attachedTimerNotifier;
     if (timer != null && _isSessionShieldActive) {
-      final isBreak = timer.status == TimerStatus.breakRunning ||
-          timer.status == TimerStatus.breakCompleted;
-      final isFocusRunningOrPaused = timer.status == TimerStatus.running ||
-          timer.status == TimerStatus.paused;
-      await syncShieldWithOverlayUseCase(
-        goal: timer.currentTaskGoal.isNotEmpty
-            ? timer.currentTaskGoal
-            : 'Deep Work',
-        remainingSeconds: timer.remainingSeconds,
-        isBreak: isBreak,
-        isMaximumFocus: enabled && isFocusRunningOrPaused,
-        isPaused: timer.status == TimerStatus.paused,
-        targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
-      );
+      await syncWithTimer(timer);
       await _reconcileNativeShieldForActiveSession();
     }
     notifyListeners();
@@ -408,7 +397,9 @@ class ShieldNotifier extends ChangeNotifier {
         _isSessionShieldActive = false;
         _lastSyncedStatus = TimerStatus.idle;
         _lastSyncedRemainingSeconds = null;
+        _lastSyncedTargetEndTimeMs = null;
         _lastSyncedGoal = null;
+        _lastSyncedMaximumFocus = null;
 
         final isScheduleActive = await _checkIfScheduleActive();
         if (!isScheduleActive && !_isScheduledShieldActive) {
@@ -426,26 +417,31 @@ class ShieldNotifier extends ChangeNotifier {
             status == TimerStatus.breakCompleted)
         ? 0
         : timer.remainingSeconds;
+    final targetEndMs = timer.targetEndTime?.millisecondsSinceEpoch;
     final goal =
         timer.currentTaskGoal.isNotEmpty ? timer.currentTaskGoal : 'Deep Work';
     final effectiveMaximumFocus = _isMaximumFocusEnabled &&
         (status == TimerStatus.running || status == TimerStatus.paused);
 
     final shouldSyncOverlay = _lastSyncedStatus != status ||
-        _lastSyncedRemainingSeconds != remaining ||
-        _lastSyncedGoal != goal;
+        _lastSyncedGoal != goal ||
+        _lastSyncedMaximumFocus != effectiveMaximumFocus ||
+        _lastSyncedTargetEndTimeMs != targetEndMs ||
+        (isPaused && _lastSyncedRemainingSeconds != remaining);
 
     if (shouldSyncOverlay) {
       _lastSyncedStatus = status;
       _lastSyncedRemainingSeconds = remaining;
+      _lastSyncedTargetEndTimeMs = targetEndMs;
       _lastSyncedGoal = goal;
+      _lastSyncedMaximumFocus = effectiveMaximumFocus;
       await syncShieldWithOverlayUseCase(
         goal: goal,
         remainingSeconds: remaining,
         isBreak: isBreak,
         isMaximumFocus: effectiveMaximumFocus,
         isPaused: isPaused,
-        targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
+        targetEndTimeEpochMs: targetEndMs,
       );
     }
 

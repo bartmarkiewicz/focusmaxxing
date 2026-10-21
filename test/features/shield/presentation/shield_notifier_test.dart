@@ -680,6 +680,48 @@ void main() {
         );
       },
     );
+
+    test(
+      'syncWithTimer does not spam syncOverlayState on 1-second countdown ticks while running',
+      () async {
+        final sessionRepo = _FakeSessionRepository();
+        final timerNotifier = _ControllableTimerNotifier(
+          startSessionUseCase: StartSessionUseCase(sessionRepo),
+          completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
+          cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+          notificationService: _NoOpNotificationService(),
+          prefs: prefs,
+        );
+
+        await timerNotifier.startFocusSession('Silent Countdown');
+        await notifier.syncWithTimer(timerNotifier);
+        expect(repository.syncedOverlayPayloads.length, 1);
+
+        // Simulate multiple 1-second countdown ticks with the same status, goal, and targetEndTime
+        timerNotifier.overrideRemainingSeconds = 1499;
+        await notifier.syncWithTimer(timerNotifier);
+        timerNotifier.overrideRemainingSeconds = 1470;
+        await notifier.syncWithTimer(timerNotifier);
+        timerNotifier.overrideRemainingSeconds = 1440;
+        await notifier.syncWithTimer(timerNotifier);
+
+        expect(repository.syncedOverlayPayloads.length, 1);
+
+        // Pausing changes status and targetEndTime, triggering a state sync
+        timerNotifier.overrideRemainingSeconds = null;
+        timerNotifier.pause();
+        await notifier.syncWithTimer(timerNotifier);
+        expect(repository.syncedOverlayPayloads.length, 2);
+        expect(repository.syncedOverlayPayloads.last['isPaused'], isTrue);
+
+        // Resuming triggers another state sync with restored targetEndTime
+        timerNotifier.resume();
+        await notifier.syncWithTimer(timerNotifier);
+        expect(repository.syncedOverlayPayloads.length, 3);
+
+        timerNotifier.dispose();
+      },
+    );
   });
 }
 

@@ -11,6 +11,7 @@ class _FakeFlutterLocalNotificationsPlugin extends Fake
   int? lastShownId;
   String? lastShownTitle;
   String? lastShownBody;
+  NotificationDetails? lastShownDetails;
   int? lastScheduledId;
   String? lastScheduledTitle;
   String? lastScheduledBody;
@@ -38,6 +39,7 @@ class _FakeFlutterLocalNotificationsPlugin extends Fake
     lastShownId = id;
     lastShownTitle = title;
     lastShownBody = body;
+    lastShownDetails = notificationDetails;
   }
 
   @override
@@ -78,19 +80,41 @@ void main() {
   });
 
   group('NotificationService', () {
-    test('showOngoingTimer displays active countdown notification', () async {
+    test(
+        'showOngoingTimer displays silent low-importance active countdown notification with native chronometer',
+        () async {
+      final targetEndMs = DateTime.now()
+          .add(const Duration(minutes: 25))
+          .millisecondsSinceEpoch;
+
       await service.showOngoingTimer(
         taskGoal: 'Deep Work',
         formattedTimeRemaining: '24:35',
         isPaused: false,
-        targetEndTimeEpochMs: DateTime.now()
-            .add(const Duration(minutes: 25))
-            .millisecondsSinceEpoch,
+        targetEndTimeEpochMs: targetEndMs,
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
-      expect(fakePlugin.lastShownTitle, contains('24:35'));
+      expect(fakePlugin.lastShownTitle, '🚀 Locking In');
       expect(fakePlugin.lastShownBody, 'Deep Work');
+
+      final android = fakePlugin.lastShownDetails?.android;
+      expect(android, isNotNull);
+      expect(android!.channelId, NotificationService.timerChannelId);
+      expect(
+        NotificationService.timerChannelId,
+        isNot(equals(NotificationService.legacyTimerChannelId)),
+      );
+      expect(android.importance, Importance.low);
+      expect(android.priority, Priority.low);
+      expect(android.silent, isTrue);
+      expect(android.onlyAlertOnce, isTrue);
+      expect(android.playSound, isFalse);
+      expect(android.enableVibration, isFalse);
+      expect(android.usesChronometer, isTrue);
+      expect(android.chronometerCountDown, isTrue);
+      expect(android.showWhen, isTrue);
+      expect(android.when, targetEndMs);
     });
 
     test('showOngoingTimer displays paused status when isPaused is true',
@@ -102,8 +126,34 @@ void main() {
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
-      expect(fakePlugin.lastShownTitle, contains('Paused'));
+      expect(fakePlugin.lastShownTitle, contains('Paused (10:00)'));
       expect(fakePlugin.lastShownBody, 'Clean Room');
+
+      final android = fakePlugin.lastShownDetails?.android;
+      expect(android, isNotNull);
+      expect(android!.importance, Importance.low);
+      expect(android.priority, Priority.low);
+      expect(android.usesChronometer, isFalse);
+      expect(android.showWhen, isFalse);
+    });
+
+    test(
+        'showOngoingTimer falls back to static time title without chronometer when targetEndTimeEpochMs is null',
+        () async {
+      await service.showOngoingTimer(
+        taskGoal: 'Fallback Goal',
+        formattedTimeRemaining: '24:35',
+        isPaused: false,
+      );
+
+      expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
+      expect(fakePlugin.lastShownTitle, '🚀 Locking In · 24:35');
+      expect(fakePlugin.lastShownBody, 'Fallback Goal');
+
+      final android = fakePlugin.lastShownDetails?.android;
+      expect(android, isNotNull);
+      expect(android!.usesChronometer, isFalse);
+      expect(android.showWhen, isFalse);
     });
 
     test('cancelTimerNotification cancels ongoing notification', () async {

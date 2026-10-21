@@ -71,6 +71,9 @@ class _FakeBacklogRepository implements IBacklogRepository {
 
 class _MockNotificationService extends NotificationService {
   String? lastShownGoal;
+  bool? lastShownIsPaused;
+  int? lastShownTargetEndTimeEpochMs;
+  int showOngoingTimerCallCount = 0;
   bool isCancelled = false;
   DateTime? lastScheduledCompletionTime;
   String? lastScheduledCompletionGoal;
@@ -83,7 +86,10 @@ class _MockNotificationService extends NotificationService {
     required bool isPaused,
     int? targetEndTimeEpochMs,
   }) async {
+    showOngoingTimerCallCount++;
     lastShownGoal = taskGoal;
+    lastShownIsPaused = isPaused;
+    lastShownTargetEndTimeEpochMs = targetEndTimeEpochMs;
     isCancelled = false;
   }
 
@@ -503,6 +509,31 @@ void main() {
       expect(notifier.linkedBacklogTaskId, isNull);
       expect(notificationService.isCancelled, isTrue);
       expect(notificationService.isCompletionAlarmCancelled, isTrue);
+    });
+
+    test(
+        'ongoing notification is posted once on start and not re-posted on 30-second boundaries, updating only on pause/resume',
+        () async {
+      notifier.setDurationPreset(31);
+      await notifier.startFocusSession('Deep Focus No Flash');
+      expect(notificationService.showOngoingTimerCallCount, 1);
+      expect(notificationService.lastShownIsPaused, isFalse);
+      expect(notificationService.lastShownTargetEndTimeEpochMs, isNotNull);
+
+      // Wait across the 30-second boundary (31 -> 30)
+      await Future<void>.delayed(const Duration(milliseconds: 1250));
+      expect(notifier.remainingSeconds, lessThanOrEqualTo(30));
+      expect(notificationService.showOngoingTimerCallCount, 1);
+
+      notifier.pause();
+      expect(notificationService.showOngoingTimerCallCount, 2);
+      expect(notificationService.lastShownIsPaused, isTrue);
+      expect(notificationService.lastShownTargetEndTimeEpochMs, isNull);
+
+      notifier.resume();
+      expect(notificationService.showOngoingTimerCallCount, 3);
+      expect(notificationService.lastShownIsPaused, isFalse);
+      expect(notificationService.lastShownTargetEndTimeEpochMs, isNotNull);
     });
   });
 }
