@@ -61,6 +61,13 @@ class BacklogNotifier extends ChangeNotifier {
       },
       (tasks) {
         _pendingTasks = List.unmodifiable(tasks);
+        final selected = _selectedTask;
+        if (selected != null &&
+            !_pendingTasks.any((t) =>
+                (selected.id != null && t.id == selected.id) ||
+                (selected.id == null && t.title == selected.title))) {
+          _selectedTask = null;
+        }
         _errorMessage = null;
       },
     );

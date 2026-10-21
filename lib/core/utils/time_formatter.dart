@@ -7,6 +7,7 @@ abstract final class TimeFormatter {
   }
 
   static String formatDurationToMinutes(int totalSeconds) {
+    if (totalSeconds <= 0) return '0m';
     final minutes = (totalSeconds / 60).round();
     if (minutes < 60) return '${minutes}m';
     final hours = minutes ~/ 60;

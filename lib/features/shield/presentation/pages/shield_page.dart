@@ -78,6 +78,7 @@ class _ShieldPageState extends State<ShieldPage> {
     }
 
     if (result == ShieldToggleResult.upgradeRequired) {
+      var unlockRequested = false;
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -87,6 +88,7 @@ class _ShieldPageState extends State<ShieldPage> {
             activeApps: notifier.activeShieldedApps,
             candidateAppName: appName,
             onUnlockPro: () async {
+              unlockRequested = true;
               final billingNotifier = context.read<BillingNotifier?>();
               if (billingNotifier != null) {
                 await billingNotifier.buyLifetimePro();
@@ -113,7 +115,9 @@ class _ShieldPageState extends State<ShieldPage> {
           );
         },
       );
-      notifier.dismissUpgradePrompt();
+      if (!unlockRequested) {
+        notifier.dismissUpgradePrompt();
+      }
     }
   }
 

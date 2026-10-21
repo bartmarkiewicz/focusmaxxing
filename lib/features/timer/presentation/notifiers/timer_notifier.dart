@@ -82,6 +82,7 @@ class TimerNotifier extends ChangeNotifier {
   DateTime? _cancelHoldStartTime;
   bool _isStarting = false;
   bool _isCancelling = false;
+  bool _isCheckingIn = false;
   bool _isDisposed = false;
 
   TimerStatus get status => _status;
@@ -120,7 +121,7 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void setDurationPreset(int seconds) {
-    if (_status != TimerStatus.idle) return;
+    if (_status != TimerStatus.idle || seconds <= 0) return;
     _focusDurationSeconds = seconds;
     _targetDurationSeconds = seconds;
     _remainingSeconds = seconds;
@@ -212,6 +213,7 @@ class TimerNotifier extends ChangeNotifier {
       _remainingDuration = diff;
     }
     _periodicTicker?.cancel();
+    _targetEndTime = null;
     _remainingSeconds = (_remainingDuration.inMilliseconds / 1000).ceil();
     _status = TimerStatus.paused;
     _updateNotification();
@@ -316,8 +318,10 @@ class TimerNotifier extends ChangeNotifier {
       }
 
       _status = TimerStatus.idle;
-      _remainingSeconds = _targetDurationSeconds;
-      _remainingDuration = Duration(seconds: _targetDurationSeconds);
+      _targetEndTime = null;
+      _targetDurationSeconds = _focusDurationSeconds;
+      _remainingSeconds = _focusDurationSeconds;
+      _remainingDuration = Duration(seconds: _focusDurationSeconds);
       notifyListeners();
 
       try {
@@ -330,9 +334,13 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   Future<void> checkInSession({required bool lockedIn}) async {
-    if (_status != TimerStatus.completed && _status != TimerStatus.running) {
+    if (_isCheckingIn ||
+        (_status != TimerStatus.completed && _status != TimerStatus.running)) {
       return;
     }
+    _isCheckingIn = true;
+    _periodicTicker?.cancel();
+
     final sessionId = _activeSessionId;
     final actualDuration = _targetDurationSeconds;
     final outcomeStatus =
@@ -342,84 +350,99 @@ class TimerNotifier extends ChangeNotifier {
 
     _activeSessionId = null;
     _linkedBacklogTaskId = null;
+    _targetEndTime = null;
 
-    if (sessionId != null) {
-      final completeResult = await completeSessionUseCase(
-        sessionId: sessionId,
-        status: outcomeStatus,
-        actualDurationSeconds: actualDuration,
-      );
-      completeResult.fold(
-        (failure) => _errorMessage = failure.message,
-        (_) {},
-      );
-
-      // Auto-complete linked backlog task only if session was locked in
-      if (lockedIn && taskId != null && completeTask != null) {
-        final taskResult = await completeTask(
-          id: taskId,
-          sessionId: sessionId,
-        );
-        taskResult.fold(
-          (failure) => _errorMessage = failure.message,
-          (_) {},
-        );
-        unawaited(backlogNotifier?.loadPendingTasks(showLoading: false));
-      }
-
-      final syncService = widgetSyncService;
-      final summaryUseCase = getDailySummaryUseCase;
-      if (syncService != null) {
-        if (summaryUseCase != null) {
-          final includeWeekends =
-              prefs?.getBool('insights_include_weekends') ?? false;
-          final summaryResult = await summaryUseCase(
-            DateTime.now(),
-            includeWeekendsInStreak: includeWeekends,
+    try {
+      if (sessionId != null) {
+        try {
+          final completeResult = await completeSessionUseCase(
+            sessionId: sessionId,
+            status: outcomeStatus,
+            actualDurationSeconds: actualDuration,
           );
-          await summaryResult.fold(
-            (_) async {},
-            (summary) async {
-              await syncService.updateGlanceableWidget(
-                todayMinutes: summary.totalFocusMinutes,
-                activeStreak: summary.currentStreakDays,
+          completeResult.fold(
+            (failure) => _errorMessage = failure.message,
+            (_) {},
+          );
+        } catch (_) {}
+
+        // Auto-complete linked backlog task only if session was locked in
+        if (lockedIn && taskId != null && completeTask != null) {
+          try {
+            final taskResult = await completeTask(
+              id: taskId,
+              sessionId: sessionId,
+            );
+            taskResult.fold(
+              (failure) => _errorMessage = failure.message,
+              (_) {},
+            );
+            unawaited(backlogNotifier?.loadPendingTasks(showLoading: false));
+          } catch (_) {}
+        }
+
+        final syncService = widgetSyncService;
+        final summaryUseCase = getDailySummaryUseCase;
+        if (syncService != null) {
+          try {
+            if (summaryUseCase != null) {
+              final includeWeekends =
+                  prefs?.getBool('insights_include_weekends') ?? false;
+              final summaryResult = await summaryUseCase(
+                DateTime.now(),
+                includeWeekendsInStreak: includeWeekends,
               );
-            },
-          );
-        } else {
-          final sessionMinutes = (actualDuration / 60).round();
-          await syncService.updateGlanceableWidget(
-            todayMinutes: sessionMinutes,
-            activeStreak: lockedIn ? 1 : 0,
-          );
+              await summaryResult.fold(
+                (_) async {},
+                (summary) async {
+                  await syncService.updateGlanceableWidget(
+                    todayMinutes: summary.totalFocusMinutes,
+                    activeStreak: summary.currentStreakDays,
+                  );
+                },
+              );
+            } else {
+              final sessionMinutes = (actualDuration / 60).round();
+              await syncService.updateGlanceableWidget(
+                todayMinutes: sessionMinutes,
+                activeStreak: lockedIn ? 1 : 0,
+              );
+            }
+          } catch (_) {}
         }
       }
-    }
 
-    await notificationService.cancelTimerNotification();
-    await notificationService.cancelSessionCompletionNotification();
+      try {
+        await notificationService.cancelTimerNotification();
+        await notificationService.cancelSessionCompletionNotification();
+      } catch (_) {}
+    } finally {
+      _isCheckingIn = false;
 
-    // Transition into 5-minute rest mode
-    _status = TimerStatus.breakRunning;
-    _targetDurationSeconds = defaultBreakSeconds;
-    _remainingSeconds = defaultBreakSeconds;
-    _remainingDuration = const Duration(seconds: defaultBreakSeconds);
-    _targetEndTime = DateTime.now().add(_remainingDuration);
-    final breakEnd = _targetEndTime;
-    if (breakEnd != null) {
-      unawaited(
-        notificationService.scheduleSessionCompletionNotification(
-          targetEndTime: breakEnd,
-          goal: '5-Minute Recharge Break',
-        ),
-      );
+      // Always transition into 5-minute rest mode so UI never stays stuck at 00:00
+      _status = TimerStatus.breakRunning;
+      _targetDurationSeconds = defaultBreakSeconds;
+      _remainingSeconds = defaultBreakSeconds;
+      _remainingDuration = const Duration(seconds: defaultBreakSeconds);
+      _targetEndTime = DateTime.now().add(_remainingDuration);
+      final breakEnd = _targetEndTime;
+      if (breakEnd != null) {
+        unawaited(
+          notificationService.scheduleSessionCompletionNotification(
+            targetEndTime: breakEnd,
+            goal: '5-Minute Recharge Break',
+          ),
+        );
+      }
+      _startTicker();
+      notifyListeners();
     }
-    _startTicker();
-    notifyListeners();
   }
 
   void readyToFocusFromBreak() {
     _periodicTicker?.cancel();
+    _targetEndTime = null;
+    unawaited(notificationService.cancelTimerNotification());
     unawaited(notificationService.cancelSessionCompletionNotification());
     _status = TimerStatus.idle;
     _targetDurationSeconds = _focusDurationSeconds;
@@ -432,6 +455,10 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void syncWithWallClock() {
+    if (_status == TimerStatus.completed) {
+      notifyListeners();
+      return;
+    }
     if (_status != TimerStatus.running && _status != TimerStatus.breakRunning) {
       return;
     }
@@ -444,18 +471,35 @@ class TimerNotifier extends ChangeNotifier {
 
     if (isFinished) {
       _periodicTicker?.cancel();
+      _targetEndTime = null;
       _remainingSeconds = 0;
       _remainingDuration = Duration.zero;
 
       if (_status == TimerStatus.running) {
         _status = TimerStatus.completed;
-        unawaited(notificationService.cancelTimerNotification());
-        unawaited(notificationService.cancelSessionCompletionNotification());
+        unawaited(
+          notificationService
+              .cancelTimerNotification()
+              .catchError((Object _) {}),
+        );
+        unawaited(
+          notificationService
+              .cancelSessionCompletionNotification()
+              .catchError((Object _) {}),
+        );
         _triggerCompletionFeedback();
       } else if (_status == TimerStatus.breakRunning) {
         _status = TimerStatus.breakCompleted;
-        unawaited(notificationService.cancelTimerNotification());
-        unawaited(notificationService.cancelSessionCompletionNotification());
+        unawaited(
+          notificationService
+              .cancelTimerNotification()
+              .catchError((Object _) {}),
+        );
+        unawaited(
+          notificationService
+              .cancelSessionCompletionNotification()
+              .catchError((Object _) {}),
+        );
         _triggerCompletionFeedback();
       }
       notifyListeners();

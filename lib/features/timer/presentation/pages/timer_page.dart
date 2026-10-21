@@ -37,14 +37,7 @@ class _TimerPageState extends State<TimerPage> {
     }
 
     if (notifier.status == TimerStatus.completed && !_isCheckingIn) {
-      _isCheckingIn = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && notifier.status == TimerStatus.completed) {
-          unawaited(_triggerCheckIn(notifier));
-        } else {
-          _isCheckingIn = false;
-        }
-      });
+      _scheduleCheckIn(notifier);
     }
   }
 
@@ -60,18 +53,25 @@ class _TimerPageState extends State<TimerPage> {
     if (notifier != null &&
         notifier.status == TimerStatus.completed &&
         !_isCheckingIn) {
-      _isCheckingIn = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _timerNotifier?.status == TimerStatus.completed) {
-          unawaited(_triggerCheckIn(notifier));
-        } else {
-          _isCheckingIn = false;
-        }
-      });
+      _scheduleCheckIn(notifier);
     }
   }
 
+  void _scheduleCheckIn(TimerNotifier notifier) {
+    if (_isCheckingIn) return;
+    WidgetsBinding.instance.scheduleFrame();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          !_isCheckingIn &&
+          notifier.status == TimerStatus.completed) {
+        unawaited(_triggerCheckIn(notifier));
+      }
+    });
+  }
+
   Future<void> _triggerCheckIn(TimerNotifier notifier) async {
+    if (_isCheckingIn || notifier.status != TimerStatus.completed) return;
+    _isCheckingIn = true;
     final durationSeconds = notifier.targetDurationSeconds;
     final goal = notifier.currentTaskGoal;
 
@@ -85,9 +85,7 @@ class _TimerPageState extends State<TimerPage> {
       if (!mounted) return;
       await notifier.checkInSession(lockedIn: result ?? false);
     } finally {
-      if (mounted) {
-        _isCheckingIn = false;
-      }
+      _isCheckingIn = false;
     }
   }
 

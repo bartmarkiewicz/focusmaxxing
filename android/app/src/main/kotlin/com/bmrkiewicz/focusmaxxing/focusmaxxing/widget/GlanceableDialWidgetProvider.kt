@@ -17,8 +17,9 @@ class GlanceableDialWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences
     ) {
-        val todayMinutes = widgetData.getInt("today_minutes", 0)
-        val activeStreak = widgetData.getInt("active_streak", 0)
+        val allPrefs = widgetData.all
+        val todayMinutes = (allPrefs["today_minutes"] as? Number)?.toInt() ?: 0
+        val activeStreak = (allPrefs["active_streak"] as? Number)?.toInt() ?: 0
 
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_glanceable_dial).apply {

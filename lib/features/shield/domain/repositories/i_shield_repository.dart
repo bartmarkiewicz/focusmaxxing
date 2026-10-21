@@ -47,6 +47,7 @@ abstract interface class IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    bool isPaused = false,
     int? targetEndTimeEpochMs,
   });
 

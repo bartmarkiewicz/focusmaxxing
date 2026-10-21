@@ -338,6 +338,83 @@ void main() {
 
       expect(notifier.status, TimerStatus.completed);
       expect(notifier.remainingSeconds, 0);
+      expect(notifier.targetEndTime, isNull);
+    });
+
+    test('pause clears targetEndTime and resume restores it', () async {
+      await notifier.startFocusSession('Target End Time Test');
+      expect(notifier.targetEndTime, isNotNull);
+
+      notifier.pause();
+      expect(notifier.status, TimerStatus.paused);
+      expect(notifier.targetEndTime, isNull);
+
+      notifier.resume();
+      expect(notifier.status, TimerStatus.running);
+      expect(notifier.targetEndTime, isNotNull);
+    });
+
+    test(
+        'checkInSession always transitions from completed (00:00) to breakRunning even if persistence or notification throws',
+        () async {
+      final throwingRepo = _ThrowingSessionRepository();
+      final resilientNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(throwingRepo),
+        completeSessionUseCase: CompleteSessionUseCase(throwingRepo),
+        cancelSessionUseCase: CancelSessionUseCase(throwingRepo),
+        notificationService: _ThrowingCancelNotificationService(),
+      );
+      addTearDown(resilientNotifier.dispose);
+
+      resilientNotifier.setDurationPreset(1);
+      await resilientNotifier.startFocusSession('Resilient Check-In');
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      resilientNotifier.syncWithWallClock();
+      expect(resilientNotifier.status, TimerStatus.completed);
+      expect(resilientNotifier.remainingSeconds, 0);
+
+      await resilientNotifier.checkInSession(lockedIn: true);
+
+      expect(resilientNotifier.status, TimerStatus.breakRunning);
+      expect(
+        resilientNotifier.remainingSeconds,
+        TimerNotifier.defaultBreakSeconds,
+      );
+    });
+
+    test(
+        'cancelSession during break resets targetDurationSeconds back to focusDurationSeconds',
+        () async {
+      notifier.setDurationPreset(45 * 60);
+      await notifier.startFocusSession('Focus Before Break');
+      await notifier.checkInSession(lockedIn: true);
+      expect(notifier.status, TimerStatus.breakRunning);
+      expect(notifier.targetDurationSeconds, TimerNotifier.defaultBreakSeconds);
+
+      await notifier.cancelSession();
+
+      expect(notifier.status, TimerStatus.idle);
+      expect(notifier.targetDurationSeconds, 45 * 60);
+      expect(notifier.remainingSeconds, 45 * 60);
+      expect(notifier.targetEndTime, isNull);
     });
   });
+}
+
+class _ThrowingSessionRepository extends _FakeSessionRepository {
+  @override
+  Future<Either<Failure, void>> updateSessionStatus(
+    int sessionId,
+    String status,
+    int actualDurationSeconds,
+  ) async {
+    throw StateError('Simulated SQLite lock failure');
+  }
+}
+
+class _ThrowingCancelNotificationService extends _MockNotificationService {
+  @override
+  Future<void> cancelTimerNotification() async {
+    throw StateError('Simulated notification plugin error');
+  }
 }

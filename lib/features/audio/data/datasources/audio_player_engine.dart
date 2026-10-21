@@ -45,6 +45,7 @@ abstract interface class IAudioPlayerEngine {
 class JustAudioPlayerEngine implements IAudioPlayerEngine {
   AudioPlayer? _loopPlayer;
   AudioPlayer? _chimePlayer;
+  bool _isDisposed = false;
 
   JustAudioPlayerEngine({
     AudioPlayer? loopPlayerInstance,
@@ -57,6 +58,7 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
 
   @override
   Future<void> configureAudioSession() async {
+    if (_isDisposed) return;
     final session = await AudioSession.instance;
     await session.configure(
       const AudioSessionConfiguration(
@@ -75,16 +77,19 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
 
   @override
   Future<void> setAsset(String assetPath) async {
+    if (_isDisposed) return;
     await _resolvedLoopPlayer.setAsset(assetPath);
   }
 
   @override
   Future<void> setLoopMode(LoopMode loopMode) async {
+    if (_isDisposed) return;
     await _resolvedLoopPlayer.setLoopMode(loopMode);
   }
 
   @override
   Future<void> play() {
+    if (_isDisposed) return Future<void>.value();
     // In just_audio, play() returns a Future that stays pending for the entire
     // duration of playback (forever when LoopMode.one is active) and may reject
     // with PlayerInterruptedException when stopped or switched. Suppressing async
@@ -95,6 +100,7 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
 
   @override
   Future<void> stop() async {
+    if (_isDisposed) return;
     if (_loopPlayer != null) {
       await _loopPlayer!.stop();
     }
@@ -102,11 +108,13 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
 
   @override
   Future<void> setVolume(double volume) async {
+    if (_isDisposed) return;
     await _resolvedLoopPlayer.setVolume(volume);
   }
 
   @override
   Future<void> playOneShotAsset(String assetPath, {double volume = 1.0}) async {
+    if (_isDisposed) return;
     final chime = _resolvedChimePlayer;
     await chime.setLoopMode(LoopMode.off);
     await chime.setVolume(volume);
@@ -116,6 +124,7 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
 
   @override
   Future<void> dispose() async {
+    _isDisposed = true;
     final loop = _loopPlayer;
     final chime = _chimePlayer;
     _loopPlayer = null;

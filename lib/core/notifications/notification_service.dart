@@ -38,6 +38,7 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _isInitialized = false;
+  int _timerNotificationOpId = 0;
 
   @visibleForTesting
   bool? isSupportedPlatformOverride;
@@ -68,6 +69,9 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
     } catch (e) {
       debugPrint('NotificationService: fallback to default timezone: $e');
+      try {
+        tz.setLocalLocation(tz.UTC);
+      } catch (_) {}
     }
 
     const androidSettings =
@@ -144,12 +148,17 @@ class NotificationService {
     int? targetEndTimeEpochMs,
   }) async {
     if (!isSupportedPlatform || !_isInitialized) return;
+    final opId = ++_timerNotificationOpId;
 
     final title = isPaused
         ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
         : '🚀 $formattedTimeRemaining Remaining';
 
-    final useNativeChronometer = !isPaused && targetEndTimeEpochMs != null;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final remainingMs =
+        targetEndTimeEpochMs != null ? targetEndTimeEpochMs - nowMs : null;
+    final useNativeChronometer =
+        !isPaused && remainingMs != null && remainingMs > 0;
 
     final androidDetails = AndroidNotificationDetails(
       timerChannelId,
@@ -169,6 +178,7 @@ class NotificationService {
       when: useNativeChronometer ? targetEndTimeEpochMs : null,
       usesChronometer: useNativeChronometer,
       chronometerCountDown: useNativeChronometer,
+      timeoutAfter: useNativeChronometer ? remainingMs + 1500 : null,
       subText: isPaused ? 'Paused' : 'Active Focus',
     );
 
@@ -182,18 +192,23 @@ class NotificationService {
     );
 
     try {
+      if (opId != _timerNotificationOpId) return;
       await _notificationsPlugin.show(
         ongoingNotificationId,
         title,
         taskGoal.isNotEmpty ? taskGoal : 'Stay locked in',
         notificationDetails,
       );
+      if (opId != _timerNotificationOpId) {
+        await _notificationsPlugin.cancel(ongoingNotificationId);
+      }
     } catch (e) {
       debugPrint('NotificationService: failed to show ongoing timer: $e');
     }
   }
 
   Future<void> cancelTimerNotification() async {
+    ++_timerNotificationOpId;
     if (!isSupportedPlatform || !_isInitialized) return;
     try {
       await _notificationsPlugin.cancel(ongoingNotificationId);
@@ -286,7 +301,14 @@ class NotificationService {
     var scheduledDate =
         tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
     if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + 1,
+        hour,
+        minute,
+      );
     }
     return scheduledDate;
   }

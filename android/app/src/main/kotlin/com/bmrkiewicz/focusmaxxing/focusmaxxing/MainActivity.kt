@@ -82,6 +82,8 @@ class MainActivity : FlutterActivity() {
 
             "stopShield" -> {
                 FocusShieldService.currentIsMaximumFocus = false
+                FocusShieldService.currentIsPaused = false
+                FocusShieldService.targetEndTimeEpochMs = 0L
                 if (FocusShieldService.isRunning) {
                     stopService(Intent(this, FocusShieldService::class.java))
                 }
@@ -94,6 +96,7 @@ class MainActivity : FlutterActivity() {
                 val remaining = call.argument<Int>("remainingSeconds") ?: call.argument<Int>("remaining") ?: 1500
                 val isBreak = call.argument<Boolean>("isBreak") ?: call.argument<Boolean>("isBreakMode") ?: false
                 val isMaximumFocus = call.argument<Boolean>("isMaximumFocus") ?: false
+                val isPaused = call.argument<Boolean>("isPaused") ?: false
                 val targetEndTime = (call.argument<Number>("targetEndTimeEpochMs"))?.toLong() ?: 0L
                 FocusShieldService.updateOverlaySessionState(
                     applicationContext,
@@ -101,7 +104,8 @@ class MainActivity : FlutterActivity() {
                     remaining,
                     isBreak,
                     isMaximumFocus,
-                    targetEndTime
+                    targetEndTime,
+                    isPaused
                 )
                 result.success(true)
             }

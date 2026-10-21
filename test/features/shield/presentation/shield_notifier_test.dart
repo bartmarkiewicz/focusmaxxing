@@ -139,6 +139,7 @@ class _FakeShieldRepository implements IShieldRepository {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    bool isPaused = false,
     int? targetEndTimeEpochMs,
   }) async {
     syncedOverlayPayloads.add({
@@ -146,6 +147,7 @@ class _FakeShieldRepository implements IShieldRepository {
       'remainingSeconds': remainingSeconds,
       'isBreak': isBreak,
       'isMaximumFocus': isMaximumFocus,
+      if (isPaused) 'isPaused': true,
       if (targetEndTimeEpochMs != null)
         'targetEndTimeEpochMs': targetEndTimeEpochMs,
     });

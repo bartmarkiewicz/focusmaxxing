@@ -391,6 +391,7 @@ class ShieldNotifier extends ChangeNotifier {
         remainingSeconds: timer.remainingSeconds,
         isBreak: isBreak,
         isMaximumFocus: enabled && isFocusRunningOrPaused,
+        isPaused: timer.status == TimerStatus.paused,
         targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
       );
       await _reconcileNativeShieldForActiveSession();
@@ -420,6 +421,7 @@ class ShieldNotifier extends ChangeNotifier {
 
     final isBreak = status == TimerStatus.breakRunning ||
         status == TimerStatus.breakCompleted;
+    final isPaused = status == TimerStatus.paused;
     final remaining = (status == TimerStatus.completed ||
             status == TimerStatus.breakCompleted)
         ? 0
@@ -442,6 +444,7 @@ class ShieldNotifier extends ChangeNotifier {
         remainingSeconds: remaining,
         isBreak: isBreak,
         isMaximumFocus: effectiveMaximumFocus,
+        isPaused: isPaused,
         targetEndTimeEpochMs: timer.targetEndTime?.millisecondsSinceEpoch,
       );
     }

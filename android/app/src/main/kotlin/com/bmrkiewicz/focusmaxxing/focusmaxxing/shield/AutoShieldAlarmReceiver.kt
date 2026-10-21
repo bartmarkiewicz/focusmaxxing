@@ -14,6 +14,22 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_START_AUTO_SHIELD = "com.bmrkiewicz.focusmaxxing.START_AUTO_SHIELD"
         const val ACTION_STOP_AUTO_SHIELD = "com.bmrkiewicz.focusmaxxing.STOP_AUTO_SHIELD"
+
+        private fun parseFlutterStringList(raw: String?): List<String>? {
+            if (raw.isNullOrBlank()) return null
+            val bracketIndex = raw.indexOf('[')
+            if (bracketIndex < 0) return null
+            return try {
+                val arr = JSONArray(raw.substring(bracketIndex))
+                val items = ArrayList<String>(arr.length())
+                for (i in 0 until arr.length()) {
+                    items.add(arr.getString(i))
+                }
+                items
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
@@ -36,37 +52,27 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
                     else -> 1
                 }
 
-                // In Flutter SharedPreferences, StringList is stored as a JSON array string prefixed with "flutter."
-                val activeDaysRaw = prefs.getString("flutter.scheduled_auto_shield_active_days", null)
-                if (activeDaysRaw != null) {
-                    try {
-                        val arr = JSONArray(activeDaysRaw)
-                        val days = mutableListOf<String>()
-                        for (i in 0 until arr.length()) {
-                            days.add(arr.getString(i))
-                        }
-                        if (!days.contains(dartWeekday.toString())) {
-                            return
-                        }
-                    } catch (_: Exception) {}
+                // In Flutter SharedPreferences, StringList is stored as a JSON array string (often with a list prefix)
+                val activeDays = parseFlutterStringList(
+                    prefs.getString("flutter.scheduled_auto_shield_active_days", null)
+                )
+                if (activeDays != null && !activeDays.contains(dartWeekday.toString())) {
+                    return
                 }
 
-                val packagesRaw = prefs.getString("flutter.scheduled_auto_shield_packages", null)
-                val blockedPackages = ArrayList<String>()
-                if (packagesRaw != null) {
-                    try {
-                        val arr = JSONArray(packagesRaw)
-                        for (i in 0 until arr.length()) {
-                            blockedPackages.add(arr.getString(i))
-                        }
-                    } catch (_: Exception) {}
-                }
+                val parsedPackages = parseFlutterStringList(
+                    prefs.getString("flutter.scheduled_auto_shield_packages", null)
+                ) ?: emptyList()
+                val blockedPackages = ArrayList<String>(parsedPackages)
 
                 var timeRangeText = "09:00 - 17:00"
                 val configRaw = prefs.getString("flutter.scheduled_auto_shield_config", null)
                 if (configRaw != null) {
                     try {
                         val obj = JSONObject(configRaw)
+                        if (!obj.optBoolean("isEnabled", true)) {
+                            return
+                        }
                         val sH = obj.optInt("startHour", 9)
                         val sM = obj.optInt("startMinute", 0)
                         val eH = obj.optInt("endHour", 17)
@@ -85,9 +91,7 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
 
             ACTION_STOP_AUTO_SHIELD -> {
                 context.stopService(Intent(context, FocusShieldService::class.java))
-                if (OverlayService.isRunning) {
-                    context.stopService(Intent(context, OverlayService::class.java))
-                }
+                FocusShieldService.dismissOverlayOnly(context)
             }
         }
     }

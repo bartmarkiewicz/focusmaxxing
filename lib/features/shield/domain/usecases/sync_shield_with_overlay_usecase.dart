@@ -12,6 +12,7 @@ class SyncShieldWithOverlayUseCase {
     required int remainingSeconds,
     required bool isBreak,
     bool isMaximumFocus = false,
+    bool isPaused = false,
     int? targetEndTimeEpochMs,
   }) {
     return repository.syncOverlayState(
@@ -19,6 +20,7 @@ class SyncShieldWithOverlayUseCase {
       remainingSeconds: remainingSeconds,
       isBreak: isBreak,
       isMaximumFocus: isMaximumFocus,
+      isPaused: isPaused,
       targetEndTimeEpochMs: targetEndTimeEpochMs,
     );
   }

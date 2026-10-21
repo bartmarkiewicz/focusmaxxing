@@ -79,7 +79,8 @@ class _SessionHistoryTile extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final statusBadge = _resolveStatusBadge(session.status, colorScheme);
-    final durationText = session.actualDurationSeconds > 0
+    final durationText = (session.actualDurationSeconds > 0 ||
+            session.status == SessionStatus.cancelled)
         ? TimeFormatter.formatDurationToMinutes(session.actualDurationSeconds)
         : TimeFormatter.formatDurationToMinutes(session.targetDurationSeconds);
     final timeStr = _formatSessionDateTime(session.startTimeEpochMs);
@@ -118,11 +119,15 @@ class _SessionHistoryTile extends StatelessWidget {
                         color: statusBadge.color,
                       ),
                     ),
-                    Text(
-                      statusBadge.label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: statusBadge.color,
+                    Flexible(
+                      child: Text(
+                        statusBadge.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: statusBadge.color,
+                        ),
                       ),
                     ),
                   ],

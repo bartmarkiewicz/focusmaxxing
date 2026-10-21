@@ -51,11 +51,21 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
   static const Color _actionGreen = Color(0xFF00E676);
   static const MethodChannel _overlayBridgeChannel =
       MethodChannel('com.focusmaxxing/overlay_bridge');
+  static Stream<dynamic>? _sharedOverlayBroadcastStream;
+
+  static Stream<dynamic> _resolveDefaultOverlayStream() {
+    return _sharedOverlayBroadcastStream ??=
+        FlutterOverlayWindow.overlayListener.asBroadcastStream();
+  }
 
   late String _taskGoal;
   late int _remainingSeconds;
   late bool _isBreakMode;
   late bool _isMaximumFocus;
+  bool _isPaused = false;
+  bool _isScheduled = false;
+  String _scheduleTimeRange = '';
+  int _targetEndTimeEpochMs = 0;
   StreamSubscription<dynamic>? _subscription;
   Timer? _localCountdownTimer;
   late final AnimationController _holdCancelController;
@@ -78,7 +88,7 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
         }
       });
 
-    final stream = widget.dataStream ?? FlutterOverlayWindow.overlayListener;
+    final stream = widget.dataStream ?? _resolveDefaultOverlayStream();
     _subscription = stream.listen(
       _handleIncomingData,
       onError: (Object _, [StackTrace? __]) {},
@@ -87,28 +97,56 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     if (widget.dataStream == null) {
       _overlayBridgeChannel.setMethodCallHandler(_handleBridgeMethodCall);
       unawaited(_fetchInitialOverlayState());
-      _localCountdownTimer = Timer.periodic(
-        const Duration(seconds: 1),
-        (_) {
-          if (!mounted) return;
-          if (_remainingSeconds > 0) {
-            setState(() {
-              _remainingSeconds--;
-            });
-            if (_remainingSeconds <= 0 && !_isBreakMode) {
-              _onSessionCountdownComplete();
-            }
-          } else if (!_isBreakMode) {
+      _startOrStopLocalTimer();
+    }
+  }
+
+  void _startOrStopLocalTimer() {
+    if (widget.dataStream != null) return;
+
+    if (_isPaused || _isScheduled || _remainingSeconds <= 0) {
+      _localCountdownTimer?.cancel();
+      _localCountdownTimer = null;
+      return;
+    }
+
+    if (_localCountdownTimer != null && _localCountdownTimer!.isActive) {
+      return;
+    }
+
+    _localCountdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (!mounted || _isPaused || _isScheduled) return;
+        if (_targetEndTimeEpochMs > 0) {
+          final remainingMs =
+              _targetEndTimeEpochMs - DateTime.now().millisecondsSinceEpoch;
+          final nextRemaining =
+              remainingMs <= 0 ? 0 : (remainingMs / 1000).ceil();
+          setState(() {
+            _remainingSeconds = nextRemaining;
+          });
+        } else if (_remainingSeconds > 0) {
+          setState(() {
+            _remainingSeconds--;
+          });
+        }
+
+        if (_remainingSeconds <= 0) {
+          _localCountdownTimer?.cancel();
+          _localCountdownTimer = null;
+          if (!_isBreakMode && !_isScheduled) {
             _onSessionCountdownComplete();
           }
-        },
-      );
-    }
+        }
+      },
+    );
   }
 
   void _onSessionCountdownComplete() {
     _localCountdownTimer?.cancel();
     _localCountdownTimer = null;
+    _targetEndTimeEpochMs = 0;
     if (mounted) {
       setState(() {
         _remainingSeconds = 0;
@@ -165,11 +203,41 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
         _taskGoal = goal;
       }
 
+      final isPaused = payload?['isPaused'];
+      if (isPaused is bool) {
+        _isPaused = isPaused;
+      }
+
+      final isScheduled = payload?['isScheduled'];
+      if (isScheduled is bool) {
+        _isScheduled = isScheduled;
+      }
+
+      final scheduleRange = payload?['scheduleTimeRange'];
+      if (scheduleRange is String) {
+        _scheduleTimeRange = scheduleRange;
+      }
+
+      final targetEnd = payload?['targetEndTimeEpochMs'];
+      if (targetEnd is int) {
+        _targetEndTimeEpochMs = _isPaused ? 0 : targetEnd;
+      } else if (targetEnd is num) {
+        _targetEndTimeEpochMs = _isPaused ? 0 : targetEnd.toInt();
+      } else if (payload != null &&
+          payload.containsKey('targetEndTimeEpochMs') &&
+          targetEnd == null) {
+        _targetEndTimeEpochMs = 0;
+      }
+
       final seconds = payload?['remainingSeconds'] ?? payload?['remaining'];
       if (seconds is int) {
         _remainingSeconds = seconds;
       } else if (seconds is num) {
         _remainingSeconds = seconds.toInt();
+      } else if (!_isPaused && _targetEndTimeEpochMs > 0) {
+        final remainingMs =
+            _targetEndTimeEpochMs - DateTime.now().millisecondsSinceEpoch;
+        _remainingSeconds = remainingMs <= 0 ? 0 : (remainingMs / 1000).ceil();
       }
 
       final isBreak = payload?['isBreak'] ?? payload?['isBreakMode'];
@@ -183,8 +251,13 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
       }
     });
 
-    if (_remainingSeconds <= 0 && !_isBreakMode && widget.dataStream == null) {
+    if (_remainingSeconds <= 0 &&
+        !_isBreakMode &&
+        !_isScheduled &&
+        widget.dataStream == null) {
       _onSessionCountdownComplete();
+    } else {
+      _startOrStopLocalTimer();
     }
   }
 
@@ -260,8 +333,12 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     final minutes = (clampedSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (clampedSeconds % 60).toString().padLeft(2, '0');
     final isMaxFocusActive =
-        _isMaximumFocus && !_isBreakMode && clampedSeconds > 0;
-    final isSessionFinished = clampedSeconds <= 0 && !_isBreakMode;
+        _isMaximumFocus && !_isBreakMode && !_isScheduled && clampedSeconds > 0;
+    final isSessionFinished =
+        clampedSeconds <= 0 && !_isBreakMode && !_isScheduled;
+    final timerDisplay = _isScheduled && _scheduleTimeRange.isNotEmpty
+        ? _scheduleTimeRange
+        : '$minutes:$seconds';
 
     return PopScope(
       canPop: false,
@@ -296,9 +373,11 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                           ? 'SESSION COMPLETE 🎉'
                           : (_isBreakMode
                               ? 'RECHARGE YOUR BRAIN'
-                              : (isMaxFocusActive
-                                  ? 'MAXIMUM FOCUS'
-                                  : 'LOCKED IN')),
+                              : (_isScheduled
+                                  ? 'AUTO-SHIELD ACTIVE'
+                                  : (isMaxFocusActive
+                                      ? 'MAXIMUM FOCUS'
+                                      : 'LOCKED IN'))),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -312,7 +391,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                           ? 'Great job locking in! Tap below to check in.'
                           : (_isBreakMode
                               ? 'Social feeds remain locked during your break.'
-                              : '"$_taskGoal"'),
+                              : (_isScheduled
+                                  ? 'Scheduled focus shield is active.'
+                                  : '"$_taskGoal"')),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
@@ -345,13 +426,16 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                       ),
                     ],
                     const SizedBox(height: 32),
-                    Text(
-                      '$minutes:$seconds',
-                      style: const TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.bold,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                        color: Colors.white,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        timerDisplay,
+                        style: const TextStyle(
+                          fontSize: 64,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 48),

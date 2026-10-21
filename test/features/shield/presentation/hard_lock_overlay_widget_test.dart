@@ -354,4 +354,104 @@ void main() {
     expect(find.text('SESSION COMPLETE 🎉'), findsOneWidget);
     expect(calls, contains('returnToFocusmaxxing'));
   });
+
+  testWidgets(
+      'HardLockOverlayWidget restarts local countdown timer for subsequent sessions in cached engine',
+      (tester) async {
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('com.focusmaxxing/overlay_bridge'),
+      (call) async {
+        calls.add(call.method);
+        if (call.method == 'returnToFocusmaxxing') return true;
+        if (call.method == 'getInitialOverlayState') {
+          return <String, dynamic>{
+            'goal': 'Session 1',
+            'remainingSeconds': 1,
+            'isBreak': false,
+            'isMaximumFocus': false,
+          };
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('com.focusmaxxing/overlay_bridge'),
+        null,
+      );
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HardLockOverlayWidget(
+          initialRemainingSeconds: 1,
+        ),
+      ),
+    );
+
+    // Let Session 1 finish its countdown to 00:00
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(find.text('00:00'), findsOneWidget);
+
+    // Push Session 2 update over the bridge channel into the same cached widget
+    const codec = StandardMethodCodec();
+    final ByteData message = codec.encodeMethodCall(
+      const MethodCall(
+        'updateOverlayState',
+        <String, dynamic>{
+          'goal': 'Session 2',
+          'remainingSeconds': 2,
+          'isBreak': false,
+          'isMaximumFocus': false,
+          'isPaused': false,
+        },
+      ),
+    );
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'com.focusmaxxing/overlay_bridge',
+      message,
+      (_) {},
+    );
+    await tester.pump();
+    expect(find.text('00:02'), findsOneWidget);
+    expect(find.text('"Session 2"'), findsOneWidget);
+
+    // Verify local countdown timer ticks Session 2 down to 00:01 and 00:00
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('00:01'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(find.text('00:00'), findsOneWidget);
+  });
+
+  testWidgets(
+      'HardLockOverlayWidget renders Scheduled Auto-Shield state without false session completion at 0s',
+      (tester) async {
+    final controller = StreamController<dynamic>(sync: true);
+    addTearDown(controller.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: controller.stream,
+          initialRemainingSeconds: 0,
+        ),
+      ),
+    );
+
+    controller.add({
+      'isScheduled': true,
+      'scheduleTimeRange': '09:00 - 17:00',
+      'remainingSeconds': 0,
+      'isBreak': false,
+    });
+    await tester.pump();
+
+    expect(find.text('AUTO-SHIELD ACTIVE'), findsOneWidget);
+    expect(find.text('09:00 - 17:00'), findsOneWidget);
+    expect(find.text('SESSION COMPLETE 🎉'), findsNothing);
+    expect(find.text('RETURN TO FOCUSMAXXING'), findsOneWidget);
+  });
 }

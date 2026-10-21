@@ -29,6 +29,7 @@ class BacklogModalSheet extends StatefulWidget {
 
 class _BacklogModalSheetState extends State<BacklogModalSheet> {
   final TextEditingController _textController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -47,14 +48,20 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
   }
 
   Future<void> _handleAddTask() async {
+    if (_isSubmitting) return;
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    final notifier = context.read<BacklogNotifier>();
-    final success = await notifier.addTask(text);
-    if (!mounted) return;
-    if (success) {
-      _textController.clear();
+    _isSubmitting = true;
+    try {
+      final notifier = context.read<BacklogNotifier>();
+      final success = await notifier.addTask(text);
+      if (!mounted) return;
+      if (success) {
+        _textController.clear();
+      }
+    } finally {
+      _isSubmitting = false;
     }
   }
 
@@ -137,11 +144,15 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Backlog (Focus Scratchpad)',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            'Backlog (Focus Scratchpad)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         IconButton(

@@ -53,6 +53,7 @@ class BillingNotifier extends ChangeNotifier {
     _purchaseStreamSubscription = repository.purchaseStatusStream.listen(
       _handleEntitlementChanged,
       onError: (Object error) {
+        if (_isDisposed) return;
         _errorMessage = error.toString();
         _status = BillingStatus.error;
         notifyListeners();
@@ -194,6 +195,7 @@ class BillingNotifier extends ChangeNotifier {
   }
 
   void clearError() {
+    if (_isDisposed) return;
     _errorMessage = null;
     if (_status == BillingStatus.error) {
       _status = _unlockStatus.isUnlocked

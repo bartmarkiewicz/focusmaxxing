@@ -8,7 +8,7 @@ class MigrationV2 extends Migration {
   @override
   Future<void> up(DatabaseExecutor db) async {
     await db.execute('''
-      CREATE TABLE shielded_apps (
+      CREATE TABLE IF NOT EXISTS shielded_apps (
         package_name TEXT PRIMARY KEY,
         app_name TEXT NOT NULL,
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -18,7 +18,7 @@ class MigrationV2 extends Migration {
     ''');
 
     await db.execute(
-      'CREATE INDEX idx_shielded_apps_is_active ON shielded_apps (is_active);',
+      'CREATE INDEX IF NOT EXISTS idx_shielded_apps_is_active ON shielded_apps (is_active);',
     );
   }
 }

@@ -28,10 +28,11 @@ class BacklogTaskItem extends StatelessWidget {
         const CustomSemanticsAction(label: 'Delete task'): onDelete,
       },
       child: Dismissible(
-        key: ValueKey('backlog_task_${task.id ?? task.title}'),
+        key: ValueKey('backlog_task_${task.id ?? task.hashCode}'),
         direction: DismissDirection.endToStart,
         onDismissed: (_) => onDelete(),
         background: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
