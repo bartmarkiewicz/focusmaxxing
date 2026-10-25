@@ -78,7 +78,7 @@ class ScheduleConfigEntity extends Equatable {
 
   /// Evaluates whether the given [dateTime] falls within the active scheduled window.
   bool isWithinSchedule(DateTime dateTime) {
-    if (!isEnabled) return false;
+    if (!isEnabled || !isValid) return false;
     final currentMinutes = dateTime.hour * 60 + dateTime.minute;
     if (startTotalMinutes < endTotalMinutes) {
       if (!isActiveOn(dateTime.weekday)) return false;
@@ -88,8 +88,9 @@ class ScheduleConfigEntity extends Equatable {
       if (currentMinutes >= startTotalMinutes) {
         return isActiveOn(dateTime.weekday);
       } else if (currentMinutes < endTotalMinutes) {
-        final yesterday = dateTime.subtract(const Duration(days: 1));
-        return isActiveOn(yesterday.weekday);
+        final prevWeekday =
+            dateTime.weekday == 1 ? DateTime.sunday : dateTime.weekday - 1;
+        return isActiveOn(prevWeekday);
       }
       return false;
     }

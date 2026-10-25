@@ -321,6 +321,13 @@ void main() {
             'isMaximumFocus': false,
           }),
         );
+        await repository.stopShieldService(force: true);
+        expect(nativeBridgeSource.stopCallCount, 1);
+        expect(nativeBridgeSource.lastForce, isTrue);
+
+        await repository.stopShieldService(force: false);
+        expect(nativeBridgeSource.stopCallCount, 2);
+        expect(nativeBridgeSource.lastForce, isFalse);
       },
     );
   });

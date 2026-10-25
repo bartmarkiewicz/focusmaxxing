@@ -324,11 +324,23 @@ class FocusShieldService : Service() {
     }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    @Volatile
     private var blockedPackages: Set<String> = emptySet()
-    private var isScheduled: Boolean = false
-    private var scheduleTimeRange: String? = null
+
+    @Volatile
+    var isScheduled: Boolean = false
+
+    @Volatile
+    var scheduleTimeRange: String? = null
+
+    @Volatile
     private var isDegraded: Boolean = false
+
+    @Volatile
     private var lastNotificationText: String? = null
+
+    @Volatile
     private var lastNotificationTargetEndMs: Long = 0L
 
     private fun formatSessionNotificationText(): String {

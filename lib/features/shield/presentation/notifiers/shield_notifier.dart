@@ -404,6 +404,8 @@ class ShieldNotifier extends ChangeNotifier {
         final isScheduleActive = await _checkIfScheduleActive();
         if (!isScheduleActive && !_isScheduledShieldActive) {
           await repository.stopShieldService(force: true);
+        } else {
+          await repository.stopShieldService(force: false);
         }
         notifyListeners();
       }

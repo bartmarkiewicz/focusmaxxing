@@ -35,8 +35,18 @@ class ScheduleRepositoryImpl implements IScheduleRepository {
       ScheduleConfigEntity schedule) async {
     try {
       if (!schedule.isValid) {
+        if (schedule.startTotalMinutes == schedule.endTotalMinutes) {
+          return const Left(
+            ValidationFailure('Start time and end time cannot be identical'),
+          );
+        }
+        if (schedule.activeDays.isEmpty) {
+          return const Left(
+            ValidationFailure('At least one day must be selected'),
+          );
+        }
         return const Left(
-          ValidationFailure('Start time and end time cannot be identical'),
+          ValidationFailure('Invalid schedule configuration'),
         );
       }
       final model = ScheduleConfigModel.fromEntity(schedule);

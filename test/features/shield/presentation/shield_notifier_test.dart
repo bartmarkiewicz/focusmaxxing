@@ -600,7 +600,7 @@ void main() {
     );
 
     test(
-      'syncWithTimer does NOT stop shield service when schedule is active now',
+      'syncWithTimer calls stopShieldService with force: false to restore baseline when schedule is active now',
       () async {
         final scheduleRepo = _FakeScheduleRepo()..isActive = true;
         final checkScheduleUseCase =
@@ -633,12 +633,10 @@ void main() {
         await timerNotifier.startFocusSession('Schedule priority test');
         await scheduledShieldNotifier.syncWithTimer(timerNotifier);
 
-        final stopsBefore = repository.stopShieldCallCount;
-
         timerNotifier.overrideStatus = TimerStatus.idle;
         await scheduledShieldNotifier.syncWithTimer(timerNotifier);
 
-        expect(repository.stopShieldCallCount, equals(stopsBefore));
+        expect(repository.lastStopForce, isFalse);
 
         scheduledShieldNotifier.dispose();
         timerNotifier.dispose();

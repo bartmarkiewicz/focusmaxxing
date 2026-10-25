@@ -172,6 +172,27 @@ void main() {
         activeDays: [DateTime.sunday, DateTime.monday],
       );
       expect(withSunday.isWithinSchedule(mondayEarly), isTrue);
+
+      // Invalid schedule (e.g. empty days or equal times) always returns false
+      const invalidEmptyDays = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+        activeDays: [],
+      );
+      expect(invalidEmptyDays.isWithinSchedule(mondayStart), isFalse);
+
+      const invalidEqualTimes = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 9,
+        startMinute: 0,
+        endHour: 9,
+        endMinute: 0,
+        activeDays: [DateTime.monday],
+      );
+      expect(invalidEqualTimes.isWithinSchedule(mondayStart), isFalse);
     });
 
     test('copyWith updates fields correctly', () {

@@ -82,19 +82,44 @@ class MainActivity : FlutterActivity() {
 
             "stopShield" -> {
                 val force = call.argument<Boolean>("force") ?: false
-                FocusShieldService.currentIsMaximumFocus = false
-                FocusShieldService.currentIsPaused = false
-                FocusShieldService.targetEndTimeEpochMs = 0L
                 val active = FocusShieldService.instance
-                if (force || active == null || !FocusShieldService.isScheduledBaseline) {
-                    FocusShieldService.isScheduledBaseline = false
-                    FocusShieldService.scheduledBaselineRange = null
-                    if (FocusShieldService.isRunning) {
-                        stopService(Intent(this, FocusShieldService::class.java))
+                val isManualSessionActive = active != null &&
+                    !active.isScheduled &&
+                    (FocusShieldService.targetEndTimeEpochMs > System.currentTimeMillis() || FocusShieldService.currentRemainingSeconds > 0)
+
+                if (force) {
+                    if (isManualSessionActive) {
+                        // Schedule alarm callback fired (e.g. 06:00), but a manual session is currently running:
+                        // Do not stop service. Invalidate schedule baseline only so the manual session finishes uninterrupted.
+                        FocusShieldService.isScheduledBaseline = false
+                        FocusShieldService.scheduledBaselineRange = null
+                    } else {
+                        // Schedule ended (or forced stop) with no manual session running: shut down service.
+                        FocusShieldService.isScheduledBaseline = false
+                        FocusShieldService.scheduledBaselineRange = null
+                        FocusShieldService.currentIsMaximumFocus = false
+                        FocusShieldService.currentIsPaused = false
+                        FocusShieldService.targetEndTimeEpochMs = 0L
+                        if (FocusShieldService.isRunning) {
+                            stopService(Intent(this, FocusShieldService::class.java))
+                        }
+                        FocusShieldService.dismissOverlayOnly(applicationContext)
                     }
-                    FocusShieldService.dismissOverlayOnly(applicationContext)
                 } else {
-                    active.restoreScheduledBaseline()
+                    // Manual session ended / cancelled in app (force: false)
+                    if (active != null && FocusShieldService.isScheduledBaseline) {
+                        // Scheduled baseline is active: cleanly restore it!
+                        active.restoreScheduledBaseline()
+                    } else {
+                        // No scheduled baseline: shut down service.
+                        FocusShieldService.currentIsMaximumFocus = false
+                        FocusShieldService.currentIsPaused = false
+                        FocusShieldService.targetEndTimeEpochMs = 0L
+                        if (FocusShieldService.isRunning) {
+                            stopService(Intent(this, FocusShieldService::class.java))
+                        }
+                        FocusShieldService.dismissOverlayOnly(applicationContext)
+                    }
                 }
                 result.success(true)
             }

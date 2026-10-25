@@ -134,18 +134,41 @@ void main() {
 
     test('saveSchedule returns ValidationFailure if schedule is invalid',
         () async {
-      const invalidSchedule = ScheduleConfigEntity(
+      const identicalTimeSchedule = ScheduleConfigEntity(
         isEnabled: true,
         startHour: 10,
         startMinute: 0,
         endHour: 10,
         endMinute: 0,
+        activeDays: [DateTime.monday],
       );
 
-      final result = await repository.saveSchedule(invalidSchedule);
-      expect(result.isLeft(), isTrue);
-      result.fold(
-        (failure) => expect(failure, isA<ValidationFailure>()),
+      final result1 = await repository.saveSchedule(identicalTimeSchedule);
+      expect(result1.isLeft(), isTrue);
+      result1.fold(
+        (failure) {
+          expect(failure, isA<ValidationFailure>());
+          expect(failure.message, 'Start time and end time cannot be identical');
+        },
+        (_) => fail('Expected failure'),
+      );
+
+      const emptyDaysSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 9,
+        startMinute: 0,
+        endHour: 17,
+        endMinute: 0,
+        activeDays: [],
+      );
+
+      final result2 = await repository.saveSchedule(emptyDaysSchedule);
+      expect(result2.isLeft(), isTrue);
+      result2.fold(
+        (failure) {
+          expect(failure, isA<ValidationFailure>());
+          expect(failure.message, 'At least one day must be selected');
+        },
         (_) => fail('Expected failure'),
       );
       expect(alarmDataSource.alarmsScheduled, isFalse);
