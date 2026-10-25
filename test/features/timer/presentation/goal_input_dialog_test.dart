@@ -41,6 +41,7 @@ class _MockNotificationService extends NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {}
 
   @override

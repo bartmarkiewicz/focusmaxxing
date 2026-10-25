@@ -44,6 +44,7 @@ class SpyNotificationService extends NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {
     lastShownGoal = taskGoal;
     lastFormattedTime = formattedTimeRemaining;

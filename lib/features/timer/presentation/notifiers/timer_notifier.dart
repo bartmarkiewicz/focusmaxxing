@@ -91,6 +91,7 @@ class TimerNotifier extends ChangeNotifier {
 
   TimerStatus get status => _status;
   int get focusDurationSeconds => _focusDurationSeconds;
+  int get focusDurationMinutes => (_focusDurationSeconds / 60).round();
   int get targetDurationSeconds => _targetDurationSeconds;
   int get remainingSeconds => _remainingSeconds;
   String get currentTaskGoal => _currentTaskGoal;
@@ -511,10 +512,12 @@ class TimerNotifier extends ChangeNotifier {
           unawaited(
             notificationService.scheduleSessionCompletionNotification(
               targetEndTime: breakEnd,
-              goal: '5-Minute Recharge Break',
+              goal: _currentTaskGoal,
+              isBreak: true,
             ),
           );
         }
+        _updateBreakNotification();
         _startTicker();
         notifyListeners();
       }
@@ -549,7 +552,20 @@ class TimerNotifier extends ChangeNotifier {
     final goal =
         effectiveCandidate.isNotEmpty ? effectiveCandidate : 'Deep Work';
     final linkedTaskId = _linkedBacklogTaskId;
-    readyToFocusFromBreak();
+    _periodicTicker?.cancel();
+    _cancelHoldTimer?.cancel();
+    _cancelHoldTimer = null;
+    _cancelHoldStartTime = null;
+    cancelHoldProgressNotifier.value = 0.0;
+    _targetEndTime = null;
+    unawaited(
+      notificationService.cancelTimerNotification().catchError((Object _) {}),
+    );
+    unawaited(
+      notificationService
+          .cancelSessionCompletionNotification()
+          .catchError((Object _) {}),
+    );
     return startFocusSession(goal, backlogTaskId: linkedTaskId);
   }
 
@@ -663,6 +679,19 @@ class TimerNotifier extends ChangeNotifier {
         formattedTimeRemaining: formattedTime,
         isPaused: _status == TimerStatus.paused,
         targetEndTimeEpochMs: _targetEndTime?.millisecondsSinceEpoch,
+      ),
+    );
+  }
+
+  void _updateBreakNotification() {
+    final formattedTime = TimeFormatter.formatMMSS(_remainingSeconds);
+    unawaited(
+      notificationService.showOngoingTimer(
+        taskGoal: 'Feeds remain locked · Recharge stamina',
+        formattedTimeRemaining: formattedTime,
+        isPaused: false,
+        targetEndTimeEpochMs: _targetEndTime?.millisecondsSinceEpoch,
+        isBreak: true,
       ),
     );
   }

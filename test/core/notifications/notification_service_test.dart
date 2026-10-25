@@ -156,6 +156,27 @@ void main() {
       expect(android.showWhen, isFalse);
     });
 
+    test(
+        'showOngoingTimer displays recharging title and feeds remain locked body when isBreak is true',
+        () async {
+      final targetEndMs = DateTime.now()
+          .add(const Duration(minutes: 5))
+          .millisecondsSinceEpoch;
+
+      await service.showOngoingTimer(
+        taskGoal: 'Feeds remain locked',
+        formattedTimeRemaining: '04:32',
+        isPaused: false,
+        targetEndTimeEpochMs: targetEndMs,
+        isBreak: true,
+      );
+
+      expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
+      expect(fakePlugin.lastShownTitle, '☕ Recharging');
+      expect(fakePlugin.lastShownBody, contains('Feeds remain locked'));
+      expect(fakePlugin.lastShownDetails?.android?.subText, 'Recharging');
+    });
+
     test('cancelTimerNotification cancels ongoing notification', () async {
       await service.cancelTimerNotification();
       expect(fakePlugin.lastCancelledId,
@@ -177,6 +198,23 @@ void main() {
       expect(fakePlugin.lastScheduledTitle, '🎉 Focus Block Complete!');
       expect(fakePlugin.lastScheduledBody, contains('Write Architecture Spec'));
       expect(fakePlugin.lastScheduledDate, isNotNull);
+    });
+
+    test(
+        'scheduleSessionCompletionNotification schedules Recharge Complete title when isBreak is true',
+        () async {
+      final targetEndTime = DateTime.now().add(const Duration(minutes: 5));
+
+      await service.scheduleSessionCompletionNotification(
+        targetEndTime: targetEndTime,
+        goal: 'Draft PRD',
+        isBreak: true,
+      );
+
+      expect(fakePlugin.lastScheduledId,
+          NotificationService.sessionCompletionNotificationId);
+      expect(fakePlugin.lastScheduledTitle, '⚡ Recharge Complete!');
+      expect(fakePlugin.lastScheduledBody, contains('Ready to lock back into "Draft PRD"?'));
     });
 
     test(

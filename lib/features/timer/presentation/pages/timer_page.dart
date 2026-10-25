@@ -720,19 +720,25 @@ class _TimerPageState extends State<TimerPage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: timerNotifier.readyToFocusFromBreak,
+                key: const Key('timer_roll_into_next_block_button'),
+                onPressed: () async {
+                  unawaited(
+                    HapticFeedback.heavyImpact().catchError((Object _) {}),
+                  );
+                  await timerNotifier.startNextFocusFromBreak();
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.secondary,
-                  foregroundColor: colorScheme.onSecondary,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
                 child: Text(
-                  'I\'M READY TO FOCUS',
+                  '🚀 ROLL INTO NEXT BLOCK (${timerNotifier.focusDurationMinutes}m)',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSecondary,
+                    color: colorScheme.onPrimary,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                   ),
@@ -1124,37 +1130,137 @@ class _DurationPresets extends StatelessWidget {
   }
 }
 
-class _BreakInfoCard extends StatelessWidget {
+class _BreakInfoCard extends StatefulWidget {
   const _BreakInfoCard();
+
+  static const List<({String icon, String title, String action})> habits = [
+    (
+      icon: '👁️',
+      title: '20-20-20 Rule',
+      action:
+          'Look at an object 20 feet away for 20 seconds to relax ciliary eye muscles.',
+    ),
+    (
+      icon: '💧',
+      title: 'Hydration Check',
+      action:
+          'Drink 1 full glass of cold water now. Dehydration degrades prefrontal focus.',
+    ),
+    (
+      icon: '🧘',
+      title: 'Physical Reset',
+      action:
+          'Roll shoulders back 5 times, unclench your jaw, and stand up from your chair.',
+    ),
+    (
+      icon: '🫁',
+      title: 'Oxygen Surge',
+      action:
+          'Inhale deeply for 4 seconds, hold for 4, and exhale slowly for 7 seconds.',
+    ),
+    (
+      icon: '🌿',
+      title: 'Mental Reset',
+      action:
+          'Step away from screens. Open a window or step outside for fresh air and daylight.',
+    ),
+  ];
+
+  @override
+  State<_BreakInfoCard> createState() => _BreakInfoCardState();
+}
+
+class _BreakInfoCardState extends State<_BreakInfoCard> {
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = DateTime.now().minute % _BreakInfoCard.habits.length;
+  }
+
+  void _nextHabit() {
+    unawaited(HapticFeedback.selectionClick().catchError((Object _) {}));
+    setState(() {
+      _currentIndex = (_currentIndex + 1) % _BreakInfoCard.habits.length;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final habit = _BreakInfoCard.habits[_currentIndex];
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
+    return Semantics(
+      button: true,
+      label:
+          'Restorative habit: ${habit.title}. ${habit.action}. Double tap to shuffle habit.',
+      child: InkWell(
+        key: const Key('timer_break_info_card_tap'),
+        onTap: _nextHabit,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Text('💡', style: TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Step away from your desk. Drink water or stretch. Social feeds remain locked. 🛡️',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface,
-                height: 1.4,
-              ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(habit.icon, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      habit.title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Tap to shuffle 🔀',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                habit.action,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    size: 14,
+                    color: colorScheme.outline,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Social feeds remain locked during break',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

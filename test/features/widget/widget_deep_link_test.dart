@@ -52,6 +52,7 @@ class _FakeNotificationService extends Fake implements NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {}
 
   @override
@@ -61,6 +62,7 @@ class _FakeNotificationService extends Fake implements NotificationService {
   Future<void> scheduleSessionCompletionNotification({
     required DateTime targetEndTime,
     required String goal,
+    bool isBreak = false,
   }) async {}
 
   @override

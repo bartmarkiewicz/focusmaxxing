@@ -149,6 +149,7 @@ class NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {
     if (!isSupportedPlatform || !_isInitialized) return;
     final opId = ++_timerNotificationOpId;
@@ -159,11 +160,27 @@ class NotificationService {
     final useNativeChronometer =
         !isPaused && remainingMs != null && remainingMs > 0;
 
-    final title = isPaused
-        ? '⏸ Paused ($formattedTimeRemaining) · Lock In'
-        : (useNativeChronometer
-            ? '🚀 Locking In'
-            : '🚀 Locking In · $formattedTimeRemaining');
+    final String title;
+    final String contentText;
+    final String subText;
+
+    if (isBreak) {
+      title = useNativeChronometer
+          ? '☕ Recharging'
+          : '☕ Recharging · $formattedTimeRemaining';
+      contentText = 'Feeds remain locked · Recharge stamina';
+      subText = 'Recharging';
+    } else if (isPaused) {
+      title = '⏸ Paused ($formattedTimeRemaining) · Lock In';
+      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay locked in';
+      subText = 'Paused';
+    } else {
+      title = useNativeChronometer
+          ? '🚀 Locking In'
+          : '🚀 Locking In · $formattedTimeRemaining';
+      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay locked in';
+      subText = 'Active Focus';
+    }
 
     final androidDetails = AndroidNotificationDetails(
       timerChannelId,
@@ -184,7 +201,7 @@ class NotificationService {
       usesChronometer: useNativeChronometer,
       chronometerCountDown: useNativeChronometer,
       timeoutAfter: useNativeChronometer ? remainingMs + 1500 : null,
-      subText: isPaused ? 'Paused' : 'Active Focus',
+      subText: subText,
     );
 
     final notificationDetails = NotificationDetails(
@@ -201,7 +218,7 @@ class NotificationService {
       await _notificationsPlugin.show(
         ongoingNotificationId,
         title,
-        taskGoal.isNotEmpty ? taskGoal : 'Stay locked in',
+        contentText,
         notificationDetails,
       );
       if (opId != _timerNotificationOpId) {
@@ -226,6 +243,7 @@ class NotificationService {
   Future<void> scheduleSessionCompletionNotification({
     required DateTime targetEndTime,
     required String goal,
+    bool isBreak = false,
   }) async {
     if (!isSupportedPlatform || !_isInitialized) return;
     await cancelSessionCompletionNotification();
@@ -256,12 +274,21 @@ class NotificationService {
     );
 
     final cleanGoal = goal.trim().isNotEmpty ? goal.trim() : 'Focus Block';
+    final alertTitle = isBreak ? '⚡ Recharge Complete!' : '🎉 Focus Block Complete!';
+    final hasCustomGoal = cleanGoal.isNotEmpty &&
+        cleanGoal != 'Focus Block' &&
+        cleanGoal != '5-Minute Recharge Break';
+    final alertBody = isBreak
+        ? (hasCustomGoal
+            ? 'Ready to lock back into "$cleanGoal"?'
+            : 'Ready to lock back into your next block?')
+        : 'Great job locking in on "$cleanGoal". Tap to recharge.';
 
     try {
       await _notificationsPlugin.zonedSchedule(
         sessionCompletionNotificationId,
-        '🎉 Focus Block Complete!',
-        'Great job locking in on "$cleanGoal". Tap to recharge.',
+        alertTitle,
+        alertBody,
         scheduledDate,
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -275,8 +302,8 @@ class NotificationService {
       try {
         await _notificationsPlugin.zonedSchedule(
           sessionCompletionNotificationId,
-          '🎉 Focus Block Complete!',
-          'Great job locking in on "$cleanGoal". Tap to recharge.',
+          alertTitle,
+          alertBody,
           scheduledDate,
           notificationDetails,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

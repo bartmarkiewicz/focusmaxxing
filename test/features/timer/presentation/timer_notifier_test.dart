@@ -73,10 +73,12 @@ class _MockNotificationService extends NotificationService {
   String? lastShownGoal;
   bool? lastShownIsPaused;
   int? lastShownTargetEndTimeEpochMs;
+  bool? lastShownIsBreak;
   int showOngoingTimerCallCount = 0;
   bool isCancelled = false;
   DateTime? lastScheduledCompletionTime;
   String? lastScheduledCompletionGoal;
+  bool? lastScheduledIsBreak;
   bool isCompletionAlarmCancelled = false;
 
   @override
@@ -85,11 +87,13 @@ class _MockNotificationService extends NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {
     showOngoingTimerCallCount++;
     lastShownGoal = taskGoal;
     lastShownIsPaused = isPaused;
     lastShownTargetEndTimeEpochMs = targetEndTimeEpochMs;
+    lastShownIsBreak = isBreak;
     isCancelled = false;
   }
 
@@ -102,9 +106,11 @@ class _MockNotificationService extends NotificationService {
   Future<void> scheduleSessionCompletionNotification({
     required DateTime targetEndTime,
     required String goal,
+    bool isBreak = false,
   }) async {
     lastScheduledCompletionTime = targetEndTime;
     lastScheduledCompletionGoal = goal;
+    lastScheduledIsBreak = isBreak;
     isCompletionAlarmCancelled = false;
   }
 
@@ -233,6 +239,14 @@ void main() {
       expect(backlogRepository.lastCompletedSessionId, 101);
       expect(notifier.status, TimerStatus.breakRunning);
       expect(notifier.targetDurationSeconds, TimerNotifier.defaultBreakSeconds);
+      expect(notificationService.lastShownIsBreak, isTrue);
+      expect(notificationService.lastScheduledIsBreak, isTrue);
+      expect(notificationService.lastScheduledCompletionGoal, 'Finish Feature');
+
+      final started = await notifier.startNextFocusFromBreak();
+      expect(started, isTrue);
+      expect(notifier.status, TimerStatus.running);
+      expect(notifier.currentTaskGoal, 'Finish Feature');
 
       notifier.readyToFocusFromBreak();
       expect(notifier.status, TimerStatus.idle);

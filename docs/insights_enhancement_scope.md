@@ -1,40 +1,54 @@
-# Focusmaxxing Enhancement Specification: Actionable Focus Insights
+# Focusmaxxing Enhancement Specification: Granular Actionable Focus Insights (V3 Hardened)
 
-**Status:** Approved & Finalized via Design Interview (`/grill-me`)  
+**Status:** Approved & Finalized (Strict Binary Lock-In Architecture)  
 **Target Area:** `lib/core/database/`, `lib/features/timer/data/`, `lib/features/insights/`  
-**Database Impact:** SQLite Migration V3 (`DatabaseHelper.databaseVersion = 3` — new `daily_focus_stats` rollup table with automated backfill from `sessions`)
+**Database Impact:** SQLite `MigrationV3` (`DatabaseHelper.databaseVersion = 3` — introduces `daily_focus_metrics` with full 24-hour hourly breakdown, deep work records, and transactional synchronization)
 
 ---
 
 ## 1. Executive Summary & Core Decisions
 
 ### Problem Statement
-Currently, [`InsightsPage`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/pages/insights_page.dart#L194-L275) only displays today's raw focus minutes, today's completed session count, the current streak, and a flat 7-day session log. Users cannot see which days they focused the most, their daily/active averages across `7D`, `30D`, `1Y`, or `All-Time`, their session completion quality (`Locked In` vs `Derailed` vs `Cancelled`), how much focus time they left on the table ("Could've Locked In"), or their peak productivity patterns.
+Currently, [`InsightsPage`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/pages/insights_page.dart) only displays today's raw focus minutes, today's completed session count, the current streak, and a flat 7-day session log. Users have zero long-term visibility into their focus habits: no multi-day trends (`7D`, `30D`, `1Y`, `ALL`), no quality breakdown (`Locked In` vs `Derailed` vs `Cancelled`), no visibility into unclaimed time left on the table ("Could've Locked In"), and no granular data on when they actually perform best (peak hours and powerhouse days).
 
-### Key Architectural & Product Decisions
-1. **Materialized Daily Rollup Table (`MigrationV3` — `daily_focus_stats`)**:
-   - Pre-aggregates daily focus metrics in SQLite (`tableDailyFocusStats = 'daily_focus_stats'`), populated via a one-time migration backfill from `sessions` on upgrade to v3 and idempotently re-synced for the target day whenever a session's status is updated.
-2. **Strict Focus Attribution & `< 60s` Quick-Cancel Filter**:
-   - Only `LOCKED_IN` `FOCUS` sessions contribute to `total_focus_seconds` and Peak Day records.
-   - Accidental quick-cancels (`status == 'CANCELLED' && actual_duration_seconds < 60`, which also covers newly initialized `0s` rows) are excluded from `cancelled_sessions_count`, `missed_target_seconds`, and the `RECENT SESSIONS` list.
-   - Every `DERAILED` focus session and every valid `CANCELLED` focus session (`actual_duration_seconds >= 60`) adds its full planned `target_duration_seconds` to `missed_target_seconds` (**"Could've Locked In" / Unclaimed Focus Time**).
-3. **Visual Ghost Bars for "Could've Locked In" Time Across `7D | 30D | 1Y | ALL`**:
-   - The Trend Bar Chart (`FocusTrendCard`) supports four selectable time horizons: **`7D`**, **`30D`**, **`1Y`**, and **`ALL`**.
-   - Each bar renders actual `focusMinutes` as a solid lower bar and stacks a translucent/ghost extension on top representing `unclaimedMinutes` (`missed_target_seconds`), showing visually what the user *could* have hit. Tapping any bar inspects both numbers and the bucket's `🚀 / 💀 / ⏹️` session counts.
-4. **Adaptive Chart Bucketing & Time Horizon Semantics (`7D | 30D | 1Y | ALL`)**:
-   - **Chart Granularity**:
-     - `7D`: 7 **daily** bars (rolling last 7 calendar days).
-     - `30D`: 30 **daily** bars (rolling last 30 calendar days).
-     - `1Y`: 12 **monthly** bars (trailing 12 calendar months ending at `referenceDate.month`, e.g., `Nov '25 .. Oct '26`), so bars remain wide, legible, and easily tappable.
-     - `ALL`: Adaptive bucketing from the user's earliest recorded day (`firstRecordDate`) through `referenceDate`:
-       - If total history span `<= 30` days: renders **daily** bars (minimum 7 bars up to 30 bars).
-       - If total history span `> 30` days: renders **monthly** bars from the first recorded month to `referenceDate` (or yearly bars if span exceeds 24 months).
-   - **Period-Responsive Cards (`7D | 30D | 1Y | ALL`)**: `FocusTrendCard` (Bar Chart), `Daily Average` card, and `Session Outcomes & Unclaimed Focus` card all update to the selected horizon.
-   - **Strictly All-Time Personal Records**: `Most Focused Day` card, `Powerhouse Pattern` (Best Weekday & Peak Time Window) card, and `Best Streak` badge in `StreakCard` always display all-time records regardless of the selected chart filter.
-   - **Independent**: `RECENT SESSIONS` (`SessionHistoryList`) always displays the last 7 days of valid sessions.
-5. **Lifetime Pro Gating (`$9.99` Tier)**:
-   - `7D` is free for all users; **`30D`**, **`1Y`**, **`ALL`**, and the **`Powerhouse Pattern` card** are gated behind `BillingNotifier.isProUnlocked`.
-   - Non-Pro users see a gold `PRO` badge (`AppColors.accentStreakGold`) on the extended period toggles (`30D`, `1Y`, `ALL`) and a locked teaser state on the `Powerhouse Pattern` card; tapping any locked item opens `LifetimeProBanner` in a modal bottom sheet (matching [`ProAccentColorSection`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/widgets/pro_accent_color_section.dart#L80-L98)).
+### Core Architectural Decisions: Strict Binary Lock-In
+
+1. **Strict Binary Attribution ("Lock In or Bust" — Zero Partial Credit)**:
+   - In alignment with Focusmaxxing's brand and ADHD behavioral psychology, **only `LOCKED_IN` focus sessions contribute to focus minutes, daily goals, and streaks**.
+   - No participation trophies: If a user cancels early via Hold-to-Cancel or checks in as `DERAILED 💀 (Got Distracted)`, they earn **0 focus minutes**. 
+   - Eliminating partial credit removes the moral hazard of quitting early (e.g. quitting at minute 18 of a 25-minute Pomodoro) and matches the existing codebase logic in [`InsightsRepositoryImpl`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/data/repositories/insights_repository_impl.dart#L31-L36).
+
+2. **The "Could've Locked In" Ghost Bar (Unclaimed Focus Time)**:
+   - Any `DERAILED` session and any valid `CANCELLED` session ($\ge 60$s) adds its **full planned `target_duration_seconds` to `unclaimed_seconds`**.
+   - Visualized as a translucent "ghost extension" stacked above solid focus bars on the trend chart, confronting the user with the exact focus potential they surrendered to distraction or quitting.
+   - Accidental starts and misclicks (`status == 'CANCELLED' && actual_duration_seconds < 60`, including `0s` initializations) are completely ignored.
+   - Unclaimed ghost bars are visually scaled on the chart with a ceiling of `max(dailyGoalMinutes * 1.5, actualMinutes * 2)` to prevent repeated abandoned timers from distorting chart scales.
+
+3. **Persistent `daily_focus_metrics` Rollup Table (`MigrationV3`)**:
+   - Stores pre-aggregated daily summaries in SQLite: clean `total_focus_seconds`, `unclaimed_seconds`, session outcome counts (`completed`, `derailed`, `cancelled`), `longest_session_seconds`, and a full 24-hour hourly distribution JSON (`hourly_focus_seconds_json`).
+   - Populated via an automated, transactional backfill from `sessions` during `MigrationV3.up`.
+
+4. **Atomic Transactional Synchronization (Zero Desync)**:
+   - When a session ends or updates in [`SessionLocalDataSource`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/timer/data/datasources/session_local_data_source.dart), the update to `sessions` and the re-aggregation into `daily_focus_metrics` occur inside a single **SQLite transaction** (`db.transaction`).
+   - Guarantees 100% ACID consistency: no partial writes, no dual-write desynchronization, and zero orphaned records.
+
+5. **True Hourly Granularity (00:00 - 23:00)**:
+   - Daily records store `hourly_focus_seconds_json` (e.g. `{"9": 1800, "10": 2700, "14": 1500}`).
+   - Enables exact peak-hour identification (e.g. *"Peak Hour: 10:00 AM - 11:00 AM"*), dynamic morning/afternoon/evening/night rollups without schema limitations, and future productivity heatmaps.
+
+6. **Mobile-First Chart UX & Scrubbable 30-Day View**:
+   - **`7D`**: 7 daily bars (rolling 7 days), wide, legible, and directly tappable.
+   - **`30D`**: 30 daily bars with **horizontal touch scrub interaction** (`onHorizontalDragUpdate` / `onTapDown` scrubber) and 5-day step labels (`1`, `5`, `10`, `15`, `20`, `25`, `30`), solving the physical limitation of tapping 7px bars with a human thumb.
+   - **`1Y`**: 12 monthly bars querying `GROUP BY year, month` directly in SQLite in `< 1ms`.
+   - **`ALL`**: Adaptive lifetime view (daily if $\le 30$ days, monthly if $> 30$ days).
+
+7. **Statistically Sound "Powerhouse Pattern"**:
+   - Requires $\ge 10$ completed focus sessions across $\ge 2$ distinct calendar weeks before unlocking `bestWeekday` and `peakTimeWindow`.
+   - `bestWeekday` is ranked by **total focus volume** across all occurrences of that weekday (with frequency tie-breaker), preventing a single 1-off Sunday session from stealing the title from 20 productive Mondays.
+
+8. **Lifetime Pro Gating ($9.99 Tier)**:
+   - `7D` is free for all users. `30D`, `1Y`, `ALL`, and `Powerhouse Pattern` are gated behind `BillingNotifier.isProUnlocked`.
+   - Non-Pro users see gold `PRO` badges on extended toggles and a locked teaser state on the `Powerhouse Pattern` card, opening `LifetimeProBanner` on tap.
 
 ---
 
@@ -42,7 +56,7 @@ Currently, [`InsightsPage`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib
 
 ```mermaid
 erDiagram
-    sessions ||--o{ daily_focus_stats : "aggregates by local start date"
+    sessions ||--o{ daily_focus_metrics : "aggregates into local day"
     sessions {
         int id PK
         string task_goal
@@ -53,151 +67,210 @@ erDiagram
         int end_time_epoch_ms
         string status "LOCKED_IN | DERAILED | CANCELLED"
     }
-    daily_focus_stats {
+    daily_focus_metrics {
         string date_key PK "YYYY-MM-DD (local)"
-        int date_epoch_ms "Start of local day ms"
+        int start_epoch_ms "Start of local day ms"
+        int end_epoch_ms "End of local day ms"
+        int year "e.g. 2026"
+        int month "1..12"
+        int day "1..31"
         int weekday "1 (Mon) .. 7 (Sun)"
-        int total_focus_seconds "LOCKED_IN actual seconds"
-        int missed_target_seconds "DERAILED + CANCELLED(>=60s) target seconds"
-        int completed_sessions_count "LOCKED_IN count"
-        int derailed_sessions_count "DERAILED count"
-        int cancelled_sessions_count "CANCELLED (>=60s) count"
-        int morning_focus_seconds "05:00-11:59 LOCKED_IN seconds"
-        int afternoon_focus_seconds "12:00-16:59 LOCKED_IN seconds"
-        int evening_focus_seconds "17:00-20:59 LOCKED_IN seconds"
-        int night_focus_seconds "21:00-04:59 LOCKED_IN seconds"
-        string updated_at
+        int total_focus_seconds "LOCKED_IN actual seconds only"
+        int unclaimed_seconds "target seconds for DERAILED & valid CANCELLED"
+        int completed_sessions_count "LOCKED_IN count (🚀)"
+        int derailed_sessions_count "DERAILED count (💀)"
+        int cancelled_sessions_count "CANCELLED (>=60s) count (⏹️)"
+        int longest_session_seconds "Longest LOCKED_IN session"
+        int peak_hour "Hour 0..23 with highest focus seconds"
+        string hourly_focus_seconds_json "JSON map: e.g. {'9': 1800, '10': 3000}"
+        string updated_at "TIMESTAMP"
     }
 ```
 
 ### 2.1 `MigrationV3` Table Definition (`lib/core/database/migrations/migration_v3.dart`)
 ```sql
-CREATE TABLE IF NOT EXISTS daily_focus_stats (
+CREATE TABLE IF NOT EXISTS daily_focus_metrics (
   date_key TEXT PRIMARY KEY,
-  date_epoch_ms INTEGER NOT NULL,
+  start_epoch_ms INTEGER NOT NULL,
+  end_epoch_ms INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  day INTEGER NOT NULL,
   weekday INTEGER NOT NULL,
   total_focus_seconds INTEGER NOT NULL DEFAULT 0,
-  missed_target_seconds INTEGER NOT NULL DEFAULT 0,
+  unclaimed_seconds INTEGER NOT NULL DEFAULT 0,
   completed_sessions_count INTEGER NOT NULL DEFAULT 0,
   derailed_sessions_count INTEGER NOT NULL DEFAULT 0,
   cancelled_sessions_count INTEGER NOT NULL DEFAULT 0,
-  morning_focus_seconds INTEGER NOT NULL DEFAULT 0,
-  afternoon_focus_seconds INTEGER NOT NULL DEFAULT 0,
-  evening_focus_seconds INTEGER NOT NULL DEFAULT 0,
-  night_focus_seconds INTEGER NOT NULL DEFAULT 0,
+  longest_session_seconds INTEGER NOT NULL DEFAULT 0,
+  peak_hour INTEGER,
+  hourly_focus_seconds_json TEXT NOT NULL DEFAULT '{}',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_daily_focus_stats_epoch
-  ON daily_focus_stats (date_epoch_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_focus_metrics_epoch
+  ON daily_focus_metrics (start_epoch_ms DESC);
 
-CREATE INDEX IF NOT EXISTS idx_daily_focus_stats_peak
-  ON daily_focus_stats (total_focus_seconds DESC, date_epoch_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_focus_metrics_year_month
+  ON daily_focus_metrics (year, month);
+
+CREATE INDEX IF NOT EXISTS idx_daily_focus_metrics_weekday
+  ON daily_focus_metrics (weekday, total_focus_seconds DESC);
+
+CREATE INDEX IF NOT EXISTS idx_daily_focus_metrics_peak
+  ON daily_focus_metrics (total_focus_seconds DESC, start_epoch_ms DESC);
 ```
 
-### 2.2 Backfill & Idempotent Single-Day Sync Logic
-1. **Shared Aggregation Helper (`DailyStatsAggregator`)**:
-   - Given a local calendar `DateTime dayStart` (`00:00:00.000`) and a list of `SessionModel` rows whose `start_time_epoch_ms` falls within that local calendar day:
-     - Ignore any row where `sessionType != 'FOCUS'`.
-     - Ignore any row where `status == 'CANCELLED' && actualDurationSeconds < 60`.
-     - For `status == 'LOCKED_IN'`:
-       - Clamp `actualDurationSeconds` to `0..86400`.
-       - Add to `total_focus_seconds` and increment `completed_sessions_count`.
-       - Inspect `DateTime.fromMillisecondsSinceEpoch(startTimeEpochMs).hour`:
-         - `5..11` → add to `morning_focus_seconds`
-         - `12..16` → add to `afternoon_focus_seconds`
-         - `17..20` → add to `evening_focus_seconds`
-         - `21..23` or `0..4` → add to `night_focus_seconds`
-     - For `status == 'DERAILED'`:
-       - Clamp `targetDurationSeconds` to `0..86400`.
-       - Add `targetDurationSeconds` to `missed_target_seconds` and increment `derailed_sessions_count`.
-     - For `status == 'CANCELLED'` (with `actualDurationSeconds >= 60`):
-       - Clamp `targetDurationSeconds` to `0..86400`.
-       - Add `targetDurationSeconds` to `missed_target_seconds` and increment `cancelled_sessions_count`.
-2. **Migration V3 Backfill**:
-   - In `MigrationV3.up(Database db)`, query all rows from `sessions WHERE session_type = 'FOCUS'`, group by local start-of-day, run `DailyStatsAggregator`, and batch-insert into `daily_focus_stats` with `ConflictAlgorithm.replace`.
-3. **Runtime Sync on `updateSessionStatus`**:
-   - In [`SessionLocalDataSource.updateSessionStatus`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/timer/data/datasources/session_local_data_source.dart#L41-L66), after updating the `sessions` row, read that session's `start_time_epoch_ms`, query all `FOCUS` sessions for that local calendar day (`startOfDay` to `endOfDay`), compute the `DailyFocusStatsModel` via `DailyStatsAggregator`, and `INSERT OR REPLACE` into `daily_focus_stats`.
+### 2.2 Shared Aggregator & Transactional Sync
+1. **`DailyMetricsAggregator.aggregateDay(DateTime dayStart, List<SessionModel> sessions)`**:
+   - Filter out `SHORT_BREAK` sessions.
+   - Filter out quick-cancels (`status == 'CANCELLED' && actualDurationSeconds < 60`).
+   - For `status == 'LOCKED_IN'`:
+     - Add `actualDurationSeconds` to `total_focus_seconds`.
+     - Increment `completed_sessions_count`.
+     - Update `longest_session_seconds = max(longest_session_seconds, actualDurationSeconds)`.
+     - Add `actualDurationSeconds` to the session's local start hour (`0..23`) in the hourly distribution.
+   - For `status == 'DERAILED'`:
+     - Increment `derailed_sessions_count`.
+     - Add `targetDurationSeconds` to `unclaimed_seconds`.
+   - For `status == 'CANCELLED'` (with `actualDurationSeconds >= 60`):
+     - Increment `cancelled_sessions_count`.
+     - Add `targetDurationSeconds` to `unclaimed_seconds`.
+   - Calculate `peak_hour` (hour with highest focus seconds, null if zero focus).
+   - Serialize non-zero hourly slots to `hourly_focus_seconds_json`.
+2. **Atomic Runtime Sync**:
+   - In `SessionLocalDataSource.updateSessionStatus`, execute within `db.transaction((txn) async { ... })`:
+     - Update the `sessions` row.
+     - Query all `FOCUS` sessions for that local calendar day.
+     - Compute `DailyFocusMetricsModel` via `DailyMetricsAggregator`.
+     - Upsert (`ConflictAlgorithm.replace`) into `daily_focus_metrics`.
+3. **Migration V3 Backfill**:
+   - In `MigrationV3.up(db)`, query all existing `FOCUS` rows from `sessions`, group by local calendar day, run `DailyMetricsAggregator`, and batch-insert into `daily_focus_metrics`.
 
 ---
 
-## 3. Domain Entities & Calculation Specifications
+## 3. High-Performance Granular SQL Queries
 
-### 3.1 Domain Entities (`lib/features/insights/domain/entities/`)
+Because metrics are persisted with structured calendar columns and indexed timestamps, long-range aggregations run directly in SQLite at sub-millisecond speeds:
 
-#### 1. `InsightsPeriod` enum (`focus_insights_entity.dart`)
-- `days7` (`id: '7d'`, `shortLabel: '7D'`, `isProOnly: false`)
-- `days30` (`id: '30d'`, `shortLabel: '30D'`, `isProOnly: true`)
-- `year1` (`id: '1y'`, `shortLabel: '1Y'`, `isProOnly: true`)
-- `allTime` (`id: 'all'`, `shortLabel: 'ALL'`, `isProOnly: true`)
+### 3.1 7D / 30D Daily Buckets
+```sql
+SELECT * FROM daily_focus_metrics 
+WHERE start_epoch_ms >= ? AND start_epoch_ms <= ?
+ORDER BY start_epoch_ms ASC;
+```
 
-#### 2. `DailyFocusBucketEntity` (`daily_focus_bucket_entity.dart`)
-Represents either a single calendar day (for `7D`, `30D`, and `< 30d` `ALL`) or an aggregated calendar month/year bucket (for `1Y` and multi-month `ALL`):
-- `final String bucketKey` (`YYYY-MM-DD` for daily buckets, `YYYY-MM` for monthly buckets, `YYYY` for yearly buckets)
-- `final DateTime startDate` (local start of bucket)
-- `final DateTime endDate` (local end of bucket)
-- `final String shortLabel` (e.g., `'M'`, `'14'`, `'Oct'`, `'2026'`)
-- `final String fullLabel` (e.g., `'Tue, Oct 20'`, `'Oct 2026'`, `'2026'`)
+### 3.2 1Y Monthly Rollups (12 Aggregated Rows Instantaneously)
+```sql
+SELECT 
+  year,
+  month,
+  SUM(total_focus_seconds) as total_focus_seconds,
+  SUM(unclaimed_seconds) as unclaimed_seconds,
+  SUM(completed_sessions_count) as completed_count,
+  SUM(derailed_sessions_count) as derailed_count,
+  SUM(cancelled_sessions_count) as cancelled_count,
+  MAX(total_focus_seconds) as peak_day_seconds,
+  COUNT(CASE WHEN total_focus_seconds > 0 THEN 1 END) as active_days_count
+FROM daily_focus_metrics
+WHERE start_epoch_ms >= ?
+GROUP BY year, month
+ORDER BY year ASC, month ASC;
+```
+
+### 3.3 Powerhouse Best Weekday (Weighted Volume & Consistency)
+```sql
+SELECT 
+  weekday,
+  SUM(total_focus_seconds) as total_focus_seconds,
+  COUNT(CASE WHEN total_focus_seconds > 0 THEN 1 END) as active_days,
+  SUM(completed_sessions_count) as completed_sessions
+FROM daily_focus_metrics
+WHERE total_focus_seconds > 0
+GROUP BY weekday
+ORDER BY total_focus_seconds DESC;
+```
+
+---
+
+## 4. Domain Entities & Calculations
+
+### 4.1 Domain Entities (`lib/features/insights/domain/entities/`)
+
+#### 1. `InsightsPeriod` enum
+- `days7` (`7D`, free)
+- `days30` (`30D`, Pro)
+- `year1` (`1Y`, Pro)
+- `allTime` (`ALL`, Pro)
+
+#### 2. `DailyFocusBucketEntity`
+- `final String bucketKey` (`YYYY-MM-DD` or `YYYY-MM`)
+- `final DateTime startDate`
+- `final DateTime endDate`
+- `final String shortLabel`
+- `final String fullLabel`
 - `final int focusMinutes` (`(totalFocusSeconds / 60).round()`)
-- `final int unclaimedMinutes` (`(missedTargetSeconds / 60).round()`)
+- `final int unclaimedMinutes` (`(unclaimedSeconds / 60).round()`)
 - `final int potentialMinutes` (`focusMinutes + unclaimedMinutes`)
-- `final int completedSessionsCount` (`LOCKED_IN`)
-- `final int derailedSessionsCount` (`DERAILED`)
-- `final int cancelledSessionsCount` (`CANCELLED` `>= 60s`)
+- `final int completedSessionsCount` (🚀)
+- `final int derailedSessionsCount` (💀)
+- `final int cancelledSessionsCount` (⏹️)
 - `final int attemptedSessionsCount` (`completed + derailed + cancelled`)
-- `final bool isPeakInPeriod` (`true` for the single bucket in the window with the highest `focusMinutes > 0`, breaking ties by most recent `startDate`)
+- `final int longestSessionMinutes`
+- `final int? peakHour` (`0..23`)
+- `final Map<int, int> hourlyFocusMinutes` (Hour $\rightarrow$ Minutes)
+- `final bool isPeakInPeriod`
 
-#### 3. `FocusTimeWindow` enum (`focus_insights_entity.dart`)
+#### 3. `FocusTimeWindow` enum
 - `morning` (`05:00–11:59`, label: `'Morning'`)
 - `afternoon` (`12:00–16:59`, label: `'Afternoon'`)
 - `evening` (`17:00–20:59`, label: `'Evening'`)
 - `night` (`21:00–04:59`, label: `'Late Night'`)
 
-#### 4. `FocusInsightsEntity` (`focus_insights_entity.dart`)
-- **Period-Scoped Fields (`7D`, `30D`, `1Y`, or `ALL`)**:
+#### 4. `FocusInsightsEntity`
+- **Period-Scoped Metrics (`7D`, `30D`, `1Y`, `ALL`)**:
   - `final InsightsPeriod period`
-  - `final int calendarDaysInPeriod` (`7` for `7D`, `30` for `30D`, `365` for `1Y`, and inclusive days from earliest recorded session date to `referenceDate` for `ALL` — minimum `1`)
-  - `final List<DailyFocusBucketEntity> chartBuckets` (ordered oldest → `referenceDate`: 7 daily buckets for `7D`, 30 daily buckets for `30D`, 12 monthly buckets for `1Y`, and adaptive daily/monthly/yearly buckets for `ALL`)
-  - `final int periodFocusMinutes` (sum of `focusMinutes` across all days in the period)
-  - `final int periodUnclaimedMinutes` (sum of `unclaimedMinutes` across all days in the period)
-  - `final int periodPotentialMinutes` (`periodFocusMinutes + periodUnclaimedMinutes`)
+  - `final int calendarDaysInPeriod`
+  - `final List<DailyFocusBucketEntity> chartBuckets`
+  - `final int periodFocusMinutes`
+  - `final int periodUnclaimedMinutes`
   - `final int periodCompletedSessions`
   - `final int periodDerailedSessions`
   - `final int periodCancelledSessions`
-  - `final int periodAttemptedSessions` (`completed + derailed + cancelled`)
-  - `final int dailyAverageMinutes` (`(periodFocusMinutes / calendarDaysInPeriod).round()`)
-  - `final int activeDayAverageMinutes` (`activeDaysCount > 0 ? (periodFocusMinutes / activeDaysCount).round() : 0`)
-  - `final int activeDaysCount` (number of calendar days in the period with `focusMinutes > 0`)
-  - `final int? lockInRatePercent` (`periodAttemptedSessions > 0 ? ((periodCompletedSessions / periodAttemptedSessions) * 100).round() : null`)
-  - `final int averageSessionMinutes` (`periodCompletedSessions > 0 ? (periodTotalFocusSeconds / periodCompletedSessions / 60).round() : 0`)
+  - `final int periodAttemptedSessions`
+  - `final int dailyAverageMinutes`
+  - `final int activeDayAverageMinutes`
+  - `final int activeDaysCount`
+  - `final int? lockInRatePercent` (`completed / attempted * 100`)
   - `final DailyFocusBucketEntity? periodPeakBucket`
-- **All-Time Personal Record Fields**:
-  - `final DailyFocusBucketEntity? allTimePeakDay` (queried from `daily_focus_stats WHERE total_focus_seconds > 0 ORDER BY total_focus_seconds DESC, date_epoch_ms DESC LIMIT 1`)
-  - `final int longestStreakDays` (all-time best streak across all active days in `daily_focus_stats`, respecting `includeWeekendsInStreak` and the 1-day-per-7-day Streak Shield)
-  - `final int? bestWeekday` (`1` = Mon .. `7` = Sun; null if all-time `completed_sessions_count < 3`)
-  - `final int bestWeekdayAverageMinutes` (average `focusMinutes` across active days on `bestWeekday`)
-  - `final FocusTimeWindow? peakTimeWindow` (window with highest all-time focus seconds; null if all-time `completed_sessions_count < 3`)
+- **All-Time Personal Records**:
+  - `final DailyFocusBucketEntity? allTimePeakDay`
+  - `final int longestStreakDays` (authoritative from session history + shield)
+  - `final int? bestWeekday` (`1` = Mon .. `7` = Sun; null if $< 10$ sessions or $< 2$ weeks)
+  - `final int bestWeekdayTotalMinutes`
+  - `final FocusTimeWindow? peakTimeWindow` (null if $< 10$ sessions or $< 2$ weeks)
+  - `final int? overallPeakHour` (most frequent all-time peak hour `0..23`)
 
 ---
 
-## 4. Edge Cases & Canonical Rules Matrix
+## 5. Edge Cases & Canonical Rules Matrix
 
 | # | Edge Case | Canonical Rule |
 |---|---|---|
-| **EC-1** | **Accidental Quick-Cancels (`< 60s`) & In-Progress Rows** | Any `FOCUS` session with `status == 'CANCELLED'` and `actual_duration_seconds < 60` is ignored in `daily_focus_stats` (`cancelled_sessions_count` and `missed_target_seconds`) AND filtered out of `getRecentSessions` so misclicks and active in-progress sessions never pollute stats or session history. |
-| **EC-2** | **Midnight-Crossing Sessions** | Sessions are always bucketed into `daily_focus_stats` by the local calendar day of `start_time_epoch_ms` (`AppDateUtils.getStartOfDay`). This matches `calculateStreak` so daily bars and streaks never disagree. |
-| **EC-3** | **Seconds-to-Minutes Rounding Consistency** | Each day's `focusMinutes = (total_focus_seconds / 60).round()` and `unclaimedMinutes = (missed_target_seconds / 60).round()`. Monthly/yearly chart buckets and period totals (`periodFocusMinutes`, `periodUnclaimedMinutes`) sum those daily rounded minutes so chart bars and summary cards always match to the exact minute. |
-| **EC-4** | **Zero-Data / Brand-New User State** | When no sessions exist: `dailyAverageMinutes = 0`, `activeDayAverageMinutes = 0`, `lockInRatePercent = null` (UI displays `"--"`), `allTimePeakDay = null` (UI displays `"No record yet"`), `bestWeekday = null` & `peakTimeWindow = null` (UI displays `"Lock in 3x to unlock"`). Never divide by zero or render `NaN`. |
-| **EC-5** | **Ties for Peak Bucket & All-Time Peak Day** | When multiple buckets/days tie for highest `focusMinutes > 0`, the **most recent date** (`date_epoch_ms DESC`) wins deterministically. |
-| **EC-6** | **Sample Threshold & Ties for Powerhouse Pattern** | Require `>= 3` all-time `LOCKED_IN` focus sessions before returning non-null `bestWeekday` or `peakTimeWindow`. Rank `bestWeekday` by highest average focus minutes per active day on that weekday (tie-breaker: highest total focus seconds on that weekday, then Monday `1` → Sunday `7`). Rank `peakTimeWindow` by highest all-time seconds across `morning`, `afternoon`, `evening`, `night` (tie-breaker in that order). |
-| **EC-7** | **DST (Daylight Saving Time) Safe Date Stepping** | Never step dates by subtracting `Duration(days: 1)` or `86400000` ms. Always use local calendar constructors `DateTime(y, m, d - offset)` / `DateTime(y, m - offset, 1)` and `AppDateUtils.getStartOfDay`. |
-| **EC-8** | **`1Y` and `ALL` Bucketing & Denominators** | For `1Y`, `calendarDaysInPeriod = 365` (rolling `refDate - 364 days .. refDate`) and `chartBuckets` contains the 12 trailing calendar months (`DateTime(ref.year, ref.month - 11 + i, 1)`). For `ALL`, `calendarDaysInPeriod` is `max(1, calendarDaysBetween(earliestDay, refDate) + 1)`; `chartBuckets` uses daily bars if `calendarDaysInPeriod <= 30`, monthly bars if `<= 730` (24 months), and yearly bars if `> 730`. In monthly/yearly views, the daily goal dashed line scales to `dailyGoalMinutes * daysInMonth` (or hides in favour of peak scaling) so bar proportions remain accurate. |
-| **EC-9** | **Break Sessions (`SHORT_BREAK`) & Pro Gating Transitions** | `SHORT_BREAK` rows are completely excluded from `daily_focus_stats`. If a user unlocks Lifetime Pro while on `InsightsPage`, `BillingNotifier` notifies listeners and `30D`, `1Y`, `ALL`, and `Powerhouse Pattern` immediately unlock without requiring an app restart. |
-| **EC-10** | **Deterministic `referenceDate` Injection** | All repository and use case methods (`getFocusInsights`, `getRecentSessions`, `getDailySummary`) accept `DateTime? referenceDate` so unit and widget tests can assert exact multi-day/multi-month windows deterministically. |
+| **EC-1** | **Accidental Quick-Cancels (`< 60s`)** | Any `FOCUS` session with `status == 'CANCELLED'` and `actual_duration_seconds < 60` is completely excluded from database metrics and session history. |
+| **EC-2** | **Strict Binary Lock-In (Zero Partial Credit)** | If a session is CANCELLED early or marked DERAILED at check-in, actual duration is not counted toward focus time (0 minutes credited). Instead, its full target duration becomes unclaimed time (ghost bar), preserving the hardcore accountability and commitment stakes of Focusmaxxing. |
+| **EC-3** | **Ghost Bar Scale Capping** | Unclaimed minutes in UI charts are visually capped at `max(dailyGoalMinutes * 1.5, actualMinutes * 2)` to prevent abandoned timers from distorting the chart scale. |
+| **EC-4** | **30D Mobile Scrubbing** | 30D renders 30 daily bars with horizontal drag scrub (`onHorizontalDragUpdate`) and 5-day step labels (`1, 5, 10, 15...`) so users inspect stats smoothly without tiny tap targets. |
+| **EC-5** | **Powerhouse Sample Threshold** | Require $\ge 10$ completed focus sessions and $\ge 2$ distinct calendar weeks before displaying `bestWeekday` and `peakTimeWindow`. Rank `bestWeekday` by total focus minutes. |
+| **EC-6** | **Midnight-Crossing Sessions** | Sessions are bucketed by the local calendar day of `start_time_epoch_ms` (`AppDateUtils.getStartOfDay`), matching streak calculation. |
+| **EC-7** | **Zero-Data State** | Brand-new users see `dailyAverage = 0`, `lockInRate = null` (`"--"`), `allTimePeakDay = null` (`"No record yet"`), and `Powerhouse = null` (`"Complete 10 sessions to unlock"`). |
+| **EC-8** | **Ties for Peak Bucket** | When multiple buckets tie for highest `focusMinutes > 0`, the most recent date wins deterministically. |
+| **EC-9** | **DST-Safe Date Arithmetic** | Never step days by adding/subtracting `Duration(days: 1)`. Always use calendar constructors `DateTime(y, m, d + offset)`. |
+| **EC-10** | **Deterministic Testing** | `getFocusInsights` accepts an optional `DateTime? referenceDate` for deterministic unit testing. |
 
 ---
 
-## 5. UI Layout & Component Blueprint
+## 6. UI Layout & Component Blueprint
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -212,15 +285,15 @@ Represents either a single calendar day (for `7D`, `30D`, and `< 30d` `ALL`) or 
 │                                                          │
 │ FOCUS TRENDS            [ 7D | 30D🔒 | 1Y🔒 | ALL🔒 ]  │
 │ ┌──────────────────────────────────────────────────────┐ │
-│ │ Tue, Oct 20 • 95m Locked In · +25m Unclaimed  🏆 PEAK│ │
-│ │ 3 🚀 Locked In · 1 💀 Derailed · 0 ⏹️ Cancelled      │ │
+│ │ Tue, Oct 20 • 75m Locked In · +25m Unclaimed  🏆 PEAK│ │
+│ │ 3 🚀 Locked In · 1 💀 Derailed · Peak: 10 AM (45m)   │ │
 │ │                                                      │ │
 │ │       👑                                             │ │
 │ │       ░░ (Ghost: +25m unclaimed)                     │ │
 │ │       ██          ░░                                 │ │
 │ │  -- --██-- -- -- -██- -- -- (60m Goal Line)          │ │
 │ │  ██   ██   ██     ██   ██                            │ │
-│ │  M    T    W   T   F    S   S                        │ │
+│ │  M    T    W   T   F    S   S   (30D uses scrub bar) │ │
 │ └──────────────────────────────────────────────────────┘ │
 │                                                          │
 │ PERFORMANCE HIGHLIGHTS                                   │
@@ -232,7 +305,7 @@ Represents either a single calendar day (for `7D`, `30D`, and `< 30d` `ALL`) or 
 │ ┌─────────────────────────┐  ┌─────────────────────────┐ │
 │ │ 🎯 SESSION OUTCOMES (7D)│  │ ⚡ POWERHOUSE    [PRO]  │ │
 │ │ 75% LOCKED IN           │  │ TUESDAYS (or 🔒 Teaser) │ │
-│ │ 6🚀 1💀 1⏹️ · +50m left │  │ Avg 85m · Morning peak  │ │
+│ │ 3🚀 1💀 0⏹️ · +25m left │  │ 420m total · 10 AM Peak │ │
 │ └─────────────────────────┘  └─────────────────────────┘ │
 │                                                          │
 │ CURRENT STREAK                                           │
@@ -259,89 +332,78 @@ Represents either a single calendar day (for `7D`, `30D`, and `< 30d` `ALL`) or 
 
 ---
 
-## 6. Agent Execution Plan (Modular Work Packages)
+## 7. Agent Execution Plan (Modular Work Packages)
 
-Work is partitioned into **5 sequential, self-contained work packages (WP1–WP5)**.
-
-### WP1: SQLite Migration V3 (`daily_focus_stats`), Backfill & Data Source Sync
-- **Objective**: Create `MigrationV3` with automated backfill from `sessions`, bump `DatabaseHelper.databaseVersion` to `3`, and keep `daily_focus_stats` synced in `SessionLocalDataSource`.
+### WP1: SQLite `MigrationV3`, `daily_focus_metrics` Table & Transactional Sync
+- **Objective**: Create `daily_focus_metrics` table with hourly breakdown JSON, bump `DatabaseHelper.databaseVersion = 3`, create `MigrationV3` with automated backfill, and wrap session status updates in atomic SQLite transactions.
 - **Files to Create / Modify**:
-  1. **Create** `lib/features/insights/data/models/daily_focus_stats_model.dart`:
-     - Fields matching `daily_focus_stats` columns + `fromMap`, `toMap`, and `DailyStatsAggregator.aggregateDay(DateTime dayStart, List<SessionModel> daySessions)` implementing the `< 60s` quick-cancel filter and time-of-day window bucketing.
+  1. **Create** `lib/features/insights/data/models/daily_focus_metrics_model.dart`:
+     - Model matching `daily_focus_metrics` schema with `fromMap`, `toMap`, and `DailyMetricsAggregator` enforcing strict binary attribution (only `LOCKED_IN` gets focus credit, `DERAILED` and valid `CANCELLED` populate `unclaimed_seconds`), 24-hour distribution, and peak hours.
   2. **Create** `lib/core/database/migrations/migration_v3.dart`:
-     - Create `daily_focus_stats` table and indexes (`idx_daily_focus_stats_epoch`, `idx_daily_focus_stats_peak`).
-     - Query existing `FOCUS` rows from `sessions`, group by local start-of-day, aggregate via `DailyStatsAggregator.aggregateDay`, and batch-insert into `daily_focus_stats`.
+     - Creates `daily_focus_metrics` and indexes.
+     - Backfills all valid `FOCUS` sessions grouped by local calendar day inside the migration transaction.
   3. **Modify** [`lib/core/database/database_helper.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/core/database/database_helper.dart):
-     - Bump `databaseVersion = 3`, add `tableDailyFocusStats = 'daily_focus_stats'`, call `MigrationV3.up(db)` in `_onCreate` and inside `_onUpgrade` when `oldVersion < 3`.
+     - Bump `databaseVersion = 3`, add `tableDailyFocusMetrics = 'daily_focus_metrics'`, add `MigrationV3` to `MigrationRunner`.
   4. **Modify** [`lib/features/timer/data/datasources/session_local_data_source.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/timer/data/datasources/session_local_data_source.dart):
-     - In `updateSessionStatus`, recompute that session's calendar day via `DailyStatsAggregator` and upsert into `daily_focus_stats`.
-     - Add `Future<List<DailyFocusStatsModel>> getDailyStatsForDateRange(int startEpochMs, int endEpochMs)` and `Future<List<DailyFocusStatsModel>> getAllDailyStats()` to `ISessionLocalDataSource` and `SessionLocalDataSource`.
-  5. **Create** `test/core/database/migration_v3_and_daily_stats_test.dart`:
-     - Verify v2 → v3 migration backfill, `< 60s` cancelled session exclusion, `DERAILED` + `>= 60s` `CANCELLED` `missed_target_seconds` calculation, time-of-day bucketing, and idempotent `updateSessionStatus` day re-sync.
-- **Verification**: `flutter test test/core/database/migration_v3_and_daily_stats_test.dart` passes 100%.
+     - Wrap `updateSessionStatus` in `db.transaction`, recomputing that day's `daily_focus_metrics` and saving atomically.
+     - Add `getMetricsForDateRange(int startMs, int endMs)` and `getAllMetrics()` query methods.
+  5. **Create** `test/core/database/migration_v3_and_daily_metrics_test.dart`:
+     - Verify v2 $\rightarrow$ v3 upgrade backfill, transactional single-day sync, zero partial credit for cancelled/derailed, 24-hour JSON map, and `< 60s` filter.
+- **Verification**: `flutter test test/core/database/migration_v3_and_daily_metrics_test.dart` passes 100%.
 
 ---
 
 ### WP2: Domain Entities, Repository Implementation & Edge-Case Unit Tests
-- **Objective**: Build the Insights domain layer (`InsightsPeriod`: `7D`, `30D`, `1Y`, `ALL`) and implement `InsightsRepositoryImpl` backed by `daily_focus_stats`.
+- **Objective**: Implement domain entities (`InsightsPeriod`, `DailyFocusBucketEntity`, `FocusInsightsEntity`) and implement `InsightsRepositoryImpl.getFocusInsights` using the granular database metrics.
 - **Files to Create / Modify**:
-  1. **Create** `lib/features/insights/domain/entities/daily_focus_bucket_entity.dart` and `lib/features/insights/domain/entities/focus_insights_entity.dart` (including `enum InsightsPeriod { days7, days30, year1, allTime }`).
+  1. **Create** `lib/features/insights/domain/entities/daily_focus_bucket_entity.dart` and `lib/features/insights/domain/entities/focus_insights_entity.dart`.
   2. **Modify** [`lib/features/insights/domain/repositories/i_insights_repository.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/domain/repositories/i_insights_repository.dart):
-     - Add `Future<Either<Failure, FocusInsightsEntity>> getFocusInsights({InsightsPeriod period = InsightsPeriod.days7, DateTime? referenceDate, bool includeWeekendsInStreak = false})`.
-     - Add optional `DateTime? referenceDate` to `getRecentSessions({int days = 7, DateTime? referenceDate})`.
-  3. **Create** `lib/features/insights/domain/usecases/get_focus_insights_usecase.dart` and update [`get_recent_sessions_usecase.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/domain/usecases/get_recent_sessions_usecase.dart).
+     - Add `Future<Either<Failure, FocusInsightsEntity>> getFocusInsights(...)` and optional `DateTime? referenceDate` to `getRecentSessions`.
+  3. **Create** `lib/features/insights/domain/usecases/get_focus_insights_usecase.dart`.
   4. **Modify** [`lib/features/insights/data/repositories/insights_repository_impl.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/data/repositories/insights_repository_impl.dart):
-     - Filter out accidental quick-cancels (`status == SessionStatus.cancelled && actualDurationSeconds < 60`) in `getRecentSessions`.
-     - Implement `getFocusInsights` using `localDataSource.getAllDailyStats()`, supporting `InsightsPeriod.days7` (7 daily buckets), `InsightsPeriod.days30` (30 daily buckets), `InsightsPeriod.year1` (365-day totals + 12 trailing monthly buckets), and `InsightsPeriod.allTime` (lifetime totals from first recorded day + adaptive daily/monthly/yearly buckets), alongside `allTimePeakDay`, `longestStreakDays`, `bestWeekday`, and `peakTimeWindow`.
+     - Query `daily_focus_metrics` for `7D`, `30D`, `1Y` (via SQL monthly aggregation), and `ALL`.
+     - Filter accidental quick-cancels (`< 60s`) from `getRecentSessions`.
+     - Compute `Powerhouse Pattern` (Best Weekday by total volume, Peak Time Window, and Peak Hour) with the $\ge 10$ sessions / $\ge 2$ weeks threshold.
   5. **Modify** [`test/features/insights/data/insights_repository_impl_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/data/insights_repository_impl_test.dart):
-     - Add comprehensive unit tests covering **EC-1 through EC-10**, including `7D`, `30D`, `1Y` monthly bucketing, and `ALL` adaptive bucketing and lifetime average denominators.
+     - Full unit test coverage for EC-1 through EC-10.
 - **Verification**: `flutter test test/features/insights/data/insights_repository_impl_test.dart` passes 100%.
 
 ---
 
 ### WP3: State Management (`InsightsNotifier` & DI Wiring)
-- **Objective**: Connect `GetFocusInsightsUseCase`, daily goal preferences, `InsightsPeriod` (`7D | 30D | 1Y | ALL`) selection, and best-streak high-water mark persistence in `InsightsNotifier` and `main.dart`.
+- **Objective**: Wire `GetFocusInsightsUseCase`, `InsightsPeriod` state, and daily goal preferences into `InsightsNotifier` and `main.dart`.
 - **Files to Modify**:
   1. **Modify** [`lib/features/insights/presentation/notifiers/insights_notifier.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/notifiers/insights_notifier.dart):
-     - Add `GetFocusInsightsUseCase? getFocusInsightsUseCase`.
-     - Add `SharedPreferences` keys: `keyDailyGoalMinutes = 'insights_daily_goal_minutes'` (default `60`), `keySelectedPeriod = 'insights_selected_period'` (default `'7d'`), `keyLongestStreakRecord = 'insights_longest_streak_record'`.
-     - Expose `focusInsights`, `dailyGoalMinutes`, `selectedPeriod` (`InsightsPeriod`), `bestStreakDays`, `setSelectedPeriod(InsightsPeriod period)`, and `setDailyGoalMinutes(int minutes)`.
+     - Inject `GetFocusInsightsUseCase`.
+     - Manage `selectedPeriod` (`InsightsPeriod`), `dailyGoalMinutes`, and `focusInsights`.
   2. **Modify** [`lib/main.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/main.dart):
-     - Wire `GetFocusInsightsUseCase` into `InsightsNotifier`.
-  3. **Modify** [`test/features/insights/presentation/insights_notifier_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/insights_notifier_test.dart):
-     - Test loading `focusInsights`, switching across `7D`, `30D`, `1Y`, and `ALL`, persisting `dailyGoalMinutes`, and updating `bestStreakDays`.
+     - Register `GetFocusInsightsUseCase` and wire into `InsightsNotifier`.
+  3. **Modify** [`test/features/insights/presentation/insights_notifier_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/insights_notifier_test.dart).
 - **Verification**: `flutter test test/features/insights/presentation/insights_notifier_test.dart` passes 100%.
 
 ---
 
 ### WP4: UI Widgets (`FocusTrendCard`, `InsightsHighlightsGrid`, `StreakCard`, `InsightsPage`)
-- **Objective**: Build the high-contrast UI components including the stacked ghost-bar chart with `7D | 30D | 1Y | ALL` selector, 2×2 highlights bento grid, Pro-gated `30D`/`1Y`/`ALL` & `Powerhouse Pattern` interactions, upgraded `_MomentumRow`, and `Daily Focus Goal` selector.
+- **Objective**: Build mobile-friendly chart widgets with touch scrub for 30D, highlights grid with peak hour insights, and Pro gating.
 - **Files to Create / Modify**:
   1. **Create** `lib/features/insights/presentation/widgets/focus_trend_card.dart`:
-     - Header inspector showing selected bucket's `Locked In` mins, `+Xm Unclaimed` mins, `🚀 / 💀 / ⏹️` counts, and `🏆 PEAK` badge.
-     - 4-option period selector (`7D` | `30D` | `1Y` | `ALL`, showing a compact gold `PRO` badge on `30D`, `1Y`, and `ALL` when `!isProUnlocked`; tapping any Pro-locked period when `!isProUnlocked` opens `LifetimeProBanner` bottom sheet).
-     - Stacked bar chart (`focusMinutes` solid lower bar + `unclaimedMinutes` translucent ghost top bar + dashed `dailyGoalMinutes` line for daily views).
+     - 4-period selector (`7D | 30D | 1Y | ALL`) with Pro lock icons and bottom-sheet triggers.
+     - Stacked bar chart with ghost unclaimed extensions and capped scaling.
+     - Touch scrub interaction for 30D with floating/header inspector displaying locked in minutes, unclaimed minutes, and peak hour.
   2. **Create** `lib/features/insights/presentation/widgets/insights_highlights_grid.dart`:
-     - **Card 1 (`DAILY AVERAGE (<PERIOD>)`)**: `X MINS` + `"Ym/day on Z active days"`.
-     - **Card 2 (`MOST FOCUSED DAY` - All-Time)**: `X MINS` in `AppColors.accentStreakGold` + date & session count.
-     - **Card 3 (`SESSION OUTCOMES (<PERIOD>)`)**: `X% LOCKED IN` + `A🚀 B💀 C⏹️` + `"Could've hit Zm (+Ym left)"`.
-     - **Card 4 (`POWERHOUSE PATTERN` - All-Time, Pro-Gated)**: When `isProUnlocked`, displays `bestWeekday` (e.g., `TUESDAYS`) + `"Avg Xm · Best in [Window]"`. When `!isProUnlocked`, renders gold `PRO` badge and `"🔒 Tap to unlock your Best Day & Peak Window"`, opening `LifetimeProBanner` bottom sheet on tap.
+     - 4 cards: `Daily Average`, `Most Focused Day`, `Session Outcomes`, and Pro-gated `Powerhouse Pattern` (Best Weekday + Peak Hour Window).
   3. **Modify** [`lib/features/insights/presentation/widgets/streak_card.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/widgets/streak_card.dart):
-     - Add `int bestStreakDays = 0` and display `"🏆 BEST: $bestStreakDays DAYS"` pill when streak tracking is enabled.
+     - Display `"🏆 BEST: X DAYS"` pill.
   4. **Modify** [`lib/features/insights/presentation/pages/insights_page.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights/presentation/pages/insights_page.dart):
-     - Upgrade `_MomentumRow` with daily goal progress (`45 / 60 MINS`, progress bar, `TARGET HIT ⚡` badge) and delta vs. daily average.
-     - Add `FocusTrendCard` and `InsightsHighlightsGrid` sections.
-     - Add `Daily Focus Goal` choice chips (`30m`, `60m`, `90m`, `120m`, `180m`) to `_PreferencesCard`.
+     - Embed `FocusTrendCard`, `InsightsHighlightsGrid`, goal progress in `_MomentumRow`, and daily goal selector in preferences.
 
 ---
 
-### WP5: Widget Tests & Full Regression Suite
-- **Objective**: Add comprehensive widget tests for all new components, `7D | 30D | 1Y | ALL` period switching, Pro gating flows, and empty/populated states, and verify zero regressions across the entire repository.
+### WP5: Widget Tests & Regression Verification
+- **Objective**: Full widget test coverage and zero regression verification.
 - **Files to Modify**:
-  1. **Modify** [`test/features/insights/presentation/insights_page_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/insights_page_test.dart):
-     - Test `_MomentumRow` goal progress, `FocusTrendCard` bar rendering across `7D`, `30D`, `1Y`, and `ALL` + tap-to-inspect, ghost unclaimed bars, `InsightsHighlightsGrid` metrics & empty state placeholders, Pro-locked `30D`/`1Y`/`ALL` toggles and `Powerhouse Pattern` opening `LifetimeProBanner`, and Pro unlocked states.
-  2. **Modify** [`test/features/insights/presentation/widgets/streak_card_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/widgets/streak_card_test.dart):
-     - Verify `"🏆 BEST: X DAYS"` badge rendering.
+  1. [`test/features/insights/presentation/insights_page_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/insights_page_test.dart)
+  2. [`test/features/insights/presentation/widgets/streak_card_test.dart`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/test/features/insights/presentation/widgets/streak_card_test.dart)
 - **Verification**:
   - `flutter analyze` (0 issues).
-  - `flutter test` (100% pass across all unit and widget tests).
+  - `flutter test test/features/insights/` (100% pass).

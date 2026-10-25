@@ -75,6 +75,7 @@ class _MockNotificationService extends NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {}
 
   @override
@@ -304,7 +305,7 @@ void main() {
       testNotifier.dispose();
     });
 
-    testWidgets('tapping I\'M READY TO FOCUS during break returns to idle',
+    testWidgets('tapping ROLL INTO NEXT BLOCK during break starts next session',
         (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
@@ -316,15 +317,26 @@ void main() {
 
       await timerNotifier.checkInSession(lockedIn: true);
       await tester.pumpAndSettle();
-      expect(timerNotifier.status, TimerStatus.breakRunning);
-      expect(find.text('I\'M READY TO FOCUS'), findsOneWidget);
 
-      // Tap ready to focus
-      await tester.tap(find.text('I\'M READY TO FOCUS'));
+      if (find.byKey(const Key('celebration_take_break_button')).evaluate().isNotEmpty) {
+        await tester.tap(find.byKey(const Key('celebration_take_break_button')));
+        await tester.pumpAndSettle();
+      }
+
+      expect(timerNotifier.status, TimerStatus.breakRunning);
+      final rollButton = find.byKey(const Key('timer_roll_into_next_block_button'));
+      expect(rollButton, findsOneWidget);
+
+      await tester.ensureVisible(rollButton);
+      await tester.pumpAndSettle();
+      await tester.tap(rollButton);
       await tester.pumpAndSettle();
 
-      expect(timerNotifier.status, TimerStatus.idle);
-      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+      expect(timerNotifier.status, TimerStatus.running);
+      expect(timerNotifier.currentTaskGoal, 'Review PR');
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
     });
 
     testWidgets(
@@ -498,6 +510,54 @@ void main() {
       // Should transition straight into running session
       expect(timerNotifier.status, TimerStatus.running);
       expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsOneWidget);
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'during break mode, _BreakInfoCard renders rotating micro-habits, shuffles on tap, and ROLL INTO NEXT BLOCK button starts next focus session',
+        (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await timerNotifier.startFocusSession('Chain Block A');
+      await tester.pumpAndSettle();
+
+      await timerNotifier.checkInSession(lockedIn: true);
+      await tester.pumpAndSettle();
+
+      // Dismiss celebration sheet if visible by tapping outside or let break screen show
+      if (find.byKey(const Key('celebration_take_break_button')).evaluate().isNotEmpty) {
+        await tester.tap(find.byKey(const Key('celebration_take_break_button')));
+        await tester.pumpAndSettle();
+      }
+
+      expect(timerNotifier.status, TimerStatus.breakRunning);
+
+      // Verify BreakInfoCard renders
+      expect(find.byKey(const Key('timer_break_info_card_tap')), findsOneWidget);
+      expect(find.text('Tap to shuffle 🔀'), findsOneWidget);
+      expect(find.text('Social feeds remain locked during break'), findsOneWidget);
+
+      // Tap to shuffle habit
+      await tester.tap(find.byKey(const Key('timer_break_info_card_tap')));
+      await tester.pumpAndSettle();
+
+      // Roll into Next Block button is present
+      final rollButton =
+          find.byKey(const Key('timer_roll_into_next_block_button'));
+      expect(rollButton, findsOneWidget);
+      expect(find.textContaining('ROLL INTO NEXT BLOCK'), findsOneWidget);
+
+      // Tapping roll into next block directly starts Chain Block A in running state
+      await tester.ensureVisible(rollButton);
+      await tester.pumpAndSettle();
+      await tester.tap(rollButton);
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.running);
+      expect(timerNotifier.currentTaskGoal, 'Chain Block A');
 
       await timerNotifier.cancelSession();
       await tester.pumpAndSettle();

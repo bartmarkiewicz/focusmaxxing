@@ -195,6 +195,7 @@ class _NoOpNotificationService extends NotificationService {
     required String formattedTimeRemaining,
     required bool isPaused,
     int? targetEndTimeEpochMs,
+    bool isBreak = false,
   }) async {}
 
   @override
@@ -204,6 +205,7 @@ class _NoOpNotificationService extends NotificationService {
   Future<void> scheduleSessionCompletionNotification({
     required DateTime targetEndTime,
     required String goal,
+    bool isBreak = false,
   }) async {}
 
   @override
