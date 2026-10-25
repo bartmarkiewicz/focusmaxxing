@@ -198,6 +198,17 @@ void main() {
         );
         await tester.pumpAndSettle();
 
+        expect(find.text('Enable Usage Access'), findsOneWidget);
+        expect(
+          find.byKey(const Key('permission_guidance_open_settings_button')),
+          findsOneWidget,
+        );
+
+        await tester.tap(
+          find.byKey(const Key('permission_guidance_open_settings_button')),
+        );
+        await tester.pumpAndSettle();
+
         expect(
           repository.requestedPermissions,
           contains(ShieldPermissionType.usageStats),

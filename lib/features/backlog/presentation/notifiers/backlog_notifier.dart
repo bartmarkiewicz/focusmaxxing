@@ -119,7 +119,7 @@ class BacklogNotifier extends ChangeNotifier {
     );
   }
 
-  Future<void> completeTask(int id, int sessionId) async {
+  Future<void> markTaskCompleted(int id, [int? sessionId]) async {
     final previousTasks = _pendingTasks;
     final previousSelected = _selectedTask;
     _pendingTasks = List.unmodifiable(
@@ -142,4 +142,7 @@ class BacklogNotifier extends ChangeNotifier {
       (_) {},
     );
   }
+
+  Future<void> completeTask(int id, int sessionId) =>
+      markTaskCompleted(id, sessionId);
 }

@@ -57,7 +57,7 @@ class BacklogRepositoryImpl implements IBacklogRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async {
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async {
     try {
       await localDataSource.markCompleted(id, sessionId);
       return const Right(null);

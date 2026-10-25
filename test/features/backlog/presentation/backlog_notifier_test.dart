@@ -40,7 +40,7 @@ class _FakeBacklogRepository implements IBacklogRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async {
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async {
     if (failureToThrow != null) return Left(failureToThrow!);
     final index = _tasks.indexWhere((t) => t.id == id);
     if (index != -1) {

@@ -50,7 +50,7 @@ class _FakeBacklogRepository implements IBacklogRepository {
   int? lastCompletedSessionId;
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async {
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async {
     lastCompletedTaskId = id;
     lastCompletedSessionId = sessionId;
     return const Right<Failure, void>(null);

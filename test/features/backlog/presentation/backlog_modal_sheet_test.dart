@@ -43,7 +43,11 @@ class _MockBacklogRepository implements IBacklogRepository {
   }
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async {
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async {
+    final index = _tasks.indexWhere((t) => t.id == id);
+    if (index != -1) {
+      _tasks[index] = _tasks[index].copyWith(isCompleted: true);
+    }
     return const Right(null);
   }
 }
@@ -158,6 +162,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Task To Dismiss'), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping task checkbox marks task completed and removes it from pending list',
+        (tester) async {
+      await repository.addTask('Check me out');
+
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check me out'), findsOneWidget);
+      final checkboxFinder = find.byKey(const Key('backlog_task_checkbox_1'));
+      expect(checkboxFinder, findsOneWidget);
+
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check me out'), findsNothing);
     });
 
     testWidgets('displays error message when notifier has errorMessage',

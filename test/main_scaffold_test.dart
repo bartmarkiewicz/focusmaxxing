@@ -53,7 +53,7 @@ class _FakeBacklogRepo implements IBacklogRepository {
   Future<Either<Failure, void>> deleteTask(int id) async => const Right(null);
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async =>
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async =>
       const Right(null);
 }
 

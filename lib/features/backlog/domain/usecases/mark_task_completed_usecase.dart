@@ -9,7 +9,7 @@ class MarkTaskCompletedUseCase {
 
   Future<Either<Failure, void>> call({
     required int id,
-    required int sessionId,
+    int? sessionId,
   }) {
     return repository.markCompleted(id, sessionId);
   }

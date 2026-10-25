@@ -7,7 +7,7 @@ abstract interface class IBacklogLocalDataSource {
   Future<List<BacklogTaskModel>> getPendingTasks();
   Future<int> insertTask(BacklogTaskModel task);
   Future<void> deleteTask(int id);
-  Future<void> markCompleted(int id, int sessionId);
+  Future<void> markCompleted(int id, [int? sessionId]);
 }
 
 class BacklogLocalDataSource implements IBacklogLocalDataSource {
@@ -69,7 +69,7 @@ class BacklogLocalDataSource implements IBacklogLocalDataSource {
   }
 
   @override
-  Future<void> markCompleted(int id, int sessionId) async {
+  Future<void> markCompleted(int id, [int? sessionId]) async {
     try {
       final db = await _db;
       final count = await db.update(

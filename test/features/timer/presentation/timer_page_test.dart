@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,16 @@ import 'package:focusmaxxing/features/backlog/domain/usecases/delete_backlog_tas
 import 'package:focusmaxxing/features/backlog/domain/usecases/get_pending_tasks_usecase.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
+import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
+import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
+import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
@@ -51,21 +62,38 @@ class _FakeSessionRepository implements ISessionRepository {
 }
 
 class _FakeBacklogRepository implements IBacklogRepository {
-  @override
-  Future<Either<Failure, int>> addTask(String title) async =>
-      const Right<Failure, int>(1);
+  final List<BacklogTaskEntity> _tasks = [];
+  int _nextId = 1;
 
   @override
-  Future<Either<Failure, void>> deleteTask(int id) async =>
-      const Right<Failure, void>(null);
+  Future<Either<Failure, int>> addTask(String title) async {
+    final task = BacklogTaskEntity(
+      id: _nextId++,
+      title: title,
+      createdAt: DateTime.now(),
+    );
+    _tasks.add(task);
+    return Right(task.id!);
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteTask(int id) async {
+    _tasks.removeWhere((t) => t.id == id);
+    return const Right(null);
+  }
 
   @override
   Future<Either<Failure, List<BacklogTaskEntity>>> getPendingTasks() async =>
-      const Right<Failure, List<BacklogTaskEntity>>([]);
+      Right(_tasks.where((t) => !t.isCompleted).toList());
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async =>
-      const Right<Failure, void>(null);
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async {
+    final idx = _tasks.indexWhere((t) => t.id == id);
+    if (idx != -1) {
+      _tasks[idx] = _tasks[idx].copyWith(isCompleted: true);
+    }
+    return const Right(null);
+  }
 }
 
 class _MockNotificationService extends NotificationService {
@@ -104,6 +132,116 @@ class _FakeAudioRepository implements IAudioRepository {
 
   @override
   Future<void> dispose() async {}
+}
+
+class _TestShieldRepository implements IShieldRepository {
+  final Map<String, ShieldedAppEntity> savedApps = {
+    'com.discord': ShieldedAppEntity(
+      packageName: 'com.discord',
+      appName: 'Discord',
+      isActive: true,
+      createdAt: DateTime.utc(2026, 10, 16),
+    ),
+  };
+  List<ShieldedAppEntity> installedApps = [
+    ShieldedAppEntity(
+      packageName: 'com.discord',
+      appName: 'Discord',
+      isActive: true,
+      createdAt: DateTime.utc(2026, 10, 16),
+    ),
+  ];
+  ShieldPermissionStatus permissionStatus = const ShieldPermissionStatus(
+    hasUsageStatsPermission: false,
+    hasOverlayPermission: true,
+    isIgnoringBatteryOptimizations: true,
+  );
+  final List<ShieldPermissionType> requestedPermissions = [];
+
+  @override
+  Stream<dynamic> get overlayEvents => const Stream.empty();
+
+  @override
+  Future<Either<Failure, List<ShieldedAppEntity>>> getShieldedApps() async =>
+      Right(savedApps.values.toList());
+
+  @override
+  Future<Either<Failure, List<ShieldedAppEntity>>> getInstalledApps() async =>
+      Right(installedApps);
+
+  @override
+  Future<Either<Failure, ShieldedAppEntity>> toggleShieldApp({
+    required String packageName,
+    required String appName,
+    required bool isActive,
+    bool isPreset = false,
+    Uint8List? iconBytes,
+  }) async {
+    final entity = ShieldedAppEntity(
+      packageName: packageName,
+      appName: appName,
+      iconBytes: iconBytes,
+      isActive: isActive,
+      isPreset: isPreset,
+      createdAt: DateTime.utc(2026, 10, 16),
+    );
+    savedApps[packageName] = entity;
+    return Right(entity);
+  }
+
+  @override
+  Future<Either<Failure, void>> swapShieldApp({
+    required String deactivatePackageName,
+    required String activatePackageName,
+    required String activateAppName,
+    bool activateIsPreset = false,
+  }) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, void>> purgeUninstalledApps(
+    Set<String> installedPackages,
+  ) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, ShieldPermissionStatus>> checkPermissions() async =>
+      Right(permissionStatus);
+
+  @override
+  Future<Either<Failure, bool>> requestPermission(
+    ShieldPermissionType permissionType,
+  ) async {
+    requestedPermissions.add(permissionType);
+    return const Right(true);
+  }
+
+  @override
+  Future<Either<Failure, bool>> startShieldService(
+    List<String> blockedPackages, {
+    bool isScheduled = false,
+    String? timeRange,
+  }) async =>
+      const Right(true);
+
+  @override
+  Future<Either<Failure, bool>> stopShieldService({bool force = false}) async =>
+      const Right(true);
+
+  @override
+  Future<Either<Failure, void>> syncOverlayState({
+    required String goal,
+    required int remainingSeconds,
+    required bool isBreak,
+    bool isMaximumFocus = false,
+    bool isPaused = false,
+    int? targetEndTimeEpochMs,
+  }) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, bool>> bringAppToForeground() async =>
+      const Right(true);
 }
 
 void main() {
@@ -145,12 +283,16 @@ void main() {
     backlogNotifier.dispose();
   });
 
-  Widget buildWidget({AudioNotifier? audioNotifier}) {
+  Widget buildWidget({
+    AudioNotifier? audioNotifier,
+    ShieldNotifier? shieldNotifier,
+  }) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<TimerNotifier>.value(value: timerNotifier),
         ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier),
         ChangeNotifierProvider<AudioNotifier?>.value(value: audioNotifier),
+        ChangeNotifierProvider<ShieldNotifier?>.value(value: shieldNotifier),
       ],
       child: const MaterialApp(
         home: TimerPage(),
@@ -561,6 +703,137 @@ void main() {
 
       await timerNotifier.cancelSession();
       await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'in-session quick-capture pill appears when running and dumps stray thought to backlog',
+        (tester) async {
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      final lockIn = find.text('🚀 LOCK IN');
+      await tester.ensureVisible(lockIn);
+      await tester.tap(lockIn);
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.running);
+      final pillFinder = find.byKey(const Key('in_session_quick_capture_pill'));
+      expect(pillFinder, findsOneWidget);
+      expect(find.text('+ Dump stray thought...'), findsOneWidget);
+
+      await tester.tap(pillFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Brain Dump Stray Thought'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('in_session_quick_capture_input')),
+        'Remember to buy coffee beans',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(const Key('in_session_quick_capture_submit_button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Brain Dump Stray Thought'), findsNothing);
+      expect(find.text('Saved "Remember to buy coffee beans" to Backlog 📥'),
+          findsOneWidget);
+      expect(backlogNotifier.pendingTasks.map((t) => t.title),
+          contains('Remember to buy coffee beans'));
+      expect(timerNotifier.status, TimerStatus.running);
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets(
+        'pre-flight gate dialog appears when active apps exist without permissions, Arm Shield opens guidance',
+        (tester) async {
+      final shieldRepo = _TestShieldRepository();
+      final prefs = await SharedPreferences.getInstance();
+      final shieldNotifier = ShieldNotifier(
+        getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
+        getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
+        toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+        checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
+        requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+        syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
+        repository: shieldRepo,
+        sharedPreferences: prefs,
+        autoInitialize: false,
+      );
+      await shieldNotifier.refresh();
+
+      await tester.pumpWidget(buildWidget(shieldNotifier: shieldNotifier));
+      await tester.pumpAndSettle();
+
+      final lockIn = find.text('🚀 LOCK IN');
+      await tester.ensureVisible(lockIn);
+      await tester.tap(lockIn);
+      await tester.pumpAndSettle();
+
+      // Pre-flight dialog should appear
+      expect(find.text('Shield Not Armed'), findsOneWidget);
+      expect(
+        find.text(
+          'Brainrot Shield is not armed yet. Enable Android permissions to physically block distraction apps during your focus session.',
+        ),
+        findsOneWidget,
+      );
+      expect(timerNotifier.status, TimerStatus.idle);
+
+      // Tap Arm Shield (30s)
+      await tester.tap(find.byKey(const Key('shield_gate_arm_shield_button')));
+      await tester.pumpAndSettle();
+
+      // Should open PermissionGuidanceSheet
+      expect(find.text('Enable Usage Access'), findsOneWidget);
+      expect(timerNotifier.status, TimerStatus.idle);
+
+      shieldNotifier.dispose();
+    });
+
+    testWidgets(
+        'pre-flight gate dialog: Start Timer Only starts session without blocking',
+        (tester) async {
+      final shieldRepo = _TestShieldRepository();
+      final prefs = await SharedPreferences.getInstance();
+      final shieldNotifier = ShieldNotifier(
+        getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
+        getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
+        toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+        checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
+        requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+        syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
+        repository: shieldRepo,
+        sharedPreferences: prefs,
+        autoInitialize: false,
+      );
+      await shieldNotifier.refresh();
+
+      await tester.pumpWidget(buildWidget(shieldNotifier: shieldNotifier));
+      await tester.pumpAndSettle();
+
+      final lockIn = find.text('🚀 LOCK IN');
+      await tester.ensureVisible(lockIn);
+      await tester.tap(lockIn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Shield Not Armed'), findsOneWidget);
+
+      // Tap Start Timer Only
+      await tester.tap(
+        find.byKey(const Key('shield_gate_start_timer_only_button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(timerNotifier.status, TimerStatus.running);
+      expect(find.text('Shield Not Armed'), findsNothing);
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
+      shieldNotifier.dispose();
     });
   });
 }

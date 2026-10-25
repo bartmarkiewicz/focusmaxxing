@@ -6,8 +6,10 @@ import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifie
 import 'package:focusmaxxing/features/audio/presentation/widgets/soundscape_config_tile.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
 import 'package:focusmaxxing/features/backlog/presentation/widgets/backlog_modal_sheet.dart';
+import 'package:focusmaxxing/features/backlog/presentation/widgets/in_session_quick_capture_sheet.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
+import 'package:focusmaxxing/features/shield/presentation/widgets/permission_guidance_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/celebration_spark_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/goal_input_dialog.dart';
@@ -127,6 +129,30 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _handleStartLockIn(TimerNotifier timerNotifier) async {
+    final shieldNotifier = context.read<ShieldNotifier?>();
+    if (shieldNotifier != null &&
+        shieldNotifier.activeAppCount > 0 &&
+        (!shieldNotifier.permissionStatus.hasUsageStatsPermission ||
+            !shieldNotifier.permissionStatus.hasOverlayPermission)) {
+      final shouldArm = await _showShieldPreFlightDialog(context);
+      if (!mounted || shouldArm == null) return;
+      if (shouldArm) {
+        final missingType = !shieldNotifier.permissionStatus.hasUsageStatsPermission
+            ? ShieldPermissionType.usageStats
+            : ShieldPermissionType.overlay;
+        if (mounted) {
+          await PermissionGuidanceSheet.show(
+            context,
+            permissionType: missingType,
+            onOpenSettings: () {
+              unawaited(shieldNotifier.requestPermission(missingType));
+            },
+          );
+        }
+        return;
+      }
+    }
+
     String goal = timerNotifier.currentTaskGoal.trim();
     if (goal.isEmpty) {
       goal = 'Deep Work';
@@ -151,6 +177,83 @@ class _TimerPageState extends State<TimerPage> {
         ),
       );
     }
+  }
+
+  Future<bool?> _showShieldPreFlightDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        icon: Icon(
+          Icons.shield_outlined,
+          color: colorScheme.error,
+          size: 32,
+        ),
+        title: Text(
+          'Shield Not Armed',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Brainrot Shield is not armed yet. Enable Android permissions to physically block distraction apps during your focus session.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+            height: 1.4,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            key: const Key('shield_gate_start_timer_only_button'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Start Timer Only',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+          FilledButton.icon(
+            key: const Key('shield_gate_arm_shield_button'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+            ),
+            icon: const Icon(Icons.security, size: 18),
+            label: const Text('Arm Shield (30s)'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleInSessionQuickCapture(BuildContext context) {
+    final backlogNotifier = context.read<BacklogNotifier?>();
+    if (backlogNotifier == null) return;
+    unawaited(
+      InSessionQuickCaptureSheet.show(
+        context,
+        onCaptured: (task) async {
+          final success = await backlogNotifier.addTask(task);
+          if (success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Saved "$task" to Backlog 📥'),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _openBacklog(
@@ -442,6 +545,10 @@ class _TimerPageState extends State<TimerPage> {
                   if (isRunningOrPaused) ...[
                     _ActiveLockInBanner(
                       isPaused: timerNotifier.status == TimerStatus.paused,
+                    ),
+                    const SizedBox(height: 8),
+                    _InSessionQuickCapturePill(
+                      onTap: () => _handleInSessionQuickCapture(context),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -1339,6 +1446,59 @@ class _ActiveLockInBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InSessionQuickCapturePill extends StatelessWidget {
+  const _InSessionQuickCapturePill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Semantics(
+      button: true,
+      label: 'Dump stray thought to Backlog',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('in_session_quick_capture_pill'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.edit_note_rounded,
+                  size: 18,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '+ Dump stray thought...',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

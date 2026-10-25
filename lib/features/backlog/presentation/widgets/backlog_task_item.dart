@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 
 class BacklogTaskItem extends StatelessWidget {
@@ -8,11 +10,13 @@ class BacklogTaskItem extends StatelessWidget {
     required this.task,
     required this.onSelect,
     required this.onDelete,
+    this.onToggleComplete,
   });
 
   final BacklogTaskEntity task;
   final VoidCallback onSelect;
   final VoidCallback onDelete;
+  final VoidCallback? onToggleComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -21,11 +25,14 @@ class BacklogTaskItem extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Lock in on task: ${task.title}',
+      label: 'Task: ${task.title}. ${task.isCompleted ? "Completed" : "Pending"}',
       hint:
-          'Double tap to set as active session goal, or use accessibility action to delete',
+          'Tap to set as active session goal, tap checkbox to mark complete, or swipe to delete',
       customSemanticsActions: {
         const CustomSemanticsAction(label: 'Delete task'): onDelete,
+        if (onToggleComplete != null)
+          const CustomSemanticsAction(label: 'Toggle complete'):
+              onToggleComplete!,
       },
       child: Dismissible(
         key: ValueKey('backlog_task_${task.id ?? task.hashCode}'),
@@ -56,22 +63,43 @@ class BacklogTaskItem extends StatelessWidget {
             ),
             child: ListTile(
               onTap: onSelect,
-              leading: Icon(
-                Icons.rocket_launch_outlined,
-                color: colorScheme.primary,
-                size: 20,
+              leading: InkResponse(
+                key: ValueKey('backlog_task_checkbox_${task.id ?? task.hashCode}'),
+                onTap: () {
+                  unawaited(
+                    HapticFeedback.mediumImpact().catchError((Object _) {}),
+                  );
+                  onToggleComplete?.call();
+                },
+                radius: 20,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    task.isCompleted
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: task.isCompleted
+                        ? colorScheme.primary
+                        : colorScheme.outline,
+                    size: 22,
+                  ),
+                ),
               ),
               title: Text(
                 task.title,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurface,
+                  color: task.isCompleted
+                      ? colorScheme.onSurfaceVariant.withValues(alpha: 0.6)
+                      : colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
+                  decoration:
+                      task.isCompleted ? TextDecoration.lineThrough : null,
                 ),
               ),
               trailing: Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: colorScheme.onSurfaceVariant,
-                size: 14,
+                Icons.rocket_launch_outlined,
+                color: colorScheme.primary,
+                size: 20,
               ),
             ),
           ),

@@ -22,7 +22,7 @@ class _MockRepository implements IBacklogRepository {
       const Right([]);
 
   @override
-  Future<Either<Failure, void>> markCompleted(int id, int sessionId) async =>
+  Future<Either<Failure, void>> markCompleted(int id, [int? sessionId]) async =>
       const Right(null);
 }
 

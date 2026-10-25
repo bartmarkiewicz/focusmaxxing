@@ -273,6 +273,16 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
                           },
                           onDelete: () =>
                               _handleTaskDelete(context, notifier, task),
+                          onToggleComplete: () async {
+                            final taskId = task.id;
+                            if (taskId != null) {
+                              final timerNotifier =
+                                  context.read<TimerNotifier?>();
+                              timerNotifier
+                                  ?.clearLinkedBacklogTaskIfMatches(taskId);
+                              await notifier.markTaskCompleted(taskId);
+                            }
+                          },
                         );
                       },
                       childCount: notifier.pendingTasks.length,

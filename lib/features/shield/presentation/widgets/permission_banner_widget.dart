@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/app_colors.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
+import 'package:focusmaxxing/features/shield/presentation/widgets/permission_guidance_sheet.dart';
 
 class PermissionBannerWidget extends StatelessWidget {
   const PermissionBannerWidget({
@@ -85,7 +87,15 @@ class PermissionBannerWidget extends StatelessWidget {
               ),
             _PermissionRow(
               spec: missingItems[i],
-              onFixPressed: () => onRequestPermission(missingItems[i].type),
+              onFixPressed: () {
+                unawaited(
+                  PermissionGuidanceSheet.show(
+                    context,
+                    permissionType: missingItems[i].type,
+                    onOpenSettings: () => onRequestPermission(missingItems[i].type),
+                  ),
+                );
+              },
             ),
           ],
         ],
