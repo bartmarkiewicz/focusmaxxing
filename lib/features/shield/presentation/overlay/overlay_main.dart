@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import 'package:focusmaxxing/features/shield/presentation/widgets/box_breathing_exercise.dart';
+
+enum _BreatherStage { none, breathing, decision }
 
 @pragma('vm:entry-point')
 void overlayMain() {
@@ -25,19 +28,31 @@ class HardLockOverlayWidget extends StatefulWidget {
     this.dataStream,
     this.onClose,
     this.onCancelSession,
+    this.onEmergencyPass,
     this.initialGoal = 'Deep Work',
     this.initialRemainingSeconds = 1500,
     this.initialIsBreak = false,
     this.initialIsMaximumFocus = false,
+    this.initialIsScheduled = false,
+    this.initialScheduleTimeRange = '',
+    this.initialEmergencyPassAvailable = true,
+    this.breatherDuration = const Duration(seconds: 60),
   });
 
   final Stream<dynamic>? dataStream;
   final Future<void> Function()? onClose;
   final Future<void> Function()? onCancelSession;
+
+  /// Requests a temporary shield pass; resolves to whether it was granted.
+  final Future<bool> Function()? onEmergencyPass;
   final String initialGoal;
   final int initialRemainingSeconds;
   final bool initialIsBreak;
   final bool initialIsMaximumFocus;
+  final bool initialIsScheduled;
+  final String initialScheduleTimeRange;
+  final bool initialEmergencyPassAvailable;
+  final Duration breatherDuration;
 
   @override
   State<HardLockOverlayWidget> createState() => _HardLockOverlayWidgetState();
@@ -66,6 +81,8 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
   bool _isScheduled = false;
   String _scheduleTimeRange = '';
   int _targetEndTimeEpochMs = 0;
+  late bool _emergencyPassAvailable;
+  _BreatherStage _breatherStage = _BreatherStage.none;
   StreamSubscription<dynamic>? _subscription;
   Timer? _localCountdownTimer;
   late final AnimationController _holdCancelController;
@@ -77,6 +94,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     _remainingSeconds = widget.initialRemainingSeconds;
     _isBreakMode = widget.initialIsBreak;
     _isMaximumFocus = widget.initialIsMaximumFocus;
+    _isScheduled = widget.initialIsScheduled;
+    _scheduleTimeRange = widget.initialScheduleTimeRange;
+    _emergencyPassAvailable = widget.initialEmergencyPassAvailable;
 
     _holdCancelController = AnimationController(
       vsync: this,
@@ -97,14 +117,16 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     if (widget.dataStream == null) {
       _overlayBridgeChannel.setMethodCallHandler(_handleBridgeMethodCall);
       unawaited(_fetchInitialOverlayState());
-      _startOrStopLocalTimer();
     }
   }
 
   void _startOrStopLocalTimer() {
     if (widget.dataStream != null) return;
 
-    if (_isPaused || _isScheduled || _remainingSeconds <= 0) {
+    if (_isPaused ||
+        _isScheduled ||
+        _scheduleTimeRange.isNotEmpty ||
+        _remainingSeconds <= 0) {
       _localCountdownTimer?.cancel();
       _localCountdownTimer = null;
       return;
@@ -117,7 +139,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     _localCountdownTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) {
-        if (!mounted || _isPaused || _isScheduled) return;
+        if (!mounted || _isPaused || _isScheduled || _scheduleTimeRange.isNotEmpty) {
+          return;
+        }
         if (_targetEndTimeEpochMs > 0) {
           final remainingMs =
               _targetEndTimeEpochMs - DateTime.now().millisecondsSinceEpoch;
@@ -135,7 +159,7 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
         if (_remainingSeconds <= 0) {
           _localCountdownTimer?.cancel();
           _localCountdownTimer = null;
-          if (!_isBreakMode && !_isScheduled) {
+          if (!_isBreakMode && !_isScheduled && _scheduleTimeRange.isEmpty) {
             _onSessionCountdownComplete();
           }
         }
@@ -144,6 +168,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
   }
 
   void _onSessionCountdownComplete() {
+    if (_isScheduled || _scheduleTimeRange.isNotEmpty || _isBreakMode) {
+      return;
+    }
     _localCountdownTimer?.cancel();
     _localCountdownTimer = null;
     _targetEndTimeEpochMs = 0;
@@ -151,6 +178,7 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
       setState(() {
         _remainingSeconds = 0;
         _isMaximumFocus = false;
+        _breatherStage = _BreatherStage.none;
       });
     }
     unawaited(_handleReturn());
@@ -170,8 +198,12 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
           .invokeMapMethod<String, dynamic>('getInitialOverlayState');
       if (state != null) {
         _handleIncomingData(state);
+      } else {
+        _startOrStopLocalTimer();
       }
-    } catch (_) {}
+    } catch (_) {
+      _startOrStopLocalTimer();
+    }
   }
 
   void _handleIncomingData(dynamic data) {
@@ -249,6 +281,11 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
       if (isMaxFocus is bool) {
         _isMaximumFocus = isMaxFocus;
       }
+
+      final passAvailable = payload?['emergencyPassAvailable'];
+      if (passAvailable is bool) {
+        _emergencyPassAvailable = passAvailable;
+      }
     });
 
     if (_remainingSeconds <= 0 &&
@@ -273,6 +310,9 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
   }
 
   Future<void> _handleReturn() async {
+    if (_breatherStage != _BreatherStage.none) {
+      setState(() => _breatherStage = _BreatherStage.none);
+    }
     if (widget.onClose != null) {
       await widget.onClose!();
     } else {
@@ -316,6 +356,39 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     }
   }
 
+  void _startBreather() {
+    unawaited(HapticFeedback.lightImpact());
+    setState(() => _breatherStage = _BreatherStage.breathing);
+  }
+
+  void _onBreatherComplete() {
+    if (!mounted) return;
+    setState(() => _breatherStage = _BreatherStage.decision);
+  }
+
+  Future<void> _handleEmergencyPass() async {
+    var granted = false;
+    if (widget.onEmergencyPass != null) {
+      granted = await widget.onEmergencyPass!();
+    } else {
+      try {
+        granted = await _overlayBridgeChannel
+                .invokeMethod<bool>('grantEmergencyPass') ??
+            false;
+      } catch (_) {
+        granted = false;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      if (granted) {
+        _breatherStage = _BreatherStage.none;
+      } else {
+        _emergencyPassAvailable = false;
+      }
+    });
+  }
+
   void _onHoldStart(TapDownDetails _) {
     unawaited(HapticFeedback.lightImpact());
     _holdCancelController.forward();
@@ -327,8 +400,131 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
     }
   }
 
+  String _getRoastAffirmation({
+    required bool isSessionFinished,
+    required bool isBreakMode,
+    required bool isScheduled,
+  }) {
+    if (isSessionFinished) {
+      return '⚡ Flow state logged. Rest days build stamina.';
+    }
+    if (isBreakMode) {
+      return '🧘 Rest your eyes, not your thumb. Step away from the screen.';
+    }
+    if (isScheduled) {
+      return '🛡️ Scheduled deep work hours. Protect your future.';
+    }
+    return '⚡ Caught you scrolling. Reclaim your focus.';
+  }
+
+  Widget _buildShell(Widget child) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {},
+      child: Scaffold(
+        backgroundColor: _surfaceColor,
+        body: SizedBox.expand(
+          child: ColoredBox(
+            color: _surfaceColor,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreatherBody() {
+    final isBreathing = _breatherStage == _BreatherStage.breathing;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'URGE SURFING',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2.0,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          isBreathing
+              ? 'Dopamine spikes peak at 60 seconds and dissipate. Breathe.'
+              : 'The urge has passed. What do you need?',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, color: _subtextColor),
+        ),
+        const SizedBox(height: 36),
+        if (isBreathing)
+          BoxBreathingExercise(
+            key: const Key('overlay_box_breathing'),
+            totalDuration: widget.breatherDuration,
+            color: _actionGreen,
+            onComplete: _onBreatherComplete,
+          )
+        else ...[
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: FilledButton(
+              key: const Key('overlay_breather_ready_button'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _actionGreen,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              onPressed: _handleReturn,
+              child: const Text(
+                "I'M READY TO FOCUS 🚀",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton(
+              key: const Key('overlay_emergency_pass_button'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26),
+                ),
+              ),
+              onPressed: _emergencyPassAvailable ? _handleEmergencyPass : null,
+              child: Text(
+                _emergencyPassAvailable
+                    ? '2-MIN EMERGENCY PASS ⏱️'
+                    : 'EMERGENCY PASS USED TODAY',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_breatherStage != _BreatherStage.none) {
+      return _buildShell(_buildBreatherBody());
+    }
+
     final clampedSeconds = _remainingSeconds > 0 ? _remainingSeconds : 0;
     final minutes = (clampedSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (clampedSeconds % 60).toString().padLeft(2, '0');
@@ -398,6 +594,33 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                       style: const TextStyle(
                         fontSize: 18,
                         color: _subtextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text(
+                        _getRoastAffirmation(
+                          isSessionFinished: isSessionFinished,
+                          isBreakMode: _isBreakMode,
+                          isScheduled: _isScheduled,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFFB0B7C3),
+                        ),
                       ),
                     ),
                     if (isMaxFocusActive) ...[
@@ -519,6 +742,34 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget>
                           ),
                         ),
                       ),
+                    if (!isSessionFinished) ...[
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton(
+                          key: const Key('overlay_take_breather_button'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
+                          ),
+                          onPressed: _startBreather,
+                          child: const Text(
+                            '🌬️ TAKE A BREATHER (60S)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

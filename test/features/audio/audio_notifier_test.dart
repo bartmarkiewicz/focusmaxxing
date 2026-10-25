@@ -5,6 +5,7 @@ import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/features/audio/domain/entities/soundscape_entity.dart';
 import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
@@ -115,6 +116,7 @@ void main() {
       playSoundscapeUseCase: PlaySoundscapeUseCase(repository),
       stopSoundscapeUseCase: StopSoundscapeUseCase(repository),
       setAudioVolumeUseCase: SetAudioVolumeUseCase(repository),
+      playChimeUseCase: PlayChimeUseCase(repository),
       repository: repository,
       sharedPreferences: prefs,
     );
@@ -138,17 +140,10 @@ void main() {
 
     test('non-pro user cannot select pro soundscapes and error is reported',
         () async {
-      await notifier.selectSoundscape('brown_noise');
+      await notifier.selectSoundscape('gamma_40hz');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
       expect(notifier.isPlaying, isFalse);
-      expect(
-        notifier.errorMessage,
-        equals('Unlock Lifetime Pro to access Brown Noise'),
-      );
-
-      await notifier.selectSoundscape('gamma_40hz');
-      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
       expect(
         notifier.errorMessage,
         equals('Unlock Lifetime Pro to access 40Hz Gamma'),
@@ -160,6 +155,13 @@ void main() {
         notifier.errorMessage,
         equals('Unlock Lifetime Pro to access Rain on Canvas'),
       );
+    });
+
+    test('non-pro user can select free Brown Noise soundscape', () async {
+      await notifier.selectSoundscape('brown_noise');
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
+      expect(notifier.errorMessage, isNull);
     });
 
     test(
@@ -282,17 +284,28 @@ void main() {
     });
 
     test(
-        'togglePreview fails for free user on pro soundscape when active is none',
+        'togglePreview fails for free user on pro soundscape when requested',
         () async {
       expect(notifier.isProUnlocked, isFalse);
-      await notifier.togglePreview();
+      await notifier.togglePreview('gamma_40hz');
 
       expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
       expect(notifier.isPlaying, isFalse);
       expect(
         notifier.errorMessage,
-        equals('Unlock Lifetime Pro to access Brown Noise'),
+        equals('Unlock Lifetime Pro to access 40Hz Gamma'),
       );
+    });
+
+    test(
+        'togglePreview selects Brown Noise when None is active and toggles playback for free user',
+        () async {
+      expect(notifier.isProUnlocked, isFalse);
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.none));
+
+      await notifier.togglePreview();
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
+      expect(notifier.isPlaying, isTrue);
     });
 
     test(
@@ -385,6 +398,24 @@ void main() {
       await timerNotifier.cancelSession();
       await Future<void>.delayed(Duration.zero);
       expect(notifier.isPlaying, isFalse);
+    });
+
+    test('playChime invokes PlayChimeUseCase and plays completion chime asset',
+        () async {
+      await notifier.playChime();
+
+      expect(repository.playedChimes,
+          contains(SoundscapeEntity.chimeCompleteAssetPath));
+      expect(notifier.errorMessage, isNull);
+    });
+
+    test('playChime sets errorMessage when chime playback fails', () async {
+      repository.failureToReturn =
+          const PlatformFailure('Audio focus unavailable');
+
+      await notifier.playChime();
+
+      expect(notifier.errorMessage, equals('Audio focus unavailable'));
     });
   });
 }

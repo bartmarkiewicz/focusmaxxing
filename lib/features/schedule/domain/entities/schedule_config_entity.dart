@@ -70,20 +70,28 @@ class ScheduleConfigEntity extends Equatable {
   /// Formatted range string (e.g. 09:00 - 17:00).
   String get formattedTimeRange => '$formattedStartTime - $formattedEndTime';
 
+  /// Whether this schedule spans across midnight (e.g. 22:00 - 06:00).
+  bool get isOvernight => startTotalMinutes > endTotalMinutes;
+
   /// Whether the given weekday (1..7) is active in the schedule.
   bool isActiveOn(int weekday) => activeDays.contains(weekday);
 
   /// Evaluates whether the given [dateTime] falls within the active scheduled window.
   bool isWithinSchedule(DateTime dateTime) {
     if (!isEnabled) return false;
-    if (!isActiveOn(dateTime.weekday)) return false;
     final currentMinutes = dateTime.hour * 60 + dateTime.minute;
     if (startTotalMinutes < endTotalMinutes) {
+      if (!isActiveOn(dateTime.weekday)) return false;
       return currentMinutes >= startTotalMinutes &&
           currentMinutes < endTotalMinutes;
     } else {
-      return currentMinutes >= startTotalMinutes ||
-          currentMinutes < endTotalMinutes;
+      if (currentMinutes >= startTotalMinutes) {
+        return isActiveOn(dateTime.weekday);
+      } else if (currentMinutes < endTotalMinutes) {
+        final yesterday = dateTime.subtract(const Duration(days: 1));
+        return isActiveOn(yesterday.weekday);
+      }
+      return false;
     }
   }
 

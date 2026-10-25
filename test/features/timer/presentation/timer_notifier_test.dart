@@ -535,6 +535,37 @@ void main() {
       expect(notificationService.lastShownIsPaused, isFalse);
       expect(notificationService.lastShownTargetEndTimeEpochMs, isNotNull);
     });
+
+    test(
+        'startNextFocusFromBreak transitions from breakRunning to running and starts focus session',
+        () async {
+      await notifier.startFocusSession('Block 1');
+      await notifier.checkInSession(lockedIn: true);
+      expect(notifier.status, equals(TimerStatus.breakRunning));
+
+      final started = await notifier.startNextFocusFromBreak('Block 2');
+      expect(started, isTrue);
+      expect(notifier.status, equals(TimerStatus.running));
+      expect(notifier.currentTaskGoal, equals('Block 2'));
+
+      await notifier.cancelSession();
+    });
+
+    test(
+        'startNextFocusFromBreak defaults empty candidate goal to Deep Work and clears completed backlogTaskId',
+        () async {
+      await notifier.startFocusSession('Linked Task', backlogTaskId: 42);
+      await notifier.checkInSession(lockedIn: true);
+      expect(notifier.status, equals(TimerStatus.breakRunning));
+
+      final started = await notifier.startNextFocusFromBreak('   ');
+      expect(started, isTrue);
+      expect(notifier.status, equals(TimerStatus.running));
+      expect(notifier.currentTaskGoal, equals('Deep Work'));
+      expect(notifier.linkedBacklogTaskId, isNull);
+
+      await notifier.cancelSession();
+    });
   });
 }
 

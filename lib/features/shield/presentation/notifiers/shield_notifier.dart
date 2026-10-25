@@ -361,7 +361,7 @@ class ShieldNotifier extends ChangeNotifier {
   Future<void> stopShieldForSchedule() async {
     _isScheduledShieldActive = false;
     if (!_isSessionShieldActive) {
-      await repository.stopShieldService();
+      await repository.stopShieldService(force: true);
     }
     notifyListeners();
   }
@@ -403,7 +403,7 @@ class ShieldNotifier extends ChangeNotifier {
 
         final isScheduleActive = await _checkIfScheduleActive();
         if (!isScheduleActive && !_isScheduledShieldActive) {
-          await repository.stopShieldService();
+          await repository.stopShieldService(force: true);
         }
         notifyListeners();
       }
@@ -456,7 +456,7 @@ class ShieldNotifier extends ChangeNotifier {
     if (!_isSessionShieldActive) return;
     final blocked = activePackageNames.toList();
     if (blocked.isEmpty && !_isMaximumFocusEnabled) {
-      await repository.stopShieldService();
+      await repository.stopShieldService(force: true);
     } else {
       await repository.startShieldService(blocked);
     }

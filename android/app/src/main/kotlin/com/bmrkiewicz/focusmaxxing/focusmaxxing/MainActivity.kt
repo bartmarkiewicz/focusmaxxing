@@ -81,13 +81,21 @@ class MainActivity : FlutterActivity() {
             }
 
             "stopShield" -> {
+                val force = call.argument<Boolean>("force") ?: false
                 FocusShieldService.currentIsMaximumFocus = false
                 FocusShieldService.currentIsPaused = false
                 FocusShieldService.targetEndTimeEpochMs = 0L
-                if (FocusShieldService.isRunning) {
-                    stopService(Intent(this, FocusShieldService::class.java))
+                val active = FocusShieldService.instance
+                if (force || active == null || !FocusShieldService.isScheduledBaseline) {
+                    FocusShieldService.isScheduledBaseline = false
+                    FocusShieldService.scheduledBaselineRange = null
+                    if (FocusShieldService.isRunning) {
+                        stopService(Intent(this, FocusShieldService::class.java))
+                    }
+                    FocusShieldService.dismissOverlayOnly(applicationContext)
+                } else {
+                    active.restoreScheduledBaseline()
                 }
-                FocusShieldService.dismissOverlayOnly(applicationContext)
                 result.success(true)
             }
 

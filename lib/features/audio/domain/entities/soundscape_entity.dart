@@ -18,7 +18,7 @@ class SoundscapeEntity extends Equatable {
     title: 'Brown Noise',
     subtitle: 'Low-frequency household noise masking',
     assetPath: 'assets/audio/brown_noise_loop.ogg',
-    isProOnly: true,
+    isProOnly: false,
   );
 
   static const SoundscapeEntity gamma40Hz = SoundscapeEntity(

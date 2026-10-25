@@ -133,7 +133,7 @@ void main() {
       expect(repository.cancelAlarmsCalled, isTrue);
     });
 
-    test('setStartTime validates start time precedes end time', () async {
+    test('setStartTime validates identical times while allowing overnight schedules', () async {
       final notifier = ScheduleNotifier(
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
@@ -142,12 +142,19 @@ void main() {
         autoInitialize: false,
       );
 
-      // End time is 17:00. Trying to set start time to 17:00 or later fails
-      final failResult = await notifier.setStartTime(17, 30);
+      // End time is 17:00. Trying to set start time to 17:00 fails (identical times)
+      final failResult = await notifier.setStartTime(17, 0);
       expect(failResult, isFalse);
-      expect(notifier.errorMessage, equals('Start time must precede end time'));
+      expect(notifier.errorMessage, equals('Start time and end time cannot be identical'));
 
-      // Setting valid start time 08:30 succeeds
+      // Setting overnight start time 22:00 succeeds
+      final overnightResult = await notifier.setStartTime(22, 0);
+      expect(overnightResult, isTrue);
+      expect(notifier.errorMessage, isNull);
+      expect(notifier.startHour, equals(22));
+      expect(notifier.startMinute, equals(0));
+
+      // Setting daytime start time 08:30 succeeds
       final okResult = await notifier.setStartTime(8, 30);
       expect(okResult, isTrue);
       expect(notifier.errorMessage, isNull);
@@ -155,7 +162,7 @@ void main() {
       expect(notifier.startMinute, equals(30));
     });
 
-    test('setEndTime validates end time succeeds start time', () async {
+    test('setEndTime validates identical times while allowing overnight schedules', () async {
       final notifier = ScheduleNotifier(
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
@@ -164,12 +171,19 @@ void main() {
         autoInitialize: false,
       );
 
-      // Start time is 09:00. Trying to set end time to 08:30 fails
-      final failResult = await notifier.setEndTime(8, 30);
+      // Start time is 09:00. Trying to set end time to 09:00 fails (identical times)
+      final failResult = await notifier.setEndTime(9, 0);
       expect(failResult, isFalse);
-      expect(notifier.errorMessage, equals('Start time must precede end time'));
+      expect(notifier.errorMessage, equals('Start time and end time cannot be identical'));
 
-      // Setting valid end time 18:00 succeeds
+      // Setting overnight end time 06:00 succeeds
+      final overnightResult = await notifier.setEndTime(6, 0);
+      expect(overnightResult, isTrue);
+      expect(notifier.errorMessage, isNull);
+      expect(notifier.endHour, equals(6));
+      expect(notifier.endMinute, equals(0));
+
+      // Setting daytime end time 18:00 succeeds
       final okResult = await notifier.setEndTime(18, 0);
       expect(okResult, isTrue);
       expect(notifier.errorMessage, isNull);

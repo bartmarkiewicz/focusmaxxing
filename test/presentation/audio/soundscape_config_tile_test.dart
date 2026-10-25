@@ -126,8 +126,8 @@ void main() {
         (tester) async {
       await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
 
-      expect(find.text('PRO'), findsNWidgets(3));
-      expect(find.byIcon(Icons.lock_outline_rounded), findsNWidgets(3));
+      expect(find.text('PRO'), findsNWidgets(2));
+      expect(find.byIcon(Icons.lock_outline_rounded), findsNWidgets(2));
 
       await tester.pumpWidget(buildTestWidget(isProUnlocked: true));
       await tester.pump();
@@ -142,7 +142,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
 
       await tester.tap(
-        find.byKey(const ValueKey('soundscape_option_brown_noise')),
+        find.byKey(const ValueKey('soundscape_option_gamma_40hz')),
       );
       await tester.pumpAndSettle();
 
@@ -153,7 +153,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('Unlock Lifetime Pro to access Brown Noise'),
+        find.text('Unlock Lifetime Pro to access 40Hz Gamma'),
         findsOneWidget,
       );
 
@@ -162,6 +162,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(
           find.byKey(const ValueKey('soundscape_error_banner')), findsNothing);
+    });
+
+    testWidgets('tapping free Brown Noise option selects it for free user',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget(isProUnlocked: false));
+
+      await tester.tap(
+        find.byKey(const ValueKey('soundscape_option_brown_noise')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(notifier.activeSoundscape, equals(SoundscapeEntity.brownNoise));
+      expect(
+        find.byKey(const ValueKey('soundscape_error_banner')),
+        findsNothing,
+      );
     });
 
     testWidgets(

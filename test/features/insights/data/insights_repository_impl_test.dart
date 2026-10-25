@@ -250,6 +250,85 @@ void main() {
       // Streak remains alive from yesterday
       expect(result, const Right<Failure, int>(1));
     });
+
+    test('Streak Shield auto-freezes one missed weekday in rolling 7-day window',
+        () async {
+      // Monday (2026-10-12): Session 1
+      // Tuesday (2026-10-13): Session 2
+      // Wednesday (2026-10-14): MISSED (protected by freeze)
+      // Thursday (2026-10-15): Session 3
+      final monSession = SessionModel(
+        taskGoal: 'Mon Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 12, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 12, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+      final tueSession = SessionModel(
+        taskGoal: 'Tue Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 13, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 13, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+      final thuSession = SessionModel(
+        taskGoal: 'Thu Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 15, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 15, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+
+      fakeDataSource.sessions = [monSession, tueSession, thuSession];
+
+      final result = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 15),
+      );
+
+      // 3 completed sessions preserved across Wednesday freeze
+      expect(result, const Right<Failure, int>(3));
+    });
+
+    test(
+        'auto-freeze protects streak on morning launch before completing today\'s session',
+        () async {
+      // Mon 2026-10-12 and Tue 2026-10-13 completed
+      // Wed 2026-10-14 missed
+      // Thu 2026-10-15 morning: no session completed yet today
+      final monSession = SessionModel(
+        taskGoal: 'Mon Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 12, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 12, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+      final tueSession = SessionModel(
+        taskGoal: 'Tue Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 13, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 13, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+
+      fakeDataSource.sessions = [monSession, tueSession];
+
+      final result = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 15),
+      );
+
+      // Preceding 2-day streak preserved across Wednesday freeze even though Thursday has 0 sessions so far
+      expect(result, const Right<Failure, int>(2));
+    });
   });
 
   group('getRecentSessions', () {

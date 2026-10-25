@@ -15,7 +15,7 @@ abstract interface class IShieldNativeBridgeSource {
     bool isScheduled = false,
     String? timeRange,
   });
-  Future<bool> stopShield();
+  Future<bool> stopShield({bool force = false});
   Future<bool> isShieldRunning();
   Future<bool> bringToForeground();
   Future<void> shareOverlayData(Map<String, dynamic> payload);
@@ -153,12 +153,15 @@ class ShieldNativeBridgeSourceImpl implements IShieldNativeBridgeSource {
   }
 
   @override
-  Future<bool> stopShield() async {
+  Future<bool> stopShield({bool force = false}) async {
     if (!_canUseNativeChannel) {
       return true;
     }
     try {
-      final stopped = await _channel.invokeMethod<bool>('stopShield');
+      final stopped = await _channel.invokeMethod<bool>(
+        'stopShield',
+        <String, dynamic>{'force': force},
+      );
       return stopped ?? false;
     } on MissingPluginException {
       return true;

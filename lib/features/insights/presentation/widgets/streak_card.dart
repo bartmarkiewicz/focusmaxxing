@@ -48,12 +48,33 @@ class StreakCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           days > 0
-                              ? 'Momentum is rolling · Every lock-in counts'
+                              ? 'Momentum is rolling · Rest days build stamina'
                               : 'No active streak · Start a session to ignite it',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        if (days > 0) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.shield_rounded,
+                                size: 14,
+                                color: colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Weekly Streak Shield Active',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

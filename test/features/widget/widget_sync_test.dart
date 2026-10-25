@@ -21,15 +21,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FakeWidgetSyncService implements IWidgetSyncService {
   int? lastTodayMinutes;
   int? lastActiveStreak;
+  bool lastIsRunning = false;
+  int lastTargetEndTimeEpochMs = 0;
+  String lastTaskGoal = '';
   int updateCallCount = 0;
 
   @override
   Future<void> updateGlanceableWidget({
-    required int todayMinutes,
-    required int activeStreak,
+    int? todayMinutes,
+    int? activeStreak,
+    bool? isRunning,
+    int? targetEndTimeEpochMs,
+    String? taskGoal,
   }) async {
-    lastTodayMinutes = todayMinutes;
-    lastActiveStreak = activeStreak;
+    if (todayMinutes != null) lastTodayMinutes = todayMinutes;
+    if (activeStreak != null) lastActiveStreak = activeStreak;
+    if (isRunning != null) lastIsRunning = isRunning;
+    if (targetEndTimeEpochMs != null) {
+      lastTargetEndTimeEpochMs = targetEndTimeEpochMs;
+    }
+    if (taskGoal != null) lastTaskGoal = taskGoal;
     updateCallCount++;
   }
 }
@@ -157,6 +168,9 @@ void main() {
 
       expect(savedData['today_minutes'], equals(75));
       expect(savedData['active_streak'], equals(4));
+      expect(savedData.containsKey('is_running'), isFalse);
+      expect(savedData.containsKey('target_end_epoch_ms'), isFalse);
+      expect(savedData.containsKey('task_goal'), isFalse);
       expect(updateParams['name'], equals('GlanceableDialWidgetProvider'));
       expect(
         updateParams['androidName'],
@@ -210,6 +224,25 @@ void main() {
       );
     });
 
+    test('dispatches running state and task goal to widget on startFocusSession',
+        () async {
+      final timerNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        widgetSyncService: widgetSyncService,
+        getDailySummaryUseCase: GetDailySummaryUseCase(insightsRepository),
+      );
+
+      await timerNotifier.startFocusSession('Focus on Math');
+
+      expect(widgetSyncService.updateCallCount, equals(1));
+      expect(widgetSyncService.lastIsRunning, isTrue);
+      expect(widgetSyncService.lastTaskGoal, equals('Focus on Math'));
+      expect(widgetSyncService.lastTargetEndTimeEpochMs, greaterThan(0));
+    });
+
     test(
         'dispatches updated today_minutes and active_streak to widget on checkInSession',
         () async {
@@ -225,9 +258,10 @@ void main() {
       await timerNotifier.startFocusSession('Test Goal');
       await timerNotifier.checkInSession(lockedIn: true);
 
-      expect(widgetSyncService.updateCallCount, equals(1));
+      expect(widgetSyncService.updateCallCount, equals(2));
       expect(widgetSyncService.lastTodayMinutes, equals(50));
       expect(widgetSyncService.lastActiveStreak, equals(3));
+      expect(widgetSyncService.lastIsRunning, isFalse);
     });
 
     test('falls back to session duration when getDailySummaryUseCase is null',
@@ -244,9 +278,10 @@ void main() {
       await timerNotifier.startFocusSession('30m Goal');
       await timerNotifier.checkInSession(lockedIn: true);
 
-      expect(widgetSyncService.updateCallCount, equals(1));
+      expect(widgetSyncService.updateCallCount, equals(2));
       expect(widgetSyncService.lastTodayMinutes, equals(30));
       expect(widgetSyncService.lastActiveStreak, equals(1));
+      expect(widgetSyncService.lastIsRunning, isFalse);
     });
   });
 

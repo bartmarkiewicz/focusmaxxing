@@ -209,6 +209,16 @@ class TimerNotifier extends ChangeNotifier {
                 goal: _currentTaskGoal,
               ),
             );
+            final syncService = widgetSyncService;
+            if (syncService != null) {
+              unawaited(
+                syncService.updateGlanceableWidget(
+                  isRunning: true,
+                  targetEndTimeEpochMs: targetEnd.millisecondsSinceEpoch,
+                  taskGoal: _currentTaskGoal,
+                ),
+              );
+            }
           }
           notifyListeners();
           return true;
@@ -238,6 +248,16 @@ class TimerNotifier extends ChangeNotifier {
     _status = TimerStatus.paused;
     _updateNotification();
     unawaited(notificationService.cancelSessionCompletionNotification());
+    final syncService = widgetSyncService;
+    if (syncService != null) {
+      unawaited(
+        syncService.updateGlanceableWidget(
+          isRunning: false,
+          targetEndTimeEpochMs: 0,
+          taskGoal: '',
+        ),
+      );
+    }
     notifyListeners();
   }
 
@@ -257,6 +277,16 @@ class TimerNotifier extends ChangeNotifier {
           goal: _currentTaskGoal,
         ),
       );
+      final syncService = widgetSyncService;
+      if (syncService != null) {
+        unawaited(
+          syncService.updateGlanceableWidget(
+            isRunning: true,
+            targetEndTimeEpochMs: targetEnd.millisecondsSinceEpoch,
+            taskGoal: _currentTaskGoal,
+          ),
+        );
+      }
     }
     notifyListeners();
   }
@@ -344,6 +374,17 @@ class TimerNotifier extends ChangeNotifier {
       _remainingDuration = Duration(seconds: _focusDurationSeconds);
       notifyListeners();
 
+      final syncService = widgetSyncService;
+      if (syncService != null) {
+        unawaited(
+          syncService.updateGlanceableWidget(
+            isRunning: false,
+            targetEndTimeEpochMs: 0,
+            taskGoal: '',
+          ),
+        );
+      }
+
       try {
         await notificationService.cancelTimerNotification();
         await notificationService.cancelSessionCompletionNotification();
@@ -423,6 +464,9 @@ class TimerNotifier extends ChangeNotifier {
                   await syncService.updateGlanceableWidget(
                     todayMinutes: summary.totalFocusMinutes,
                     activeStreak: summary.currentStreakDays,
+                    isRunning: false,
+                    targetEndTimeEpochMs: 0,
+                    taskGoal: '',
                   );
                 },
               );
@@ -431,6 +475,9 @@ class TimerNotifier extends ChangeNotifier {
               await syncService.updateGlanceableWidget(
                 todayMinutes: sessionMinutes,
                 activeStreak: lockedIn ? 1 : 0,
+                isRunning: false,
+                targetEndTimeEpochMs: 0,
+                taskGoal: '',
               );
             }
           } catch (_) {}
@@ -495,6 +542,15 @@ class TimerNotifier extends ChangeNotifier {
     _remainingDuration = Duration(seconds: _focusDurationSeconds);
     _activeSessionId = null;
     notifyListeners();
+  }
+
+  Future<bool> startNextFocusFromBreak([String? overrideGoal]) async {
+    final effectiveCandidate = overrideGoal?.trim() ?? _currentTaskGoal.trim();
+    final goal =
+        effectiveCandidate.isNotEmpty ? effectiveCandidate : 'Deep Work';
+    final linkedTaskId = _linkedBacklogTaskId;
+    readyToFocusFromBreak();
+    return startFocusSession(goal, backlogTaskId: linkedTaskId);
   }
 
   void endAllSessions() {

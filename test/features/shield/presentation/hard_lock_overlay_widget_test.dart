@@ -454,4 +454,192 @@ void main() {
     expect(find.text('SESSION COMPLETE 🎉'), findsNothing);
     expect(find.text('RETURN TO FOCUSMAXXING'), findsOneWidget);
   });
+
+  group('Emergency Breather', () {
+    const breatherDuration = Duration(seconds: 8);
+
+    Widget buildOverlay({
+      Future<void> Function()? onClose,
+      Future<bool> Function()? onEmergencyPass,
+      bool passAvailable = true,
+      int remainingSeconds = 1500,
+    }) {
+      return MaterialApp(
+        home: HardLockOverlayWidget(
+          dataStream: const Stream<dynamic>.empty(),
+          initialGoal: 'Ship it',
+          initialRemainingSeconds: remainingSeconds,
+          initialIsMaximumFocus: true,
+          initialEmergencyPassAvailable: passAvailable,
+          breatherDuration: breatherDuration,
+          onClose: onClose,
+          onEmergencyPass: onEmergencyPass,
+        ),
+      );
+    }
+
+    Future<void> completeBreather(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
+      await tester.pump();
+      await tester.pump(breatherDuration + const Duration(seconds: 1));
+      await tester.pump();
+    }
+
+    testWidgets('shows breather button on an active lock', (tester) async {
+      await tester.pumpWidget(buildOverlay());
+
+      expect(find.text('🌬️ TAKE A BREATHER (60S)'), findsOneWidget);
+    });
+
+    testWidgets('hides breather button once the session is finished',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay(remainingSeconds: 0));
+
+      expect(find.byKey(const Key('overlay_take_breather_button')),
+          findsNothing);
+    });
+
+    testWidgets('tapping breather starts the box breathing exercise',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay());
+
+      await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
+      expect(
+        find.text('Dopamine spikes peak at 60 seconds and dissipate. Breathe.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('overlay_hold_to_cancel_button')),
+          findsNothing);
+    });
+
+    testWidgets('offers ready and emergency pass choices after breathing',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay());
+
+      await completeBreather(tester);
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsNothing);
+      expect(find.text("I'M READY TO FOCUS 🚀"), findsOneWidget);
+      expect(find.text('2-MIN EMERGENCY PASS ⏱️'), findsOneWidget);
+    });
+
+    testWidgets('ready button returns to the app and resets the overlay',
+        (tester) async {
+      var closeCalls = 0;
+      await tester.pumpWidget(
+        buildOverlay(onClose: () async => closeCalls++),
+      );
+
+      await completeBreather(tester);
+      await tester.tap(find.byKey(const Key('overlay_breather_ready_button')));
+      await tester.pump();
+
+      expect(closeCalls, 1);
+      expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
+    });
+
+    testWidgets('emergency pass grants pass and resets the overlay',
+        (tester) async {
+      var passRequests = 0;
+      await tester.pumpWidget(
+        buildOverlay(onEmergencyPass: () async {
+          passRequests++;
+          return true;
+        }),
+      );
+
+      await completeBreather(tester);
+      await tester.tap(find.byKey(const Key('overlay_emergency_pass_button')));
+      await tester.pump();
+
+      expect(passRequests, 1);
+      expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
+    });
+
+    testWidgets('denied emergency pass stays on decision and disables button',
+        (tester) async {
+      await tester.pumpWidget(
+        buildOverlay(onEmergencyPass: () async => false),
+      );
+
+      await completeBreather(tester);
+      await tester.tap(find.byKey(const Key('overlay_emergency_pass_button')));
+      await tester.pump();
+
+      expect(find.text('EMERGENCY PASS USED TODAY'), findsOneWidget);
+      final button = tester.widget<OutlinedButton>(
+        find.byKey(const Key('overlay_emergency_pass_button')),
+      );
+      expect(button.onPressed, isNull);
+      expect(find.text("I'M READY TO FOCUS 🚀"), findsOneWidget);
+    });
+
+    testWidgets('pass already used today renders disabled pass button',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay(passAvailable: false));
+
+      await completeBreather(tester);
+
+      expect(find.text('EMERGENCY PASS USED TODAY'), findsOneWidget);
+    });
+
+    testWidgets('session ending mid-breather returns to the finished state',
+
+        (tester) async {
+      final controller = StreamController<dynamic>(sync: true);
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HardLockOverlayWidget(
+            dataStream: controller.stream,
+            initialRemainingSeconds: 1500,
+            initialIsMaximumFocus: true,
+            breatherDuration: breatherDuration,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
+      await tester.pump();
+      expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
+
+      controller.add({'remainingSeconds': 0, 'isMaximumFocus': false});
+      await tester.pump();
+      await tester.pump(breatherDuration + const Duration(seconds: 1));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_take_breather_button')),
+          findsNothing);
+    });
+
+    testWidgets('requests emergency pass via bridge channel by default',
+        (tester) async {
+      final calls = <String>[];
+      const channel = MethodChannel('com.focusmaxxing/overlay_bridge');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        (call) async {
+          calls.add(call.method);
+          return call.method == 'grantEmergencyPass';
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await tester.pumpWidget(buildOverlay());
+
+      await completeBreather(tester);
+      await tester.tap(find.byKey(const Key('overlay_emergency_pass_button')));
+      await tester.pump();
+
+      expect(calls, contains('grantEmergencyPass'));
+      expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
+    });
+  });
 }

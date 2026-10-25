@@ -127,9 +127,12 @@ class _FakeShieldRepository implements IShieldRepository {
     return const Right(true);
   }
 
+  bool? lastStopForce;
+
   @override
-  Future<Either<Failure, bool>> stopShieldService() async {
+  Future<Either<Failure, bool>> stopShieldService({bool force = false}) async {
     stopShieldCallCount++;
+    lastStopForce = force;
     return const Right(true);
   }
 

@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/features/audio/domain/entities/soundscape_entity.dart';
 import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
 
 class _StubAudioRepository implements IAudioRepository {
   String? lastPlayedPath;
+  String? lastChimePath;
   double? lastVolume;
   bool didStop = false;
 
@@ -37,8 +39,10 @@ class _StubAudioRepository implements IAudioRepository {
   @override
   Future<Either<Failure, void>> playChime({
     String assetPath = SoundscapeEntity.chimeCompleteAssetPath,
-  }) async =>
-      const Right(null);
+  }) async {
+    lastChimePath = assetPath;
+    return const Right(null);
+  }
 
   @override
   Future<void> dispose() async {}
@@ -66,7 +70,7 @@ void main() {
       );
       expect(SoundscapeEntity.none.isNone, isTrue);
       expect(SoundscapeEntity.brownNoise.isNone, isFalse);
-      expect(SoundscapeEntity.brownNoise.isProOnly, isTrue);
+      expect(SoundscapeEntity.brownNoise.isProOnly, isFalse);
     });
 
     test('PlaySoundscapeUseCase validates non-empty assetPath', () async {
@@ -102,6 +106,16 @@ void main() {
 
       await useCase(-0.2);
       expect(repo.lastVolume, equals(0.0));
+    });
+
+    test('PlayChimeUseCase delegates to repository.playChime', () async {
+      final repo = _StubAudioRepository();
+      final useCase = PlayChimeUseCase(repo);
+
+      final result = await useCase();
+      expect(result.isRight(), isTrue);
+      expect(repo.lastChimePath,
+          equals(SoundscapeEntity.chimeCompleteAssetPath));
     });
   });
 }

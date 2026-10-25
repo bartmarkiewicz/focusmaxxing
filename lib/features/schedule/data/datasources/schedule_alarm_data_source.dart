@@ -60,7 +60,7 @@ void autoShieldStartAlarmCallback() async {
 void autoShieldEndAlarmCallback() async {
   const channel = MethodChannel('com.focusmaxxing/shield');
   try {
-    await channel.invokeMethod<bool>('stopShield');
+    await channel.invokeMethod<bool>('stopShield', {'force': true});
   } catch (_) {
     // Ignore native background shutdown errors
   }

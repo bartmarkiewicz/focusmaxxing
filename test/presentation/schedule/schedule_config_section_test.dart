@@ -159,13 +159,13 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      // Cause a validation error (e.g. setting start time after end time)
-      await notifier.setStartTime(18, 0);
+      // Cause a validation error (setting start time identical to end time 17:00)
+      await notifier.setStartTime(17, 0);
       await tester.pumpAndSettle();
 
       expect(
           find.byKey(const ValueKey('schedule_error_banner')), findsOneWidget);
-      expect(find.text('Start time must precede end time'), findsOneWidget);
+      expect(find.text('Start time and end time cannot be identical'), findsOneWidget);
 
       // Tap clear error button
       await tester.tap(find.byTooltip('Clear error'));

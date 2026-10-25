@@ -60,7 +60,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       );
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } catch (e) {
+    } on Exception catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }
@@ -85,7 +85,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       return Right(entities);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } catch (e) {
+    } on Exception catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }
@@ -119,14 +119,20 @@ class InsightsRepositoryImpl implements IInsightsRepository {
         checkDay = DateTime(checkDay.year, checkDay.month, checkDay.day - 1);
       }
 
+      int daysSinceLastFreeze = 7;
       while (true) {
         final isWeekend = AppDateUtils.isWeekend(checkDay);
         final hasCompleted = completedDays.contains(checkDay);
 
         if (hasCompleted) {
           streak++;
+          daysSinceLastFreeze++;
           checkDay = DateTime(checkDay.year, checkDay.month, checkDay.day - 1);
         } else if (!includeWeekends && isWeekend) {
+          checkDay = DateTime(checkDay.year, checkDay.month, checkDay.day - 1);
+        } else if (daysSinceLastFreeze >= 6) {
+          // Streak Shield: 1-Day Auto-Freeze allowed once per 7-day span
+          daysSinceLastFreeze = 0;
           checkDay = DateTime(checkDay.year, checkDay.month, checkDay.day - 1);
         } else {
           break;
@@ -136,7 +142,7 @@ class InsightsRepositoryImpl implements IInsightsRepository {
       return Right(streak);
     } on DatabaseException catch (e) {
       return Left(DatabaseFailure(e.message));
-    } catch (e) {
+    } on Exception catch (e) {
       return Left(DatabaseFailure(e.toString()));
     }
   }

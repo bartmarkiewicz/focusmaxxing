@@ -209,9 +209,9 @@ class ShieldRepositoryImpl implements IShieldRepository {
   }
 
   @override
-  Future<Either<Failure, bool>> stopShieldService() async {
+  Future<Either<Failure, bool>> stopShieldService({bool force = false}) async {
     try {
-      final stopped = await nativeBridgeSource.stopShield();
+      final stopped = await nativeBridgeSource.stopShield(force: force);
       return Right(stopped);
     } on PlatformBridgeException catch (e) {
       return Left(PlatformFailure(e.message));

@@ -40,7 +40,7 @@ abstract interface class IShieldRepository {
     String? timeRange,
   });
 
-  Future<Either<Failure, bool>> stopShieldService();
+  Future<Either<Failure, bool>> stopShieldService({bool force = false});
 
   Future<Either<Failure, void>> syncOverlayState({
     required String goal,

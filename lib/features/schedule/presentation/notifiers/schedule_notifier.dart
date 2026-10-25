@@ -135,8 +135,8 @@ class ScheduleNotifier extends ChangeNotifier {
 
   Future<bool> setStartTime(int hour, int minute) async {
     final newStartMinutes = hour * 60 + minute;
-    if (newStartMinutes >= _schedule.endTotalMinutes) {
-      _errorMessage = 'Start time must precede end time';
+    if (newStartMinutes == _schedule.endTotalMinutes) {
+      _errorMessage = 'Start time and end time cannot be identical';
       notifyListeners();
       return false;
     }
@@ -152,8 +152,8 @@ class ScheduleNotifier extends ChangeNotifier {
 
   Future<bool> setEndTime(int hour, int minute) async {
     final newEndMinutes = hour * 60 + minute;
-    if (_schedule.startTotalMinutes >= newEndMinutes) {
-      _errorMessage = 'Start time must precede end time';
+    if (_schedule.startTotalMinutes == newEndMinutes) {
+      _errorMessage = 'Start time and end time cannot be identical';
       notifyListeners();
       return false;
     }

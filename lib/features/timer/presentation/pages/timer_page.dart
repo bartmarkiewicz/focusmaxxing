@@ -9,6 +9,7 @@ import 'package:focusmaxxing/features/backlog/presentation/widgets/backlog_modal
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
+import 'package:focusmaxxing/features/timer/presentation/widgets/celebration_spark_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/goal_input_dialog.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/hold_to_cancel_button.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/session_checkin_dialog.dart';
@@ -87,6 +88,23 @@ class _TimerPageState extends State<TimerPage> {
         lockedIn: result?.lockedIn ?? false,
         endAllSessions: result?.endAllSessions ?? false,
       );
+
+      if (result?.lockedIn == true &&
+          !(result?.endAllSessions ?? false) &&
+          mounted) {
+        final audioNotifier = context.read<AudioNotifier?>();
+        if (audioNotifier != null) {
+          unawaited(audioNotifier.playChime());
+        }
+        final celebration = await CelebrationSparkSheet.show(
+          context,
+          durationMinutes: (durationSeconds / 60).round(),
+          taskGoal: goal,
+        );
+        if (mounted && celebration?.rollIntoNext == true) {
+          unawaited(notifier.startNextFocusFromBreak(goal));
+        }
+      }
     } finally {
       _isCheckingIn = false;
     }
@@ -94,14 +112,17 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _handleEditGoal(TimerNotifier timerNotifier) async {
     final durationMinutes = (timerNotifier.targetDurationSeconds / 60).round();
-    final selectedGoal = await GoalInputDialog.show(
+    final result = await GoalInputDialog.showWithAction(
       context,
       durationMinutes: durationMinutes,
       initialGoal: timerNotifier.currentTaskGoal,
     );
-    if (!mounted) return;
-    if (selectedGoal != null && selectedGoal.trim().isNotEmpty) {
-      timerNotifier.setTaskGoal(selectedGoal);
+    if (!mounted || result == null) return;
+    if (result.goal.trim().isNotEmpty) {
+      timerNotifier.setTaskGoal(result.goal.trim());
+    }
+    if (result.startImmediately) {
+      await _handleStartLockIn(timerNotifier);
     }
   }
 
@@ -453,6 +474,24 @@ class _TimerPageState extends State<TimerPage> {
                       const _SingleSessionModePill(),
                     ],
                   ),
+                  if (isRunningOrPaused) ...[
+                    Consumer<AudioNotifier?>(
+                      builder: (context, audioNotifier, _) {
+                        if (audioNotifier == null ||
+                            audioNotifier.activeSoundscape.isNone) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: _ActiveAudioMiniPlayer(
+                            audioNotifier: audioNotifier,
+                            onOpenSheet: () =>
+                                _showSoundscapeBottomSheet(context),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   if (isIdle) ...[
                     _DurationPresets(
@@ -523,7 +562,11 @@ class _TimerPageState extends State<TimerPage> {
                 try {
                   unawaited(HapticFeedback.selectionClick());
                 } catch (_) {}
+                final isAlreadyActive = goal.toLowerCase() == currentGoal;
                 timerNotifier.setTaskGoal(goal);
+                if (isAlreadyActive) {
+                  unawaited(_handleStartLockIn(timerNotifier));
+                }
               },
             ),
         ],
@@ -882,6 +925,114 @@ class _SoundscapePill extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ActiveAudioMiniPlayer extends StatelessWidget {
+  final AudioNotifier audioNotifier;
+  final VoidCallback onOpenSheet;
+
+  const _ActiveAudioMiniPlayer({
+    required this.audioNotifier,
+    required this.onOpenSheet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = audioNotifier.activeSoundscape;
+    final isPlaying = audioNotifier.isPlaying;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      key: const ValueKey('active_audio_mini_player'),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isPlaying
+              ? colorScheme.primary.withValues(alpha: 0.4)
+              : colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            key: const ValueKey('mini_player_play_pause'),
+            iconSize: 28,
+            padding: const EdgeInsets.all(10),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: Icon(
+              isPlaying
+                  ? Icons.pause_circle_filled_rounded
+                  : Icons.play_circle_filled_rounded,
+              color: isPlaying
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            onPressed: audioNotifier.togglePreview,
+            tooltip: isPlaying ? 'Pause soundscape' : 'Play soundscape',
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: 'Ambient soundscape: ${active.title}. Tap to open selector.',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenSheet,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      active.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      isPlaying
+                          ? (active.isProOnly
+                              ? 'Playing • Pro soundscape'
+                              : 'Playing • Free ADHD loop')
+                          : 'Paused',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 86,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              ),
+              child: Slider(
+                value: audioNotifier.volume,
+                min: 0.0,
+                max: 1.0,
+                onChanged: (val) =>
+                    audioNotifier.setVolume(val, persist: false),
+                onChangeEnd: (_) => audioNotifier.persistVolume(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

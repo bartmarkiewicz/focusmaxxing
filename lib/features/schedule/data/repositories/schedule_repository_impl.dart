@@ -36,7 +36,7 @@ class ScheduleRepositoryImpl implements IScheduleRepository {
     try {
       if (!schedule.isValid) {
         return const Left(
-          ValidationFailure('Start time must precede end time'),
+          ValidationFailure('Start time and end time cannot be identical'),
         );
       }
       final model = ScheduleConfigModel.fromEntity(schedule);

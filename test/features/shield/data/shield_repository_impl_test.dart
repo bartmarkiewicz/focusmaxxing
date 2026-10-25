@@ -65,10 +65,13 @@ class _FakeNativeBridgeSource implements IShieldNativeBridgeSource {
     return true;
   }
 
+  bool? lastForce;
+
   @override
-  Future<bool> stopShield() async {
+  Future<bool> stopShield({bool force = false}) async {
     shieldRunning = false;
     stopCallCount++;
+    lastForce = force;
     return true;
   }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/features/audio/domain/entities/soundscape_entity.dart';
 import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
@@ -19,6 +20,7 @@ class AudioNotifier extends ChangeNotifier {
   final PlaySoundscapeUseCase playSoundscapeUseCase;
   final StopSoundscapeUseCase stopSoundscapeUseCase;
   final SetAudioVolumeUseCase setAudioVolumeUseCase;
+  final PlayChimeUseCase? playChimeUseCase;
   final IAudioRepository? repository;
   final SharedPreferences? sharedPreferences;
 
@@ -26,6 +28,7 @@ class AudioNotifier extends ChangeNotifier {
     required this.playSoundscapeUseCase,
     required this.stopSoundscapeUseCase,
     required this.setAudioVolumeUseCase,
+    this.playChimeUseCase,
     this.repository,
     this.sharedPreferences,
     bool isProUnlocked = false,
@@ -378,5 +381,23 @@ class AudioNotifier extends ChangeNotifier {
   void triggerProRequirement(SoundscapeEntity soundscape) {
     _errorMessage = 'Unlock Lifetime Pro to access ${soundscape.title}';
     notifyListeners();
+  }
+
+  /// Plays the completion chime sound effect.
+  Future<void> playChime() async {
+    final useCase = playChimeUseCase ??
+        (repository != null ? PlayChimeUseCase(repository!) : null);
+    if (useCase == null) return;
+
+    final chimeResult = await useCase();
+    if (_isDisposed) return;
+
+    chimeResult.fold(
+      (failure) {
+        _errorMessage = failure.message;
+        notifyListeners();
+      },
+      (_) {},
+    );
   }
 }

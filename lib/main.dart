@@ -6,6 +6,7 @@ import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/core/theme/app_theme.dart';
 import 'package:focusmaxxing/core/theme/theme_notifier.dart';
 import 'package:focusmaxxing/features/audio/data/repositories/audio_repository_impl.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
@@ -179,6 +180,7 @@ void main() async {
     playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepository),
     stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepository),
     setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepository),
+    playChimeUseCase: PlayChimeUseCase(audioRepository),
     repository: audioRepository,
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
@@ -419,6 +421,7 @@ class FocusmaxxingApp extends StatelessWidget {
       playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepo),
       stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepo),
       setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepo),
+      playChimeUseCase: PlayChimeUseCase(audioRepo),
       repository: audioRepo,
     );
   }

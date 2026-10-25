@@ -2,6 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:provider/provider.dart';
 
+@immutable
+class GoalInputResult {
+  final String goal;
+  final bool startImmediately;
+
+  const GoalInputResult({
+    required this.goal,
+    this.startImmediately = true,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GoalInputResult &&
+          runtimeType == other.runtimeType &&
+          goal == other.goal &&
+          startImmediately == other.startImmediately;
+
+  @override
+  int get hashCode => Object.hash(goal, startImmediately);
+}
+
 class GoalInputDialog extends StatefulWidget {
   const GoalInputDialog({
     super.key,
@@ -16,8 +38,21 @@ class GoalInputDialog extends StatefulWidget {
     BuildContext context, {
     required int durationMinutes,
     String initialGoal = '',
+  }) async {
+    final result = await showWithAction(
+      context,
+      durationMinutes: durationMinutes,
+      initialGoal: initialGoal,
+    );
+    return result?.goal;
+  }
+
+  static Future<GoalInputResult?> showWithAction(
+    BuildContext context, {
+    required int durationMinutes,
+    String initialGoal = '',
   }) {
-    return showModalBottomSheet<String>(
+    return showModalBottomSheet<GoalInputResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -47,9 +82,14 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit({bool startImmediately = true}) {
     final text = _controller.text.trim();
-    Navigator.of(context).pop(text.isNotEmpty ? text : 'Deep Work');
+    Navigator.of(context).pop(
+      GoalInputResult(
+        goal: text.isNotEmpty ? text : 'Deep Work',
+        startImmediately: startImmediately,
+      ),
+    );
   }
 
   @override

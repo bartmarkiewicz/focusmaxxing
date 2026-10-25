@@ -143,17 +143,21 @@ void main() {
       final mondayLate = DateTime(2026, 10, 19, 23, 45);
       expect(overnightSchedule.isWithinSchedule(mondayLate), isTrue);
 
-      // Monday at 02:30 (early morning inside active day)
+      // Tuesday at 02:30 (early morning past midnight belonging to Monday's schedule)
+      final tuesdayEarly = DateTime(2026, 10, 20, 2, 30);
+      expect(overnightSchedule.isWithinSchedule(tuesdayEarly), isTrue);
+
+      // Tuesday at 05:59 (just before end)
+      final tuesdayBeforeEnd = DateTime(2026, 10, 20, 5, 59);
+      expect(overnightSchedule.isWithinSchedule(tuesdayBeforeEnd), isTrue);
+
+      // Tuesday at 06:00 (at end boundary - exclusive)
+      final tuesdayAtEnd = DateTime(2026, 10, 20, 6, 0);
+      expect(overnightSchedule.isWithinSchedule(tuesdayAtEnd), isFalse);
+
+      // Monday at 02:30 (belongs to Sunday night which is inactive)
       final mondayEarly = DateTime(2026, 10, 19, 2, 30);
-      expect(overnightSchedule.isWithinSchedule(mondayEarly), isTrue);
-
-      // Monday at 05:59 (just before end)
-      final mondayBeforeEnd = DateTime(2026, 10, 19, 5, 59);
-      expect(overnightSchedule.isWithinSchedule(mondayBeforeEnd), isTrue);
-
-      // Monday at 06:00 (at end boundary - exclusive)
-      final mondayAtEnd = DateTime(2026, 10, 19, 6, 0);
-      expect(overnightSchedule.isWithinSchedule(mondayAtEnd), isFalse);
+      expect(overnightSchedule.isWithinSchedule(mondayEarly), isFalse);
 
       // Monday at 12:00 (noon outside)
       final mondayNoon = DateTime(2026, 10, 19, 12, 0);
@@ -162,6 +166,12 @@ void main() {
       // Sunday at 23:00 (inactive day)
       final sundayLate = DateTime(2026, 10, 18, 23, 0);
       expect(overnightSchedule.isWithinSchedule(sundayLate), isFalse);
+
+      // When Sunday is active, Monday morning at 02:30 is protected
+      final withSunday = overnightSchedule.copyWith(
+        activeDays: [DateTime.sunday, DateTime.monday],
+      );
+      expect(withSunday.isWithinSchedule(mondayEarly), isTrue);
     });
 
     test('copyWith updates fields correctly', () {

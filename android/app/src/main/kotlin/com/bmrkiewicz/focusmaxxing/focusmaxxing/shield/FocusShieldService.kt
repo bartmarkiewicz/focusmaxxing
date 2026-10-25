@@ -34,6 +34,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 class FocusShieldService : Service() {
 
@@ -47,6 +48,36 @@ class FocusShieldService : Service() {
         const val OVERLAY_BRIDGE_CHANNEL = "com.focusmaxxing/overlay_bridge"
         const val OVERLAY_CACHED_ENGINE_ID = "myCachedEngine"
         private const val FULL_COVER_SIZE = -1999
+        private const val EMERGENCY_PASS_DURATION_MS = 120_000L
+        private const val SHIELD_PREFS_NAME = "focusmaxxing_shield_prefs"
+        private const val PREF_EMERGENCY_PASS_LAST_USED_DATE = "emergency_pass_last_used_date"
+
+        @Volatile
+        var emergencyPassUntilMs: Long = 0L
+
+        fun isEmergencyPassAvailable(context: Context): Boolean {
+            val lastUsed = context.applicationContext
+                .getSharedPreferences(SHIELD_PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(PREF_EMERGENCY_PASS_LAST_USED_DATE, null)
+            return lastUsed != LocalDate.now().toString()
+        }
+
+        fun grantEmergencyPass(context: Context): Boolean {
+            if (!isEmergencyPassAvailable(context)) return false
+            context.applicationContext
+                .getSharedPreferences(SHIELD_PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(PREF_EMERGENCY_PASS_LAST_USED_DATE, LocalDate.now().toString())
+                .apply()
+            emergencyPassUntilMs = System.currentTimeMillis() + EMERGENCY_PASS_DURATION_MS
+            return true
+        }
+
+        @Volatile
+        var isScheduledBaseline: Boolean = false
+
+        @Volatile
+        var scheduledBaselineRange: String? = null
 
         @Volatile
         var isRunning: Boolean = false
@@ -93,7 +124,10 @@ class FocusShieldService : Service() {
             "com.sec.android.app.clockpackage"
         )
 
-        private var instance: FocusShieldService? = null
+        @Volatile
+        var instance: FocusShieldService? = null
+            internal set
+
         private var bridgeChannel: MethodChannel? = null
 
         private fun computeRemainingFromTarget(targetMs: Long, nowMs: Long): Int {
@@ -119,20 +153,25 @@ class FocusShieldService : Service() {
                 }
             }
 
+            if (bridgeChannel != null) return
+
             val channel = MethodChannel(engine.dartExecutor.binaryMessenger, OVERLAY_BRIDGE_CHANNEL)
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getInitialOverlayState" -> {
                         val now = System.currentTimeMillis()
+                        val activeService = instance
+                        val isServiceScheduled = (activeService?.isScheduled == true)
                         val computedRemaining = if (!currentIsPaused && targetEndTimeEpochMs > 0L) {
                             computeRemainingFromTarget(targetEndTimeEpochMs, now)
+                        } else if (isServiceScheduled) {
+                            0
                         } else {
                             currentRemainingSeconds
                         }
-                        if (computedRemaining <= 0 && !currentIsBreak) {
+                        if (computedRemaining <= 0 && !currentIsBreak && !isServiceScheduled) {
                             currentIsMaximumFocus = false
                         }
-                        val activeService = instance
                         result.success(
                             mapOf(
                                 "goal" to currentGoal,
@@ -142,9 +181,17 @@ class FocusShieldService : Service() {
                                 "isPaused" to currentIsPaused,
                                 "isScheduled" to (activeService?.isScheduled == true),
                                 "scheduleTimeRange" to (activeService?.scheduleTimeRange ?: ""),
-                                "targetEndTimeEpochMs" to targetEndTimeEpochMs
+                                "targetEndTimeEpochMs" to targetEndTimeEpochMs,
+                                "emergencyPassAvailable" to isEmergencyPassAvailable(appContext)
                             )
                         )
+                    }
+                    "grantEmergencyPass" -> {
+                        val granted = grantEmergencyPass(appContext)
+                        if (granted) {
+                            dismissOverlayOnly(appContext)
+                        }
+                        result.success(granted)
                     }
                     "returnToFocusmaxxing" -> {
                         val now = System.currentTimeMillis()
@@ -158,11 +205,17 @@ class FocusShieldService : Service() {
                         currentIsMaximumFocus = false
                         currentIsPaused = false
                         targetEndTimeEpochMs = 0L
+                        emergencyPassUntilMs = 0L
                         MainActivity.notifyOverlayAction("cancelSessionFromOverlay")
                         dismissOverlayAndReturnToApp(appContext)
-                        try {
-                            appContext.stopService(Intent(appContext, FocusShieldService::class.java))
-                        } catch (_: Exception) {}
+                        val active = instance
+                        if (active != null && isScheduledBaseline) {
+                            active.restoreScheduledBaseline()
+                        } else {
+                            try {
+                                appContext.stopService(Intent(appContext, FocusShieldService::class.java))
+                            } catch (_: Exception) {}
+                        }
                         result.success(true)
                     }
                     else -> result.notImplemented()
@@ -214,18 +267,15 @@ class FocusShieldService : Service() {
                                 "isPaused" to currentIsPaused,
                                 "isScheduled" to (activeService?.isScheduled == true),
                                 "scheduleTimeRange" to (activeService?.scheduleTimeRange ?: ""),
-                                "targetEndTimeEpochMs" to targetEndTimeEpochMs
+                                "targetEndTimeEpochMs" to targetEndTimeEpochMs,
+                                "emergencyPassAvailable" to isEmergencyPassAvailable(context)
                             )
                         )
                     }
                 } catch (_: Exception) {}
 
-                if (activeService != null && isRunning) {
-                    if (currentIsMaximumFocus && !OverlayService.isRunning) {
-                        activeService.scope.launch {
-                            activeService.triggerOverlay()
-                        }
-                    } else if (wasMaximumFocus && !currentIsMaximumFocus && OverlayService.isRunning) {
+                if (activeService != null) {
+                    if (wasMaximumFocus && !currentIsMaximumFocus && OverlayService.isRunning) {
                         dismissOverlayAndReturnToApp(context.applicationContext)
                     }
 
@@ -252,52 +302,33 @@ class FocusShieldService : Service() {
         }
 
         fun dismissOverlayAndReturnToApp(context: Context) {
-            val appContext = context.applicationContext
             val now = System.currentTimeMillis()
             if (now < returnDebounceUntilMs) return
-            returnDebounceUntilMs = now + 1000L
-            dismissGraceUntilMs = now + 3000L
-            lastProcessedEventTime = now
+            returnDebounceUntilMs = now + 1200L
 
-            // 1. Bring MainActivity to foreground while overlay is still alive (preserving Android 10+ BAL exemption)
-            try {
-                val launchIntent = Intent(appContext, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                appContext.startActivity(launchIntent)
-            } catch (_: Exception) {
-                try {
-                    val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                        addCategory(Intent.CATEGORY_HOME)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    appContext.startActivity(homeIntent)
-                } catch (_: Exception) {}
-            }
+            dismissGraceUntilMs = now + 4000L
 
-            // 2. Dismiss the overlay view after initiating activity foregrounding
+            val appContext = context.applicationContext
+
             dismissOverlayOnly(appContext)
+
+            try {
+                val launchIntent = appContext.packageManager.getLaunchIntentForPackage(appContext.packageName)?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                if (launchIntent != null) {
+                    appContext.startActivity(launchIntent)
+                }
+            } catch (_: Exception) {}
         }
     }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-
-    @Volatile
     private var blockedPackages: Set<String> = emptySet()
-
-    @Volatile
     private var isScheduled: Boolean = false
-
-    @Volatile
     private var scheduleTimeRange: String? = null
-
-    @Volatile
     private var isDegraded: Boolean = false
-
-    @Volatile
     private var lastNotificationText: String? = null
-
-    @Volatile
     private var lastNotificationTargetEndMs: Long = 0L
 
     private fun formatSessionNotificationText(): String {
@@ -336,8 +367,16 @@ class FocusShieldService : Service() {
         }
 
         if (intent?.hasExtra(EXTRA_IS_SCHEDULED) == true) {
-            isScheduled = intent.getBooleanExtra(EXTRA_IS_SCHEDULED, false)
-            scheduleTimeRange = intent.getStringExtra(EXTRA_TIME_RANGE)
+            val scheduledExtra = intent.getBooleanExtra(EXTRA_IS_SCHEDULED, false)
+            if (scheduledExtra) {
+                isScheduledBaseline = true
+                scheduledBaselineRange = intent.getStringExtra(EXTRA_TIME_RANGE)
+                isScheduled = true
+                scheduleTimeRange = scheduledBaselineRange
+            } else {
+                isScheduled = false
+                scheduleTimeRange = null
+            }
         } else {
             isScheduled = false
             scheduleTimeRange = null
@@ -362,10 +401,36 @@ class FocusShieldService : Service() {
         return START_STICKY
     }
 
+    fun restoreScheduledBaseline() {
+        if (!isScheduledBaseline) return
+        isScheduled = true
+        scheduleTimeRange = scheduledBaselineRange
+        currentGoal = "Scheduled Auto-Shield"
+        currentRemainingSeconds = 0
+        currentIsBreak = false
+        currentIsMaximumFocus = false
+        currentIsPaused = false
+        targetEndTimeEpochMs = 0L
+        updateOverlaySessionState(
+            context = applicationContext,
+            goal = currentGoal,
+            remainingSeconds = 0,
+            isBreak = false,
+            isMaximumFocus = false,
+            targetEndTime = 0L,
+            isPaused = false
+        )
+        if (!isDegraded) {
+            updateNotification(formatSessionNotificationText())
+        }
+    }
+
     private fun startPollingLoop() {
         scope.launch {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
             val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            var wasEmergencyPassActive = false
+            var lastResumedPackage: String? = null
             while (isRunning) {
                 try {
                     val isInteractive = powerManager?.isInteractive ?: true
@@ -380,14 +445,32 @@ class FocusShieldService : Service() {
                         continue
                     }
 
+                    val isEmergencyPassActive = now < emergencyPassUntilMs
+                    if (wasEmergencyPassActive && !isEmergencyPassActive) {
+                        wasEmergencyPassActive = false
+                        val foreground = lastResumedPackage
+                        if (foreground != null &&
+                            blockedPackages.contains(foreground) &&
+                            !OverlayService.isRunning
+                        ) {
+                            triggerOverlay()
+                        }
+                    } else if (isEmergencyPassActive) {
+                        wasEmergencyPassActive = true
+                    }
+
                     // Keep countdown and session expiry synchronized even if main Dart isolate is throttled
                     if (!isScheduled && !currentIsPaused && targetEndTimeEpochMs > 0L) {
                         if (now >= targetEndTimeEpochMs) {
                             targetEndTimeEpochMs = 0L
                             currentRemainingSeconds = 0
                             currentIsMaximumFocus = false
-                            if (!isDegraded) {
-                                updateNotification(formatSessionNotificationText())
+                            withContext(Dispatchers.Main) {
+                                if (isScheduledBaseline) {
+                                    restoreScheduledBaseline()
+                                } else if (!isDegraded) {
+                                    updateNotification(formatSessionNotificationText())
+                                }
                             }
                             if (OverlayService.isRunning) {
                                 withContext(Dispatchers.Main) {
@@ -477,6 +560,7 @@ class FocusShieldService : Service() {
                             }
 
                             if (resumedPackage != null) {
+                                lastResumedPackage = resumedPackage
                                 if (resumedPackage != packageName &&
                                     !EXEMPT_PACKAGES.contains(resumedPackage) &&
                                     blockedPackages.contains(resumedPackage)
@@ -513,6 +597,7 @@ class FocusShieldService : Service() {
 
     private suspend fun triggerOverlay() {
         if (OverlayService.isRunning) return
+        if (System.currentTimeMillis() < emergencyPassUntilMs) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             if (!isDegraded) {
@@ -635,6 +720,8 @@ class FocusShieldService : Service() {
         targetEndTimeEpochMs = 0L
         lastNotificationText = null
         lastNotificationTargetEndMs = 0L
+        isScheduledBaseline = false
+        scheduledBaselineRange = null
         if (instance === this) {
             instance = null
         }

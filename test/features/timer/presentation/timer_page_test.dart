@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
+import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
+import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
+import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifier.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/domain/repositories/i_backlog_repository.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/add_backlog_task_usecase.dart';
@@ -76,6 +81,30 @@ class _MockNotificationService extends NotificationService {
   Future<void> cancelTimerNotification() async {}
 }
 
+class _FakeAudioRepository implements IAudioRepository {
+  @override
+  Future<Either<Failure, void>> playLoop(String assetPath) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, void>> stopLoop() async => const Right(null);
+
+  @override
+  Future<Either<Failure, void>> setVolume(double volume) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, void>> preloadAssets(List<String> assetPaths) async =>
+      const Right(null);
+
+  @override
+  Future<Either<Failure, void>> playChime({String assetPath = ''}) async =>
+      const Right(null);
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -115,11 +144,12 @@ void main() {
     backlogNotifier.dispose();
   });
 
-  Widget buildWidget() {
+  Widget buildWidget({AudioNotifier? audioNotifier}) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<TimerNotifier>.value(value: timerNotifier),
         ChangeNotifierProvider<BacklogNotifier>.value(value: backlogNotifier),
+        ChangeNotifierProvider<AudioNotifier?>.value(value: audioNotifier),
       ],
       child: const MaterialApp(
         home: TimerPage(),
@@ -392,6 +422,85 @@ void main() {
 
       expect(timerNotifier.status, TimerStatus.idle);
       expect(find.text('🚀 LOCK IN'), findsOneWidget);
+    });
+
+    testWidgets(
+        'renders active audio mini player during running session when soundscape is selected and toggles playback',
+        (tester) async {
+      final audioRepo = _FakeAudioRepository();
+      final audioNotifier = AudioNotifier(
+        playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepo),
+        stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepo),
+        setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepo),
+      );
+      await audioNotifier.selectSoundscape('brown_noise');
+
+      await tester.pumpWidget(buildWidget(audioNotifier: audioNotifier));
+      await tester.pumpAndSettle();
+
+      // Idle: mini player should not be rendered
+      expect(
+        find.byKey(const ValueKey('active_audio_mini_player')),
+        findsNothing,
+      );
+
+      // Start session
+      await timerNotifier.startFocusSession('Mini Player Test');
+      await tester.pumpAndSettle();
+
+      // Mini player should now be visible with Brown Noise
+      expect(
+        find.byKey(const ValueKey('active_audio_mini_player')),
+        findsOneWidget,
+      );
+      expect(find.text('Brown Noise'), findsOneWidget);
+
+      // Tap play/pause button
+      await tester.tap(find.byKey(const ValueKey('mini_player_play_pause')));
+      await tester.pumpAndSettle();
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
+
+      audioNotifier.dispose();
+    });
+
+    testWidgets(
+        'check-in with lockedIn true triggers celebration sheet and rolling into next starts new focus session',
+        (tester) async {
+      timerNotifier.setDurationPreset(1);
+
+      await tester.pumpWidget(buildWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 1100));
+      });
+      timerNotifier.syncWithWallClock();
+      await tester.pumpAndSettle();
+
+      // Check-in dialog appears
+      expect(find.text('Did you lock in?'), findsOneWidget);
+      await tester.tap(find.text('LOCKED IN 🚀'));
+      await tester.pumpAndSettle();
+
+      // Celebration sheet appears
+      expect(find.text('+0m MOMENTUM SECURED'), findsOneWidget);
+      expect(find.text('ROLL INTO NEXT BLOCK 🚀'), findsOneWidget);
+
+      // Tap roll into next block
+      await tester.tap(find.byKey(const Key('celebration_roll_next_button')));
+      await tester.pumpAndSettle();
+
+      // Should transition straight into running session
+      expect(timerNotifier.status, TimerStatus.running);
+      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsOneWidget);
+
+      await timerNotifier.cancelSession();
+      await tester.pumpAndSettle();
     });
   });
 }

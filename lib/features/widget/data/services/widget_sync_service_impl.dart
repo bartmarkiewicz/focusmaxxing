@@ -20,6 +20,9 @@ typedef UpdateWidgetFunction = Future<bool?> Function({
 class WidgetSyncServiceImpl implements IWidgetSyncService {
   static const String keyTodayMinutes = 'today_minutes';
   static const String keyActiveStreak = 'active_streak';
+  static const String keyIsRunning = 'is_running';
+  static const String keyTargetEndTime = 'target_end_epoch_ms';
+  static const String keyTaskGoal = 'task_goal';
   static const String providerName = 'GlanceableDialWidgetProvider';
   static const String qualifiedProviderName =
       'com.bmrkiewicz.focusmaxxing.focusmaxxing.widget.GlanceableDialWidgetProvider';
@@ -35,12 +38,28 @@ class WidgetSyncServiceImpl implements IWidgetSyncService {
 
   @override
   Future<void> updateGlanceableWidget({
-    required int todayMinutes,
-    required int activeStreak,
+    int? todayMinutes,
+    int? activeStreak,
+    bool? isRunning,
+    int? targetEndTimeEpochMs,
+    String? taskGoal,
   }) async {
     try {
-      await _saveWidgetData<int>(keyTodayMinutes, todayMinutes);
-      await _saveWidgetData<int>(keyActiveStreak, activeStreak);
+      if (todayMinutes != null) {
+        await _saveWidgetData<int>(keyTodayMinutes, todayMinutes);
+      }
+      if (activeStreak != null) {
+        await _saveWidgetData<int>(keyActiveStreak, activeStreak);
+      }
+      if (isRunning != null) {
+        await _saveWidgetData<bool>(keyIsRunning, isRunning);
+      }
+      if (targetEndTimeEpochMs != null) {
+        await _saveWidgetData<int>(keyTargetEndTime, targetEndTimeEpochMs);
+      }
+      if (taskGoal != null) {
+        await _saveWidgetData<String>(keyTaskGoal, taskGoal);
+      }
       await _updateWidget(
         name: providerName,
         androidName: 'widget.$providerName',

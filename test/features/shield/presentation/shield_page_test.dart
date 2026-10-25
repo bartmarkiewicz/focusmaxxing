@@ -121,7 +121,7 @@ class _TestShieldRepository implements IShieldRepository {
       const Right(true);
 
   @override
-  Future<Either<Failure, bool>> stopShieldService() async => const Right(true);
+  Future<Either<Failure, bool>> stopShieldService({bool force = false}) async => const Right(true);
 
   @override
   Future<Either<Failure, void>> syncOverlayState({

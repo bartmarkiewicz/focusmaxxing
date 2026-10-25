@@ -34,8 +34,9 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Center: Today's Focus Minutes Counter -->
+    <!-- Center Idle: Today's Focus Minutes Counter -->
     <LinearLayout
+        android:id="@+id/widget_idle_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -59,6 +60,39 @@
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.05"
             android:text="@string/widget_todays_focus"
+            android:textColor="#8B92A4"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- Center Active: Live Chronometer + Task Goal -->
+    <LinearLayout
+        android:id="@+id/widget_active_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <Chronometer
+            android:id="@+id/widget_chronometer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-black"
+            android:includeFontPadding="false"
+            android:textColor="#00FF66"
+            android:textSize="30sp" />
+
+        <TextView
+            android:id="@+id/widget_task_goal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:maxLines="1"
+            android:text="@string/widget_focusing_now"
             android:textColor="#8B92A4"
             android:textSize="10sp" />
     </LinearLayout>

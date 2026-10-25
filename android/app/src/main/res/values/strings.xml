@@ -5,6 +5,8 @@
     <string name="glanceable_dial_name">Focus Glanceable Dial</string>
     <string name="glanceable_dial_description">Glanceable focus minutes and active streak counter with Lock In trigger.</string>
     <string name="widget_btn_lockin">LOCK IN</string>
+    <string name="widget_btn_focusing">LOCKED IN 🎯</string>
+    <string name="widget_focusing_now">LOCK IN PROGRESS</string>
     <string name="widget_app_title">FOCUSMAXXING</string>
     <string name="widget_todays_focus">TODAY\'S FOCUS</string>
 </resources>

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/utils/haptic_feedback_helper.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 
 @immutable
@@ -166,7 +167,7 @@ class SessionCheckInDialog extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         unawaited(
-                          HapticFeedback.heavyImpact()
+                          HapticFeedbackHelper.victoryBurst()
                               .catchError((Object _) {}),
                         );
                         Navigator.of(context).pop(
