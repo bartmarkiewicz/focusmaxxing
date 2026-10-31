@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/core/errors/exceptions.dart';
@@ -86,6 +87,43 @@ void main() {
         cancelledIds,
         containsAll(
             [ScheduleConstants.startAlarmId, ScheduleConstants.endAlarmId]),
+      );
+    });
+
+    test(
+        'schedules and cancels alarms via native method channel when no override is provided',
+        () async {
+      const channel = MethodChannel('com.focusmaxxing/shield');
+      final log = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        log.add(call);
+        return true;
+      });
+
+      final nativeSource = ScheduleAlarmDataSourceImpl(
+        isTestMode: true,
+        methodChannel: channel,
+      );
+
+      const validSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 9,
+        startMinute: 0,
+        endHour: 17,
+        endMinute: 0,
+        activeDays: [1, 2, 3, 4, 5],
+      );
+
+      final scheduleResult = await nativeSource.scheduleAlarms(validSchedule);
+      expect(scheduleResult, isTrue);
+
+      final cancelResult = await nativeSource.cancelAlarms();
+      expect(cancelResult, isTrue);
+
+      expect(
+        log.map((c) => c.method),
+        containsAll(['scheduleAlarms', 'cancelAlarms']),
       );
     });
   });

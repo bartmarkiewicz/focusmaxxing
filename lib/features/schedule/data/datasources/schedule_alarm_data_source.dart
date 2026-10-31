@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
@@ -8,6 +7,8 @@ import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Retained as a backwards-compatibility callback for legacy alarms and the unit test harness.
+/// Production alarms are handled directly by native [AutoShieldAlarmReceiver].
 @pragma('vm:entry-point')
 void autoShieldStartAlarmCallback() async {
   final now = DateTime.now();
@@ -56,6 +57,8 @@ void autoShieldStartAlarmCallback() async {
   }
 }
 
+/// Retained as a backwards-compatibility callback for legacy alarms and the unit test harness.
+/// Production alarms are handled directly by native [AutoShieldAlarmReceiver].
 @pragma('vm:entry-point')
 void autoShieldEndAlarmCallback() async {
   const channel = MethodChannel('com.focusmaxxing/shield');
@@ -76,6 +79,7 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
   static const int endAlarmId = ScheduleConstants.endAlarmId;
 
   final bool isTestMode;
+  final MethodChannel? methodChannel;
   final Future<bool> Function(
     Duration period,
     int id,
@@ -89,11 +93,13 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
 
   ScheduleAlarmDataSourceImpl({
     this.isTestMode = false,
+    this.methodChannel,
     this.alarmPeriodicOverride,
     this.alarmCancelOverride,
   });
 
-  bool get _canUseAlarmManager => !isTestMode && !kIsWeb && Platform.isAndroid;
+  bool get _canUseAlarmManager =>
+      methodChannel != null || (!isTestMode && !kIsWeb && Platform.isAndroid);
 
   @override
   Future<bool> scheduleAlarms(ScheduleConfigEntity schedule) async {
@@ -109,58 +115,70 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
       );
     } catch (_) {}
 
-    if (!_canUseAlarmManager && alarmPeriodicOverride == null) {
+    if (alarmPeriodicOverride != null) {
+      try {
+        final now = DateTime.now();
+        var nextStart = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          schedule.startHour,
+          schedule.startMinute,
+        );
+        if (nextStart.isBefore(now)) {
+          nextStart = nextStart.add(const Duration(days: 1));
+        }
+
+        var nextEnd = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          schedule.endHour,
+          schedule.endMinute,
+        );
+        if (nextEnd.isBefore(now)) {
+          nextEnd = nextEnd.add(const Duration(days: 1));
+        }
+
+        final startScheduled = await alarmPeriodicOverride!(
+          const Duration(days: 1),
+          startAlarmId,
+          autoShieldStartAlarmCallback,
+          startAt: nextStart,
+          exact: true,
+          wakeup: true,
+          rescheduleOnReboot: true,
+        );
+
+        final endScheduled = await alarmPeriodicOverride!(
+          const Duration(days: 1),
+          endAlarmId,
+          autoShieldEndAlarmCallback,
+          startAt: nextEnd,
+          exact: true,
+          wakeup: true,
+          rescheduleOnReboot: true,
+        );
+
+        return startScheduled && endScheduled;
+      } catch (e) {
+        throw ScheduleException('Failed to configure OS alarms: $e');
+      }
+    }
+
+    if (!_canUseAlarmManager) {
       return true;
     }
 
     try {
-      final now = DateTime.now();
-      var nextStart = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        schedule.startHour,
-        schedule.startMinute,
-      );
-      if (nextStart.isBefore(now)) {
-        nextStart = nextStart.add(const Duration(days: 1));
-      }
-
-      var nextEnd = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        schedule.endHour,
-        schedule.endMinute,
-      );
-      if (nextEnd.isBefore(now)) {
-        nextEnd = nextEnd.add(const Duration(days: 1));
-      }
-
-      final schedulePeriodic =
-          alarmPeriodicOverride ?? AndroidAlarmManager.periodic;
-
-      final startScheduled = await schedulePeriodic(
-        const Duration(days: 1),
-        startAlarmId,
-        autoShieldStartAlarmCallback,
-        startAt: nextStart,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-      );
-
-      final endScheduled = await schedulePeriodic(
-        const Duration(days: 1),
-        endAlarmId,
-        autoShieldEndAlarmCallback,
-        startAt: nextEnd,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-      );
-
-      return startScheduled && endScheduled;
+      final channel = methodChannel ?? const MethodChannel('com.focusmaxxing/shield');
+      final scheduled = await channel.invokeMethod<bool>('scheduleAlarms', {
+        'startHour': schedule.startHour,
+        'startMinute': schedule.startMinute,
+        'endHour': schedule.endHour,
+        'endMinute': schedule.endMinute,
+      });
+      return scheduled ?? true;
     } catch (e) {
       throw ScheduleException('Failed to configure OS alarms: $e');
     }
@@ -168,15 +186,24 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
 
   @override
   Future<bool> cancelAlarms() async {
-    if (!_canUseAlarmManager && alarmCancelOverride == null) {
+    if (alarmCancelOverride != null) {
+      try {
+        final startCancelled = await alarmCancelOverride!(startAlarmId);
+        final endCancelled = await alarmCancelOverride!(endAlarmId);
+        return startCancelled && endCancelled;
+      } catch (e) {
+        throw ScheduleException('Failed to cancel OS alarms: $e');
+      }
+    }
+
+    if (!_canUseAlarmManager) {
       return true;
     }
 
     try {
-      final cancelFunc = alarmCancelOverride ?? AndroidAlarmManager.cancel;
-      final startCancelled = await cancelFunc(startAlarmId);
-      final endCancelled = await cancelFunc(endAlarmId);
-      return startCancelled && endCancelled;
+      final channel = methodChannel ?? const MethodChannel('com.focusmaxxing/shield');
+      final cancelled = await channel.invokeMethod<bool>('cancelAlarms');
+      return cancelled ?? true;
     } catch (e) {
       throw ScheduleException('Failed to cancel OS alarms: $e');
     }

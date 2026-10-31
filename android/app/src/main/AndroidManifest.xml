@@ -85,6 +85,10 @@
             <intent-filter>
                 <action android:name="com.bmrkiewicz.focusmaxxing.START_AUTO_SHIELD" />
                 <action android:name="com.bmrkiewicz.focusmaxxing.STOP_AUTO_SHIELD" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>
         </receiver>
 
@@ -123,6 +127,9 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
         </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

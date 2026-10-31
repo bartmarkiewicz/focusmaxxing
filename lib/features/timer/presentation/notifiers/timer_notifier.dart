@@ -617,6 +617,16 @@ class TimerNotifier extends ChangeNotifier {
 
       if (_status == TimerStatus.running) {
         _status = TimerStatus.completed;
+        final sessionId = _activeSessionId;
+        if (sessionId != null) {
+          unawaited(
+            completeSessionUseCase(
+              sessionId: sessionId,
+              status: SessionStatus.lockedIn,
+              actualDurationSeconds: _targetDurationSeconds,
+            ).then((_) {}, onError: (_) {}),
+          );
+        }
         unawaited(
           notificationService
               .cancelTimerNotification()

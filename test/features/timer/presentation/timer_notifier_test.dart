@@ -347,6 +347,22 @@ void main() {
       expect(notificationService.isCompletionAlarmCancelled, isTrue);
     });
 
+    test(
+        'session expiration writes accurate completion state to repository immediately upon finish',
+        () async {
+      notifier.setDurationPreset(1);
+      await notifier.startFocusSession('Finish Guard Test');
+      expect(notifier.status, TimerStatus.running);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      notifier.syncWithWallClock();
+
+      expect(notifier.status, TimerStatus.completed);
+      expect(sessionRepository.lastUpdatedSessionId, 101);
+      expect(sessionRepository.lastUpdatedStatus, SessionStatus.lockedIn);
+      expect(sessionRepository.lastUpdatedDuration, 1);
+    });
+
     test('pause when targetEndTime has passed completes session cleanly instead of freezing at 00:00', () async {
       notifier.setDurationPreset(1);
       await notifier.startFocusSession('Expire and pause');

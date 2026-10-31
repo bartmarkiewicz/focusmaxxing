@@ -1,25 +1,6 @@
 import 'dart:async';
-import 'package:audio_session/audio_session.dart'
-    hide AndroidAudioFocusGainType;
-import 'package:audio_session/audio_session.dart' as audio_session
-    show AndroidAudioFocusGainType;
+import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
-
-/// Extension type providing [AndroidAudioFocusGainType.none] for ambient background audio mixing.
-extension type const AndroidAudioFocusGainType(
-        audio_session.AndroidAudioFocusGainType _inner)
-    implements audio_session.AndroidAudioFocusGainType {
-  static const gain =
-      AndroidAudioFocusGainType(audio_session.AndroidAudioFocusGainType.gain);
-  static const gainTransient = AndroidAudioFocusGainType(
-      audio_session.AndroidAudioFocusGainType.gainTransient);
-  static const gainTransientMayDuck = AndroidAudioFocusGainType(
-      audio_session.AndroidAudioFocusGainType.gainTransientMayDuck);
-  static const gainTransientExclusive = AndroidAudioFocusGainType(
-      audio_session.AndroidAudioFocusGainType.gainTransientExclusive);
-  static const none = AndroidAudioFocusGainType(
-      audio_session.AndroidAudioFocusGainType.gainTransientMayDuck);
-}
 
 /// Abstraction over the underlying audio player and session configuration
 /// to isolate platform plugin calls and enable deterministic unit testing.
@@ -53,8 +34,12 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
   })  : _loopPlayer = loopPlayerInstance,
         _chimePlayer = chimePlayerInstance;
 
-  AudioPlayer get _resolvedLoopPlayer => _loopPlayer ??= AudioPlayer();
-  AudioPlayer get _resolvedChimePlayer => _chimePlayer ??= AudioPlayer();
+  AudioPlayer get _resolvedLoopPlayer => _loopPlayer ??= AudioPlayer(
+        handleAudioSessionActivation: false,
+      );
+  AudioPlayer get _resolvedChimePlayer => _chimePlayer ??= AudioPlayer(
+        handleAudioSessionActivation: false,
+      );
 
   @override
   Future<void> configureAudioSession() async {
@@ -69,7 +54,6 @@ class JustAudioPlayerEngine implements IAudioPlayerEngine {
           contentType: AndroidAudioContentType.music,
           usage: AndroidAudioUsage.media,
         ),
-        androidAudioFocusGainType: AndroidAudioFocusGainType.none,
         androidWillPauseWhenDucked: false,
       ),
     );

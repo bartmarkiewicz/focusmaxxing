@@ -73,6 +73,7 @@ class BillingNotifier extends ChangeNotifier {
   bool get isLoading => _status == BillingStatus.loading;
 
   void attachShieldNotifier(ShieldNotifier? notifier) {
+    if (identical(shieldNotifier, notifier)) return;
     shieldNotifier = notifier;
     if (_unlockStatus.isUnlocked) {
       unawaited(shieldNotifier?.unlockLifetimePro());
@@ -80,6 +81,7 @@ class BillingNotifier extends ChangeNotifier {
   }
 
   void attachAudioNotifier(AudioNotifier? notifier) {
+    if (identical(audioNotifier, notifier)) return;
     audioNotifier = notifier;
     if (_unlockStatus.isUnlocked) {
       audioNotifier?.setProUnlocked(true);
@@ -87,6 +89,7 @@ class BillingNotifier extends ChangeNotifier {
   }
 
   void attachScheduleNotifier(ScheduleNotifier? notifier) {
+    if (identical(scheduleNotifier, notifier)) return;
     scheduleNotifier = notifier;
     if (_unlockStatus.isUnlocked) {
       unawaited(scheduleNotifier?.unlockLifetimePro());
@@ -96,6 +99,7 @@ class BillingNotifier extends ChangeNotifier {
   bool _isInitialized = false;
 
   void attachThemeNotifier(ThemeNotifier? notifier) {
+    if (identical(themeNotifier, notifier)) return;
     themeNotifier = notifier;
     if (_isInitialized && !_unlockStatus.isUnlocked) {
       unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));

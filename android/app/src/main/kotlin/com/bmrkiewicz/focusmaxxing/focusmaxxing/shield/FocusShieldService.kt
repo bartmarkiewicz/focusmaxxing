@@ -18,6 +18,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
+import android.telecom.TelecomManager
 import androidx.core.app.NotificationCompat
 import com.bmrkiewicz.focusmaxxing.focusmaxxing.MainActivity
 import flutter.overlay.window.flutter_overlay_window.OverlayService
@@ -123,6 +124,35 @@ class FocusShieldService : Service() {
             "com.google.android.deskclock",
             "com.sec.android.app.clockpackage"
         )
+
+        @Volatile
+        private var lastExemptResolutionTime: Long = 0L
+        @Volatile
+        private var cachedExemptPackages: Set<String> = EXEMPT_PACKAGES
+
+        fun isExemptPackage(context: Context, packageName: String): Boolean {
+            if (EXEMPT_PACKAGES.contains(packageName)) return true
+            val now = System.currentTimeMillis()
+            if (now - lastExemptResolutionTime > 60_000L) {
+                val resolved = EXEMPT_PACKAGES.toMutableSet()
+                try {
+                    val telecomManager = context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+                    telecomManager?.defaultDialerPackage?.let { resolved.add(it) }
+                } catch (_: Exception) {}
+
+                try {
+                    val dialIntent = Intent(Intent.ACTION_DIAL)
+                    val dialActivities = context.packageManager.queryIntentActivities(dialIntent, 0)
+                    for (resolveInfo in dialActivities) {
+                        resolveInfo.activityInfo?.packageName?.let { resolved.add(it) }
+                    }
+                } catch (_: Exception) {}
+
+                cachedExemptPackages = resolved
+                lastExemptResolutionTime = now
+            }
+            return cachedExemptPackages.contains(packageName)
+        }
 
         @Volatile
         var instance: FocusShieldService? = null
@@ -310,8 +340,6 @@ class FocusShieldService : Service() {
 
             val appContext = context.applicationContext
 
-            dismissOverlayOnly(appContext)
-
             try {
                 val launchIntent = appContext.packageManager.getLaunchIntentForPackage(appContext.packageName)?.apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -320,6 +348,8 @@ class FocusShieldService : Service() {
                     appContext.startActivity(launchIntent)
                 }
             } catch (_: Exception) {}
+
+            dismissOverlayOnly(appContext)
         }
     }
 
@@ -520,7 +550,7 @@ class FocusShieldService : Service() {
                                 if (latestTs > lastProcessedEventTime) {
                                     lastProcessedEventTime = latestTs
                                 }
-                                if (resumedPkg != null && EXEMPT_PACKAGES.contains(resumedPkg)) {
+                                if (resumedPkg != null && isExemptPackage(applicationContext, resumedPkg)) {
                                     emergencyForeground = true
                                     if (OverlayService.isRunning) {
                                         withContext(Dispatchers.Main) {
@@ -574,7 +604,7 @@ class FocusShieldService : Service() {
                             if (resumedPackage != null) {
                                 lastResumedPackage = resumedPackage
                                 if (resumedPackage != packageName &&
-                                    !EXEMPT_PACKAGES.contains(resumedPackage) &&
+                                    !isExemptPackage(applicationContext, resumedPackage) &&
                                     blockedPackages.contains(resumedPackage)
                                 ) {
                                     triggerOverlay()

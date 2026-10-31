@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.bmrkiewicz.focusmaxxing.focusmaxxing.shield.AutoShieldAlarmReceiver
 import com.bmrkiewicz.focusmaxxing.focusmaxxing.shield.FocusShieldService
 import flutter.overlay.window.flutter_overlay_window.OverlayService
 import io.flutter.embedding.android.FlutterActivity
@@ -213,6 +214,21 @@ class MainActivity : FlutterActivity() {
 
             "bringToForeground" -> {
                 FocusShieldService.dismissOverlayAndReturnToApp(applicationContext)
+                result.success(true)
+            }
+
+            "scheduleAlarms" -> {
+                val startHour = call.argument<Int>("startHour") ?: 9
+                val startMinute = call.argument<Int>("startMinute") ?: 0
+                val endHour = call.argument<Int>("endHour") ?: 17
+                val endMinute = call.argument<Int>("endMinute") ?: 0
+                AutoShieldAlarmReceiver.scheduleAlarm(applicationContext, true, startHour, startMinute)
+                AutoShieldAlarmReceiver.scheduleAlarm(applicationContext, false, endHour, endMinute)
+                result.success(true)
+            }
+
+            "cancelAlarms" -> {
+                AutoShieldAlarmReceiver.cancelAlarms(applicationContext)
                 result.success(true)
             }
 

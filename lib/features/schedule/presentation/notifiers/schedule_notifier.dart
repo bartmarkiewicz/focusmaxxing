@@ -195,6 +195,7 @@ class ScheduleNotifier extends ChangeNotifier {
   }
 
   Future<void> unlockLifetimePro() async {
+    if (_isPro && !_requiresProPrompt) return;
     _isPro = true;
     _requiresProPrompt = false;
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();

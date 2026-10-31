@@ -304,6 +304,37 @@ void main() {
     });
 
     test(
+      'concurrent toggleApp calls are serialized via mutex and enforce the free-tier 2-app cap',
+      () async {
+        final results = await Future.wait([
+          notifier.toggleApp(
+            packageName: 'com.instagram.android',
+            appName: 'Instagram',
+            isPreset: true,
+          ),
+          notifier.toggleApp(
+            packageName: 'com.zhiliaoapp.musically',
+            appName: 'TikTok',
+            isPreset: true,
+          ),
+          notifier.toggleApp(
+            packageName: 'com.reddit.frontpage',
+            appName: 'Reddit',
+            isPreset: true,
+          ),
+        ]);
+
+        expect(notifier.activeAppCount, equals(2));
+        final toggledCount =
+            results.where((r) => r == ShieldToggleResult.toggled).length;
+        final upgradeCount =
+            results.where((r) => r == ShieldToggleResult.upgradeRequired).length;
+        expect(toggledCount, equals(2));
+        expect(upgradeCount, equals(1));
+      },
+    );
+
+    test(
       'attempting to toggle a 3rd app on the Free tier emits upgrade event and rejects activation',
       () async {
         await notifier.toggleApp(
@@ -408,6 +439,20 @@ void main() {
         );
         expect(fourthResult, ShieldToggleResult.toggled);
         expect(notifier.activeAppCount, 4);
+      },
+    );
+
+    test(
+      'unlockLifetimePro is idempotent and does not re-notify when already unlocked without pending candidate',
+      () async {
+        await notifier.unlockLifetimePro();
+        expect(notifier.isPro, isTrue);
+
+        var notifyCount = 0;
+        notifier.addListener(() => notifyCount++);
+
+        await notifier.unlockLifetimePro();
+        expect(notifyCount, equals(0));
       },
     );
 

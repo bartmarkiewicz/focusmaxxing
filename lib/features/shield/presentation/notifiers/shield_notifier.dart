@@ -82,6 +82,7 @@ class ShieldNotifier extends ChangeNotifier {
   String? _lastSyncedGoal;
   bool? _lastSyncedMaximumFocus;
   bool _isDisposed = false;
+  Future<void> _toggleLock = Future<void>.value();
 
   List<ShieldedAppEntity> get shieldedApps => _shieldedApps;
   List<ShieldedAppEntity> get allInstalledApps => _installedApps;
@@ -227,6 +228,29 @@ class ShieldNotifier extends ChangeNotifier {
     bool isPreset = false,
     Uint8List? iconBytes,
   }) async {
+    final previousLock = _toggleLock;
+    final completer = Completer<void>();
+    _toggleLock = completer.future;
+
+    try {
+      await previousLock;
+      return await _toggleAppInternal(
+        packageName: packageName,
+        appName: appName,
+        isPreset: isPreset,
+        iconBytes: iconBytes,
+      );
+    } finally {
+      completer.complete();
+    }
+  }
+
+  Future<ShieldToggleResult> _toggleAppInternal({
+    required String packageName,
+    required String appName,
+    bool isPreset = false,
+    Uint8List? iconBytes,
+  }) async {
     final trimmedPackage = packageName.trim();
     final currentlyActive = isPackageActive(trimmedPackage);
     final nextActive = !currentlyActive;
@@ -324,6 +348,9 @@ class ShieldNotifier extends ChangeNotifier {
   }
 
   Future<void> unlockLifetimePro({bool activatePendingCandidate = true}) async {
+    if (_isPro && _pendingSwapCandidate == null && !_requiresUpgradePrompt) {
+      return;
+    }
     _isPro = true;
     _requiresUpgradePrompt = false;
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();

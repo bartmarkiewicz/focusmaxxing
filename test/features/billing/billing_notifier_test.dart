@@ -259,5 +259,28 @@ void main() {
 
       expect(customThemeNotifier.validatedProAccessArg, isNull);
     });
+
+    test(
+        'attaching identical notifiers repeatedly does not trigger duplicate unlock calls',
+        () async {
+      repo.currentStatus = const ProUnlockStatusEntity(
+        isUnlocked: true,
+        orderId: 'GPA.TEST',
+      );
+      final notifier = createNotifier();
+      await notifier.initialize();
+
+      shieldNotifier.unlockedLifetimeCalled = false;
+      notifier.attachShieldNotifier(shieldNotifier);
+      expect(shieldNotifier.unlockedLifetimeCalled, isFalse);
+
+      audioNotifier.proUnlockedValue = null;
+      notifier.attachAudioNotifier(audioNotifier);
+      expect(audioNotifier.proUnlockedValue, isNull);
+
+      scheduleNotifier.unlockedLifetimeCalled = false;
+      notifier.attachScheduleNotifier(scheduleNotifier);
+      expect(scheduleNotifier.unlockedLifetimeCalled, isFalse);
+    });
   });
 }
