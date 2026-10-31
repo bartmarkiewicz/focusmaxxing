@@ -3,16 +3,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
+import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
-import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/bring_app_to_foreground_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/start_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/stop_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/swap_shield_app_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/watch_overlay_events_usecase.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,22 +37,32 @@ class ShieldNotifier extends ChangeNotifier {
   final GetShieldedAppsUseCase getShieldedAppsUseCase;
   final GetInstalledAppsUseCase getInstalledAppsUseCase;
   final ToggleShieldAppUseCase toggleShieldAppUseCase;
+  final SwapShieldAppUseCase swapShieldAppUseCase;
   final CheckShieldPermissionsUseCase checkShieldPermissionsUseCase;
   final RequestPermissionUseCase requestPermissionUseCase;
+  final StartShieldServiceUseCase startShieldServiceUseCase;
+  final StopShieldServiceUseCase stopShieldServiceUseCase;
   final SyncShieldWithOverlayUseCase syncShieldWithOverlayUseCase;
-  final IShieldRepository repository;
+  final BringAppToForegroundUseCase bringAppToForegroundUseCase;
+  final WatchOverlayEventsUseCase watchOverlayEventsUseCase;
   final CheckScheduleActiveNowUseCase? checkScheduleActiveNowUseCase;
+  final WatchProEntitlementUseCase? watchProEntitlementUseCase;
   final SharedPreferences? sharedPreferences;
 
   ShieldNotifier({
     required this.getShieldedAppsUseCase,
     required this.getInstalledAppsUseCase,
     required this.toggleShieldAppUseCase,
+    required this.swapShieldAppUseCase,
     required this.checkShieldPermissionsUseCase,
     required this.requestPermissionUseCase,
+    required this.startShieldServiceUseCase,
+    required this.stopShieldServiceUseCase,
     required this.syncShieldWithOverlayUseCase,
-    required this.repository,
+    required this.bringAppToForegroundUseCase,
+    required this.watchOverlayEventsUseCase,
     this.checkScheduleActiveNowUseCase,
+    this.watchProEntitlementUseCase,
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
@@ -55,6 +71,7 @@ class ShieldNotifier extends ChangeNotifier {
     _isMaximumFocusEnabled =
         prefs?.getBool(maximumFocusPrefsKey) ?? false;
     _bindOverlayEvents();
+    _bindEntitlementStream();
     if (autoInitialize) {
       unawaited(refresh());
     }
@@ -75,6 +92,7 @@ class ShieldNotifier extends ChangeNotifier {
   final StreamController<ShieldedAppEntity> _upgradeEventController =
       StreamController<ShieldedAppEntity>.broadcast();
   StreamSubscription<dynamic>? _overlaySubscription;
+  StreamSubscription<ProUnlockStatusEntity>? _entitlementSubscription;
   TimerNotifier? _attachedTimerNotifier;
 
   bool _isSessionShieldActive = false;
@@ -130,10 +148,10 @@ class ShieldNotifier extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _attachedTimerNotifier?.removeListener(_onTimerChanged);
-    final sub = _overlaySubscription;
-    if (sub != null) {
-      unawaited(sub.cancel());
-    }
+    unawaited(_overlaySubscription?.cancel());
+    _overlaySubscription = null;
+    unawaited(_entitlementSubscription?.cancel());
+    _entitlementSubscription = null;
     unawaited(_upgradeEventController.close());
     super.dispose();
   }
@@ -321,7 +339,7 @@ class ShieldNotifier extends ChangeNotifier {
       return false;
     }
 
-    final swapResult = await repository.swapShieldApp(
+    final swapResult = await swapShieldAppUseCase(
       deactivatePackageName: deactivatePackageName,
       activatePackageName: targetPackage,
       activateAppName: targetName,
@@ -379,7 +397,7 @@ class ShieldNotifier extends ChangeNotifier {
     _isScheduledShieldActive = true;
     final activePackages = activePackageNames.toList();
     if (activePackages.isNotEmpty) {
-      await repository.startShieldService(
+      await startShieldServiceUseCase(
         activePackages,
         isScheduled: true,
         timeRange: timeRange,
@@ -391,7 +409,7 @@ class ShieldNotifier extends ChangeNotifier {
   Future<void> stopShieldForSchedule() async {
     _isScheduledShieldActive = false;
     if (!_isSessionShieldActive) {
-      await repository.stopShieldService(force: true);
+      await stopShieldServiceUseCase(force: true);
     }
     notifyListeners();
   }
@@ -433,9 +451,9 @@ class ShieldNotifier extends ChangeNotifier {
 
         final isScheduleActive = await _checkIfScheduleActive();
         if (!isScheduleActive && !_isScheduledShieldActive) {
-          await repository.stopShieldService(force: true);
+          await stopShieldServiceUseCase(force: true);
         } else {
-          await repository.stopShieldService(force: false);
+          await stopShieldServiceUseCase(force: false);
         }
         notifyListeners();
       }
@@ -488,9 +506,9 @@ class ShieldNotifier extends ChangeNotifier {
     if (!_isSessionShieldActive) return;
     final blocked = activePackageNames.toList();
     if (blocked.isEmpty && !_isMaximumFocusEnabled) {
-      await repository.stopShieldService(force: true);
+      await stopShieldServiceUseCase(force: true);
     } else {
-      await repository.startShieldService(blocked);
+      await startShieldServiceUseCase(blocked);
     }
   }
 
@@ -541,21 +559,34 @@ class ShieldNotifier extends ChangeNotifier {
 
   void _bindOverlayEvents() {
     // ignore: cancel_subscriptions
-    final sub = repository.overlayEvents.listen(_handleOverlayEvent);
+    final sub = watchOverlayEventsUseCase().listen(_handleOverlayEvent);
     _overlaySubscription = sub;
+  }
+
+  void _bindEntitlementStream() {
+    final watchEntitlement = watchProEntitlementUseCase;
+    if (watchEntitlement == null) return;
+    _entitlementSubscription = watchEntitlement().listen(
+      (status) {
+        if (!_isDisposed && status.isUnlocked) {
+          unawaited(unlockLifetimePro());
+        }
+      },
+      onError: (Object _) {},
+    );
   }
 
   void _handleOverlayEvent(dynamic rawEvent) {
     final map = _decodePayload(rawEvent);
     if (map == null) return;
     if (map['action'] == 'returnToFocusmaxxing') {
-      unawaited(repository.bringAppToForeground());
+      unawaited(bringAppToForegroundUseCase());
     } else if (map['action'] == 'cancelSessionFromOverlay') {
       final timer = _attachedTimerNotifier;
       if (timer != null) {
         unawaited(timer.cancelSession());
       }
-      unawaited(repository.bringAppToForeground());
+      unawaited(bringAppToForegroundUseCase());
     }
   }
 

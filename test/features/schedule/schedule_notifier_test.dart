@@ -77,7 +77,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         autoInitialize: true,
       );
 
@@ -96,7 +95,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         sharedPreferences: prefs,
         autoInitialize: false,
       );
@@ -121,7 +119,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         sharedPreferences: prefs,
         autoInitialize: false,
       );
@@ -147,7 +144,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         sharedPreferences: prefs,
         autoInitialize: false,
       );
@@ -163,7 +159,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         autoInitialize: false,
       );
 
@@ -192,7 +187,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         autoInitialize: false,
       );
 
@@ -221,7 +215,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         autoInitialize: false,
       );
 
@@ -248,7 +241,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         autoInitialize: true,
       );
       await Future<void>.delayed(Duration.zero);
@@ -270,7 +262,6 @@ void main() {
         getScheduleUseCase: getScheduleUseCase,
         saveScheduleUseCase: saveScheduleUseCase,
         toggleAutoShieldUseCase: toggleAutoShieldUseCase,
-        repository: repository,
         sharedPreferences: prefs,
         autoInitialize: false,
       );

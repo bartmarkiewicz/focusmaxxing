@@ -49,7 +49,6 @@ void main() {
         getScheduleUseCase: GetScheduleUseCase(repository),
         saveScheduleUseCase: SaveScheduleUseCase(repository),
         toggleAutoShieldUseCase: ToggleAutoShieldUseCase(repository),
-        repository: repository,
         autoInitialize: false,
       );
     });

@@ -1,18 +1,6 @@
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
 
-/// Domain exception thrown when an in-app purchase or restore operation fails.
-class BillingFailureException implements Exception {
-  final String message;
-  final bool isCancelled;
-
-  const BillingFailureException(
-    this.message, {
-    this.isCancelled = false,
-  });
-
-  @override
-  String toString() => message;
-}
+export 'package:focusmaxxing/features/billing/domain/exceptions/billing_failure_exception.dart';
 
 /// Contract for querying product pricing, purchasing Lifetime Pro, and
 /// restoring non-consumable entitlements.

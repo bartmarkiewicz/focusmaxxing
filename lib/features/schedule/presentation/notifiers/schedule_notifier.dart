@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
 import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
+import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
-import 'package:focusmaxxing/features/schedule/domain/repositories/i_schedule_repository.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/save_schedule_usecase.dart';
@@ -19,10 +20,11 @@ class ScheduleNotifier extends ChangeNotifier {
   final SaveScheduleUseCase saveScheduleUseCase;
   final ToggleAutoShieldUseCase toggleAutoShieldUseCase;
   final CheckScheduleActiveNowUseCase? checkScheduleActiveNowUseCase;
-  final IScheduleRepository? repository;
+  final WatchProEntitlementUseCase? watchProEntitlementUseCase;
   final SharedPreferences? sharedPreferences;
 
   ShieldNotifier? shieldNotifier;
+  StreamSubscription<ProUnlockStatusEntity>? _entitlementSubscription;
 
   ScheduleConfigEntity _schedule = ScheduleConfigEntity.initial;
   bool _isLoading = false;
@@ -36,13 +38,14 @@ class ScheduleNotifier extends ChangeNotifier {
     required this.saveScheduleUseCase,
     required this.toggleAutoShieldUseCase,
     this.checkScheduleActiveNowUseCase,
-    this.repository,
+    this.watchProEntitlementUseCase,
     this.shieldNotifier,
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
     final prefs = sharedPreferences;
     _isPro = prefs != null && ProReceiptVerifier.isProUnlockedInPrefs(prefs);
+    _bindEntitlementStream();
     if (autoInitialize) {
       unawaited(loadSchedule());
     }
@@ -66,9 +69,24 @@ class ScheduleNotifier extends ChangeNotifier {
     shieldNotifier = notifier;
   }
 
+  void _bindEntitlementStream() {
+    final watchEntitlement = watchProEntitlementUseCase;
+    if (watchEntitlement == null) return;
+    _entitlementSubscription = watchEntitlement().listen(
+      (status) {
+        if (!_isDisposed && status.isUnlocked) {
+          unawaited(unlockLifetimePro());
+        }
+      },
+      onError: (Object _) {},
+    );
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
+    unawaited(_entitlementSubscription?.cancel());
+    _entitlementSubscription = null;
     super.dispose();
   }
 

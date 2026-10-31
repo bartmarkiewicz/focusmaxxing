@@ -19,12 +19,17 @@ import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_not
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/bring_app_to_foreground_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/start_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/stop_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/swap_shield_app_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/watch_overlay_events_usecase.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
@@ -756,10 +761,14 @@ void main() {
         getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
         getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
         toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+        swapShieldAppUseCase: SwapShieldAppUseCase(shieldRepo),
         checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
         requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+        startShieldServiceUseCase: StartShieldServiceUseCase(shieldRepo),
+        stopShieldServiceUseCase: StopShieldServiceUseCase(shieldRepo),
         syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
-        repository: shieldRepo,
+        bringAppToForegroundUseCase: BringAppToForegroundUseCase(shieldRepo),
+        watchOverlayEventsUseCase: WatchOverlayEventsUseCase(shieldRepo),
         sharedPreferences: prefs,
         autoInitialize: false,
       );
@@ -803,10 +812,14 @@ void main() {
         getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
         getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
         toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+        swapShieldAppUseCase: SwapShieldAppUseCase(shieldRepo),
         checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
         requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+        startShieldServiceUseCase: StartShieldServiceUseCase(shieldRepo),
+        stopShieldServiceUseCase: StopShieldServiceUseCase(shieldRepo),
         syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
-        repository: shieldRepo,
+        bringAppToForegroundUseCase: BringAppToForegroundUseCase(shieldRepo),
+        watchOverlayEventsUseCase: WatchOverlayEventsUseCase(shieldRepo),
         sharedPreferences: prefs,
         autoInitialize: false,
       );

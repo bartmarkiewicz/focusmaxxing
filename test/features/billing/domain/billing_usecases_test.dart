@@ -6,6 +6,7 @@ import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repo
 import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 
 class _FakeBillingRepository implements IBillingRepository {
   final StreamController<ProUnlockStatusEntity> _controller =
@@ -95,6 +96,25 @@ void main() {
 
       expect(status.isUnlocked, isTrue);
       expect(status.orderId, 'GPA.RESTORED-999');
+    });
+
+    test('WatchProEntitlementUseCase emits cached and live purchase updates',
+        () async {
+      final useCase = WatchProEntitlementUseCase(repository);
+      final events = <ProUnlockStatusEntity>[];
+      final sub = useCase().listen(events.add);
+      addTearDown(sub.cancel);
+
+      final cached = await useCase.getCachedStatus();
+      expect(cached.isUnlocked, isFalse);
+
+      await repository.purchaseLifetimePro();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.length, greaterThanOrEqualTo(2));
+      expect(events.first.isUnlocked, isFalse);
+      expect(events.last.isUnlocked, isTrue);
+      expect(events.last.orderId, 'GPA.1234-5678');
     });
   });
 }

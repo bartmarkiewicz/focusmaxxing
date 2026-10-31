@@ -7,6 +7,7 @@ import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repo
 import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:provider/provider.dart';
@@ -69,7 +70,7 @@ void main() {
         getProductDetailsUseCase: GetProductDetailsUseCase(repo),
         purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(repo),
         restorePurchasesUseCase: RestorePurchasesUseCase(repo),
-        repository: repo,
+        watchProEntitlementUseCase: WatchProEntitlementUseCase(repo),
         autoInitialize: false,
       );
     });

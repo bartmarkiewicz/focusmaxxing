@@ -1,15 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:focusmaxxing/core/theme/theme_notifier.dart';
-import 'package:focusmaxxing/features/audio/presentation/notifiers/audio_notifier.dart';
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
-import 'package:focusmaxxing/features/billing/domain/repositories/i_billing_repository.dart';
+import 'package:focusmaxxing/features/billing/domain/exceptions/billing_failure_exception.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
-import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
-import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 
 /// Billing lifecycle states tracking the one-time Lifetime Pro unlock flow.
 enum BillingStatus {
@@ -20,17 +17,13 @@ enum BillingStatus {
 }
 
 /// State notifier managing Lifetime Pro store metadata, purchase execution,
-/// restoration, and cross-notifier entitlement synchronization.
+/// and restoration via domain use cases.
 class BillingNotifier extends ChangeNotifier {
   final GetProductDetailsUseCase getProductDetailsUseCase;
   final PurchaseLifetimeProUseCase purchaseLifetimeProUseCase;
   final RestorePurchasesUseCase restorePurchasesUseCase;
-  final IBillingRepository repository;
+  final WatchProEntitlementUseCase watchProEntitlementUseCase;
 
-  ShieldNotifier? shieldNotifier;
-  AudioNotifier? audioNotifier;
-  ScheduleNotifier? scheduleNotifier;
-  ThemeNotifier? themeNotifier;
   StreamSubscription<ProUnlockStatusEntity>? _purchaseStreamSubscription;
 
   BillingStatus _status = BillingStatus.initial;
@@ -43,14 +36,10 @@ class BillingNotifier extends ChangeNotifier {
     required this.getProductDetailsUseCase,
     required this.purchaseLifetimeProUseCase,
     required this.restorePurchasesUseCase,
-    required this.repository,
-    this.shieldNotifier,
-    this.audioNotifier,
-    this.scheduleNotifier,
-    this.themeNotifier,
+    required this.watchProEntitlementUseCase,
     bool autoInitialize = true,
   }) {
-    _purchaseStreamSubscription = repository.purchaseStatusStream.listen(
+    _purchaseStreamSubscription = watchProEntitlementUseCase().listen(
       _handleEntitlementChanged,
       onError: (Object error) {
         if (_isDisposed) return;
@@ -72,51 +61,13 @@ class BillingNotifier extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _status == BillingStatus.loading;
 
-  void attachShieldNotifier(ShieldNotifier? notifier) {
-    if (identical(shieldNotifier, notifier)) return;
-    shieldNotifier = notifier;
-    if (_unlockStatus.isUnlocked) {
-      unawaited(shieldNotifier?.unlockLifetimePro());
-    }
-  }
-
-  void attachAudioNotifier(AudioNotifier? notifier) {
-    if (identical(audioNotifier, notifier)) return;
-    audioNotifier = notifier;
-    if (_unlockStatus.isUnlocked) {
-      audioNotifier?.setProUnlocked(true);
-    }
-  }
-
-  void attachScheduleNotifier(ScheduleNotifier? notifier) {
-    if (identical(scheduleNotifier, notifier)) return;
-    scheduleNotifier = notifier;
-    if (_unlockStatus.isUnlocked) {
-      unawaited(scheduleNotifier?.unlockLifetimePro());
-    }
-  }
-
-  bool _isInitialized = false;
-
-  void attachThemeNotifier(ThemeNotifier? notifier) {
-    if (identical(themeNotifier, notifier)) return;
-    themeNotifier = notifier;
-    if (_isInitialized && !_unlockStatus.isUnlocked) {
-      unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
-    }
-  }
-
   /// Loads cached entitlement status and queries product details from the store.
   Future<void> initialize() async {
     try {
-      final cached = await repository.getCachedProStatus();
+      final cached = await watchProEntitlementUseCase.getCachedStatus();
       _unlockStatus = cached;
-      _isInitialized = true;
       if (cached.isUnlocked) {
         _status = BillingStatus.purchased;
-        _propagateProEntitlement();
-      } else {
-        unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
       }
 
       final details = await getProductDetailsUseCase();
@@ -143,6 +94,7 @@ class BillingNotifier extends ChangeNotifier {
     try {
       final updatedStatus = await purchaseLifetimeProUseCase();
       _handleEntitlementChanged(updatedStatus);
+      watchProEntitlementUseCase.notifyEntitlementChanged(updatedStatus);
       return updatedStatus.isUnlocked;
     } on BillingFailureException catch (e) {
       if (!_isDisposed) {
@@ -173,13 +125,17 @@ class BillingNotifier extends ChangeNotifier {
 
     try {
       final updatedStatus = await restorePurchasesUseCase();
-      _handleEntitlementChanged(updatedStatus);
-      if (!_isDisposed && !updatedStatus.isUnlocked) {
+      if (_isDisposed) return updatedStatus.isUnlocked;
+      if (updatedStatus.isUnlocked) {
+        _handleEntitlementChanged(updatedStatus);
+      } else {
+        _unlockStatus = updatedStatus;
         _status = BillingStatus.initial;
         _errorMessage =
             'No previous Lifetime Pro purchase found for this Google account.';
         notifyListeners();
       }
+      watchProEntitlementUseCase.notifyEntitlementChanged(updatedStatus);
       return updatedStatus.isUnlocked;
     } on BillingFailureException catch (e) {
       if (!_isDisposed) {
@@ -211,22 +167,17 @@ class BillingNotifier extends ChangeNotifier {
 
   void _handleEntitlementChanged(ProUnlockStatusEntity updatedStatus) {
     if (_isDisposed) return;
+    final targetStatus =
+        updatedStatus.isUnlocked ? BillingStatus.purchased : BillingStatus.initial;
+    if (_unlockStatus == updatedStatus && _status == targetStatus) {
+      return;
+    }
     _unlockStatus = updatedStatus;
+    _status = targetStatus;
     if (updatedStatus.isUnlocked) {
-      _status = BillingStatus.purchased;
       _errorMessage = null;
-      _propagateProEntitlement();
-    } else {
-      _status = BillingStatus.initial;
-      unawaited(themeNotifier?.validateProAccess(isLifetimePro: false));
     }
     notifyListeners();
-  }
-
-  void _propagateProEntitlement() {
-    unawaited(shieldNotifier?.unlockLifetimePro());
-    audioNotifier?.setProUnlocked(true);
-    unawaited(scheduleNotifier?.unlockLifetimePro());
   }
 
   @override

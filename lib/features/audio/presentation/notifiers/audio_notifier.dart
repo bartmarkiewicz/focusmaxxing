@@ -7,6 +7,8 @@ import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.d
 import 'package:focusmaxxing/features/audio/domain/usecases/play_soundscape_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/set_audio_volume_usecase.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/stop_soundscape_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +27,7 @@ class AudioNotifier extends ChangeNotifier {
   final SetAudioVolumeUseCase setAudioVolumeUseCase;
   final PlayChimeUseCase? playChimeUseCase;
   final IAudioRepository? repository;
+  final WatchProEntitlementUseCase? watchProEntitlementUseCase;
   final SharedPreferences? sharedPreferences;
 
   AudioNotifier({
@@ -33,11 +36,13 @@ class AudioNotifier extends ChangeNotifier {
     required this.setAudioVolumeUseCase,
     this.playChimeUseCase,
     this.repository,
+    this.watchProEntitlementUseCase,
     this.sharedPreferences,
     bool isProUnlocked = false,
   }) {
     _isProUnlocked = isProUnlocked;
     _loadSavedPreferencesSync();
+    _bindEntitlementStream();
   }
 
   SoundscapeEntity _activeSoundscape = SoundscapeEntity.none;
@@ -48,6 +53,7 @@ class AudioNotifier extends ChangeNotifier {
   bool _isDisposed = false;
   int _operationToken = 0;
 
+  StreamSubscription<ProUnlockStatusEntity>? _entitlementSubscription;
   TimerNotifier? _attachedTimerNotifier;
   TimerStatus? _lastTimerStatus;
 
@@ -88,11 +94,26 @@ class AudioNotifier extends ChangeNotifier {
     }
   }
 
+  void _bindEntitlementStream() {
+    final watchEntitlement = watchProEntitlementUseCase;
+    if (watchEntitlement == null) return;
+    _entitlementSubscription = watchEntitlement().listen(
+      (status) {
+        if (!_isDisposed) {
+          setProUnlocked(status.isUnlocked);
+        }
+      },
+      onError: (Object _) {},
+    );
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
     _operationToken++;
     _attachedTimerNotifier?.removeListener(_onTimerChanged);
+    unawaited(_entitlementSubscription?.cancel());
+    _entitlementSubscription = null;
     final repo = repository;
     if (repo != null) {
       unawaited(repo.dispose());
@@ -150,17 +171,7 @@ class AudioNotifier extends ChangeNotifier {
         if (_isPlaying) {
           await stop();
         }
-        final repo = repository;
-        if (repo != null) {
-          final chimeResult = await repo.playChime();
-          chimeResult.fold(
-            (failure) {
-              _errorMessage = failure.message;
-              notifyListeners();
-            },
-            (_) {},
-          );
-        }
+        await playChime();
       case TimerStatus.breakRunning:
         break;
     }

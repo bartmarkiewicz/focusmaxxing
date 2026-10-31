@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,16 +25,12 @@ import 'package:focusmaxxing/features/billing/data/repositories/billing_reposito
 import 'package:focusmaxxing/features/billing/domain/usecases/get_product_details_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/purchase_lifetime_pro_usecase.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/restore_purchases_usecase.dart';
+import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/insights/data/repositories/insights_repository_impl.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
-import 'package:focusmaxxing/features/shield/data/datasources/shield_installed_apps_source.dart';
-import 'package:focusmaxxing/features/shield/data/datasources/shield_local_data_source.dart';
-import 'package:focusmaxxing/features/shield/data/datasources/shield_native_bridge_source.dart';
-import 'package:focusmaxxing/features/shield/data/repositories/shield_repository_impl.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:focusmaxxing/features/schedule/data/datasources/schedule_alarm_data_source.dart';
 import 'package:focusmaxxing/features/schedule/data/datasources/schedule_local_data_source.dart';
 import 'package:focusmaxxing/features/schedule/data/repositories/schedule_repository_impl.dart';
@@ -42,12 +39,21 @@ import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usec
 import 'package:focusmaxxing/features/schedule/domain/usecases/save_schedule_usecase.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/toggle_auto_shield_usecase.dart';
 import 'package:focusmaxxing/features/schedule/presentation/notifiers/schedule_notifier.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_installed_apps_source.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_local_data_source.dart';
+import 'package:focusmaxxing/features/shield/data/datasources/shield_native_bridge_source.dart';
+import 'package:focusmaxxing/features/shield/data/repositories/shield_repository_impl.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/bring_app_to_foreground_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/start_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/stop_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/swap_shield_app_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/watch_overlay_events_usecase.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/data/datasources/session_local_data_source.dart';
 import 'package:focusmaxxing/features/timer/data/repositories/session_repository_impl.dart';
@@ -125,6 +131,8 @@ void main() async {
   final markTaskCompletedUseCase = MarkTaskCompletedUseCase(backlogRepository);
   final widgetSyncService = WidgetSyncServiceImpl();
   final getDailySummaryUseCase = GetDailySummaryUseCase(insightsRepository);
+  final watchProEntitlementUseCase =
+      WatchProEntitlementUseCase(billingRepository);
 
   final timerNotifier = TimerNotifier(
     startSessionUseCase: StartSessionUseCase(sessionRepository),
@@ -166,13 +174,18 @@ void main() async {
     getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepository),
     getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepository),
     toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepository),
+    swapShieldAppUseCase: SwapShieldAppUseCase(shieldRepository),
     checkShieldPermissionsUseCase:
         CheckShieldPermissionsUseCase(shieldRepository),
     requestPermissionUseCase: RequestPermissionUseCase(shieldRepository),
+    startShieldServiceUseCase: StartShieldServiceUseCase(shieldRepository),
+    stopShieldServiceUseCase: StopShieldServiceUseCase(shieldRepository),
     syncShieldWithOverlayUseCase:
         SyncShieldWithOverlayUseCase(shieldRepository),
-    repository: shieldRepository,
+    bringAppToForegroundUseCase: BringAppToForegroundUseCase(shieldRepository),
+    watchOverlayEventsUseCase: WatchOverlayEventsUseCase(shieldRepository),
     checkScheduleActiveNowUseCase: checkScheduleActiveNowUseCase,
+    watchProEntitlementUseCase: watchProEntitlementUseCase,
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
@@ -182,6 +195,7 @@ void main() async {
     setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepository),
     playChimeUseCase: PlayChimeUseCase(audioRepository),
     repository: audioRepository,
+    watchProEntitlementUseCase: watchProEntitlementUseCase,
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
 
@@ -190,24 +204,21 @@ void main() async {
     saveScheduleUseCase: SaveScheduleUseCase(scheduleRepository),
     toggleAutoShieldUseCase: ToggleAutoShieldUseCase(scheduleRepository),
     checkScheduleActiveNowUseCase: checkScheduleActiveNowUseCase,
-    repository: scheduleRepository,
+    watchProEntitlementUseCase: watchProEntitlementUseCase,
     shieldNotifier: shieldNotifier,
     sharedPreferences: sharedPreferences,
   );
 
   final themeNotifier = ThemeNotifier(
     sharedPreferences: sharedPreferences,
+    watchProEntitlementUseCase: watchProEntitlementUseCase,
   );
 
   final billingNotifier = BillingNotifier(
     getProductDetailsUseCase: GetProductDetailsUseCase(billingRepository),
     purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(billingRepository),
     restorePurchasesUseCase: RestorePurchasesUseCase(billingRepository),
-    repository: billingRepository,
-    shieldNotifier: shieldNotifier,
-    audioNotifier: audioNotifier,
-    scheduleNotifier: scheduleNotifier,
-    themeNotifier: themeNotifier,
+    watchProEntitlementUseCase: watchProEntitlementUseCase,
   );
 
   runApp(
@@ -248,6 +259,15 @@ class FocusmaxxingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    BillingRepositoryImpl? defaultBillingRepo;
+    BillingRepositoryImpl resolveDefaultBillingRepo() =>
+        defaultBillingRepo ??= _createDefaultBillingRepository();
+
+    WatchProEntitlementUseCase? defaultWatchProEntitlement;
+    WatchProEntitlementUseCase resolveDefaultWatchProEntitlement() =>
+        defaultWatchProEntitlement ??=
+            WatchProEntitlementUseCase(resolveDefaultBillingRepo());
+
     return MultiProvider(
       providers: [
         if (timerNotifier case final notifier?)
@@ -272,9 +292,15 @@ class FocusmaxxingApp extends StatelessWidget {
           ChangeNotifierProvider<ShieldNotifier>.value(value: notifier)
         else
           ChangeNotifierProxyProvider<TimerNotifier, ShieldNotifier>(
-            create: (_) => _createDefaultShieldNotifier(),
+            create: (_) => _createDefaultShieldNotifier(
+              watchProEntitlementUseCase: resolveDefaultWatchProEntitlement(),
+            ),
             update: (_, timer, shield) {
-              final resolved = shield ?? _createDefaultShieldNotifier();
+              final resolved = shield ??
+                  _createDefaultShieldNotifier(
+                    watchProEntitlementUseCase:
+                        resolveDefaultWatchProEntitlement(),
+                  );
               resolved.attachTimerNotifier(timer);
               return resolved;
             },
@@ -283,9 +309,15 @@ class FocusmaxxingApp extends StatelessWidget {
           ChangeNotifierProvider<AudioNotifier>.value(value: notifier)
         else
           ChangeNotifierProxyProvider<TimerNotifier, AudioNotifier>(
-            create: (_) => _createDefaultAudioNotifier(),
+            create: (_) => _createDefaultAudioNotifier(
+              watchProEntitlementUseCase: resolveDefaultWatchProEntitlement(),
+            ),
             update: (_, timer, audio) {
-              final resolved = audio ?? _createDefaultAudioNotifier();
+              final resolved = audio ??
+                  _createDefaultAudioNotifier(
+                    watchProEntitlementUseCase:
+                        resolveDefaultWatchProEntitlement(),
+                  );
               resolved.attachTimerNotifier(timer);
               return resolved;
             },
@@ -294,9 +326,15 @@ class FocusmaxxingApp extends StatelessWidget {
           ChangeNotifierProvider<ScheduleNotifier>.value(value: notifier)
         else
           ChangeNotifierProxyProvider<ShieldNotifier, ScheduleNotifier>(
-            create: (_) => _createDefaultScheduleNotifier(),
+            create: (_) => _createDefaultScheduleNotifier(
+              watchProEntitlementUseCase: resolveDefaultWatchProEntitlement(),
+            ),
             update: (_, shield, schedule) {
-              final resolved = schedule ?? _createDefaultScheduleNotifier();
+              final resolved = schedule ??
+                  _createDefaultScheduleNotifier(
+                    watchProEntitlementUseCase:
+                        resolveDefaultWatchProEntitlement(),
+                  );
               resolved.attachShieldNotifier(shield);
               return resolved;
             },
@@ -305,23 +343,18 @@ class FocusmaxxingApp extends StatelessWidget {
           ChangeNotifierProvider<ThemeNotifier>.value(value: notifier)
         else
           ChangeNotifierProvider<ThemeNotifier>(
-            create: (_) => _createDefaultThemeNotifier(),
+            create: (_) => _createDefaultThemeNotifier(
+              watchProEntitlementUseCase: resolveDefaultWatchProEntitlement(),
+            ),
           ),
         if (billingNotifier case final notifier?)
           ChangeNotifierProvider<BillingNotifier>.value(value: notifier)
         else
-          ChangeNotifierProxyProvider4<ShieldNotifier, AudioNotifier,
-              ScheduleNotifier, ThemeNotifier, BillingNotifier>(
-            create: (_) => _createDefaultBillingNotifier(),
-            update: (_, shield, audio, schedule, theme, billing) {
-              final resolved = billing ?? _createDefaultBillingNotifier();
-              resolved
-                ..attachShieldNotifier(shield)
-                ..attachAudioNotifier(audio)
-                ..attachScheduleNotifier(schedule)
-                ..attachThemeNotifier(theme);
-              return resolved;
-            },
+          ChangeNotifierProvider<BillingNotifier>(
+            create: (_) => _createDefaultBillingNotifier(
+              billingRepository: resolveDefaultBillingRepo(),
+              watchProEntitlementUseCase: resolveDefaultWatchProEntitlement(),
+            ),
           ),
       ],
       child: DynamicColorBuilder(
@@ -343,6 +376,13 @@ class FocusmaxxingApp extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  static BillingRepositoryImpl _createDefaultBillingRepository() {
+    return BillingRepositoryImpl(
+      iapClient: const InAppPurchaseClientImpl(),
+      localCacheSource: const BillingLocalCacheSourceImpl(),
     );
   }
 
@@ -395,7 +435,9 @@ class FocusmaxxingApp extends StatelessWidget {
     );
   }
 
-  static ShieldNotifier _createDefaultShieldNotifier() {
+  static ShieldNotifier _createDefaultShieldNotifier({
+    WatchProEntitlementUseCase? watchProEntitlementUseCase,
+  }) {
     final shieldRepo = ShieldRepositoryImpl(
       localDataSource: ShieldLocalDataSource(),
       installedAppsSource: const ShieldInstalledAppsSourceImpl(),
@@ -406,15 +448,22 @@ class FocusmaxxingApp extends StatelessWidget {
       getShieldedAppsUseCase: GetShieldedAppsUseCase(shieldRepo),
       getInstalledAppsUseCase: GetInstalledAppsUseCase(shieldRepo),
       toggleShieldAppUseCase: ToggleShieldAppUseCase(shieldRepo),
+      swapShieldAppUseCase: SwapShieldAppUseCase(shieldRepo),
       checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(shieldRepo),
       requestPermissionUseCase: RequestPermissionUseCase(shieldRepo),
+      startShieldServiceUseCase: StartShieldServiceUseCase(shieldRepo),
+      stopShieldServiceUseCase: StopShieldServiceUseCase(shieldRepo),
       syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(shieldRepo),
-      repository: shieldRepo,
+      bringAppToForegroundUseCase: BringAppToForegroundUseCase(shieldRepo),
+      watchOverlayEventsUseCase: WatchOverlayEventsUseCase(shieldRepo),
+      watchProEntitlementUseCase: watchProEntitlementUseCase,
       autoInitialize: false,
     );
   }
 
-  static AudioNotifier _createDefaultAudioNotifier() {
+  static AudioNotifier _createDefaultAudioNotifier({
+    WatchProEntitlementUseCase? watchProEntitlementUseCase,
+  }) {
     final audioRepo = AudioRepositoryImpl();
 
     return AudioNotifier(
@@ -423,25 +472,29 @@ class FocusmaxxingApp extends StatelessWidget {
       setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepo),
       playChimeUseCase: PlayChimeUseCase(audioRepo),
       repository: audioRepo,
+      watchProEntitlementUseCase: watchProEntitlementUseCase,
     );
   }
 
-  static BillingNotifier _createDefaultBillingNotifier() {
-    final billingRepo = BillingRepositoryImpl(
-      iapClient: const InAppPurchaseClientImpl(),
-      localCacheSource: const BillingLocalCacheSourceImpl(),
-    );
+  static BillingNotifier _createDefaultBillingNotifier({
+    BillingRepositoryImpl? billingRepository,
+    WatchProEntitlementUseCase? watchProEntitlementUseCase,
+  }) {
+    final billingRepo = billingRepository ?? _createDefaultBillingRepository();
 
     return BillingNotifier(
       getProductDetailsUseCase: GetProductDetailsUseCase(billingRepo),
       purchaseLifetimeProUseCase: PurchaseLifetimeProUseCase(billingRepo),
       restorePurchasesUseCase: RestorePurchasesUseCase(billingRepo),
-      repository: billingRepo,
+      watchProEntitlementUseCase:
+          watchProEntitlementUseCase ?? WatchProEntitlementUseCase(billingRepo),
       autoInitialize: false,
     );
   }
 
-  static ScheduleNotifier _createDefaultScheduleNotifier() {
+  static ScheduleNotifier _createDefaultScheduleNotifier({
+    WatchProEntitlementUseCase? watchProEntitlementUseCase,
+  }) {
     final localDataSource = ScheduleLocalDataSourceImpl();
     final alarmDataSource = ScheduleAlarmDataSourceImpl();
     final scheduleRepo = ScheduleRepositoryImpl(
@@ -453,12 +506,16 @@ class FocusmaxxingApp extends StatelessWidget {
       getScheduleUseCase: GetScheduleUseCase(scheduleRepo),
       saveScheduleUseCase: SaveScheduleUseCase(scheduleRepo),
       toggleAutoShieldUseCase: ToggleAutoShieldUseCase(scheduleRepo),
-      repository: scheduleRepo,
+      watchProEntitlementUseCase: watchProEntitlementUseCase,
       autoInitialize: false,
     );
   }
 
-  static ThemeNotifier _createDefaultThemeNotifier() {
-    return ThemeNotifier();
+  static ThemeNotifier _createDefaultThemeNotifier({
+    WatchProEntitlementUseCase? watchProEntitlementUseCase,
+  }) {
+    return ThemeNotifier(
+      watchProEntitlementUseCase: watchProEntitlementUseCase,
+    );
   }
 }

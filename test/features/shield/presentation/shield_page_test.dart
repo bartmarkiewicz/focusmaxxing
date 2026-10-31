@@ -8,12 +8,17 @@ import 'package:focusmaxxing/core/theme/app_theme.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 import 'package:focusmaxxing/features/shield/domain/repositories/i_shield_repository.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/bring_app_to_foreground_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/check_shield_permissions_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_installed_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/get_shielded_apps_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/request_permission_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/start_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/stop_shield_service_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/swap_shield_app_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/sync_shield_with_overlay_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/usecases/toggle_shield_app_usecase.dart';
+import 'package:focusmaxxing/features/shield/domain/usecases/watch_overlay_events_usecase.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/pages/shield_page.dart';
 import 'package:focusmaxxing/features/schedule/presentation/widgets/schedule_config_section.dart';
@@ -154,10 +159,14 @@ void main() {
       getShieldedAppsUseCase: GetShieldedAppsUseCase(repository),
       getInstalledAppsUseCase: GetInstalledAppsUseCase(repository),
       toggleShieldAppUseCase: ToggleShieldAppUseCase(repository),
+      swapShieldAppUseCase: SwapShieldAppUseCase(repository),
       checkShieldPermissionsUseCase: CheckShieldPermissionsUseCase(repository),
       requestPermissionUseCase: RequestPermissionUseCase(repository),
+      startShieldServiceUseCase: StartShieldServiceUseCase(repository),
+      stopShieldServiceUseCase: StopShieldServiceUseCase(repository),
       syncShieldWithOverlayUseCase: SyncShieldWithOverlayUseCase(repository),
-      repository: repository,
+      bringAppToForegroundUseCase: BringAppToForegroundUseCase(repository),
+      watchOverlayEventsUseCase: WatchOverlayEventsUseCase(repository),
       sharedPreferences: prefs,
       autoInitialize: false,
     );
