@@ -16,16 +16,20 @@ class MigrationRunner {
     required int targetVersion,
     bool useTransaction = true,
   }) async {
-    final pending = _migrations.where(
-      (m) => m.version > oldVersion && m.version <= targetVersion,
-    );
+    final pending = _migrations
+        .where((m) => m.version > oldVersion && m.version <= targetVersion)
+        .toList(growable: false);
 
-    for (final migration in pending) {
-      if (db is Database && useTransaction) {
-        await db.transaction((txn) async {
+    if (pending.isEmpty) return;
+
+    if (db is Database && useTransaction) {
+      await db.transaction((txn) async {
+        for (final migration in pending) {
           await migration.up(txn);
-        });
-      } else {
+        }
+      });
+    } else {
+      for (final migration in pending) {
         await migration.up(db);
       }
     }

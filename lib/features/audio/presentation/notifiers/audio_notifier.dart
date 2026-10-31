@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/audio/domain/entities/soundscape_entity.dart';
 import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
@@ -14,8 +15,10 @@ class AudioNotifier extends ChangeNotifier {
   static const double defaultVolume = 0.5;
   static const String selectedSoundscapePrefsKey = 'selected_soundscape_id';
   static const String audioVolumePrefsKey = 'ambient_audio_volume';
-  static const String proUnlockedPrefsKey = 'is_lifetime_pro';
-  static const String billingProUnlockedPrefsKey = 'is_pro_unlocked';
+  static const String proUnlockedPrefsKey =
+      ProReceiptVerifier.lifetimeProLegacyPrefsKey;
+  static const String billingProUnlockedPrefsKey =
+      ProReceiptVerifier.proUnlockedPrefsKey;
 
   final PlaySoundscapeUseCase playSoundscapeUseCase;
   final StopSoundscapeUseCase stopSoundscapeUseCase;
@@ -71,9 +74,7 @@ class AudioNotifier extends ChangeNotifier {
       unawaited(setAudioVolumeUseCase(_volume));
     }
 
-    final proLegacy = prefs.getBool(proUnlockedPrefsKey);
-    final proBilling = prefs.getBool(billingProUnlockedPrefsKey);
-    if (proLegacy == true || proBilling == true) {
+    if (ProReceiptVerifier.isProUnlockedInPrefs(prefs)) {
       _isProUnlocked = true;
     }
   }

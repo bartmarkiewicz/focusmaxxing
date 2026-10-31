@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:typed_data';
 
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,29 +15,27 @@ abstract class IBillingLocalCacheSource {
 }
 
 /// [SharedPreferences]-backed implementation of [IBillingLocalCacheSource]
-/// that stores an obfuscated/integrity-signed receipt record alongside the
-/// cross-feature `is_pro_unlocked` and `is_lifetime_pro` flags.
+/// that delegates cryptographic receipt signing and verification to
+/// [ProReceiptVerifier].
 class BillingLocalCacheSourceImpl implements IBillingLocalCacheSource {
   /// Primary boolean key specified by Milestone 3 Phase 3.2.
-  static const String proUnlockedPrefsKey = 'is_pro_unlocked';
+  static const String proUnlockedPrefsKey =
+      ProReceiptVerifier.proUnlockedPrefsKey;
 
   /// Legacy/cross-feature boolean key observed by `ShieldNotifier` and `AudioNotifier`.
-  static const String lifetimeProLegacyPrefsKey = 'is_lifetime_pro';
+  static const String lifetimeProLegacyPrefsKey =
+      ProReceiptVerifier.lifetimeProLegacyPrefsKey;
 
   /// Key storing the encrypted/signed receipt payload.
-  static const String encryptedReceiptPrefsKey = 'billing_encrypted_receipt_v1';
+  static const String encryptedReceiptPrefsKey =
+      ProReceiptVerifier.encryptedReceiptPrefsKey;
 
   /// Key storing purchase timestamp in epoch milliseconds.
-  static const String purchaseDateMsPrefsKey = 'billing_purchase_date_ms';
+  static const String purchaseDateMsPrefsKey =
+      ProReceiptVerifier.purchaseDateMsPrefsKey;
 
   /// Key storing the Google Play order ID.
-  static const String orderIdPrefsKey = 'billing_order_id';
-
-  static const List<int> _cipherKeyBytes = <int>[
-    0x46, 0x4F, 0x43, 0x55, 0x53, 0x4D, 0x41, 0x58, // FOCUSMAX
-    0x58, 0x49, 0x4E, 0x47, 0x5F, 0x50, 0x52, 0x4F, // XING_PRO
-    0x5F, 0x39, 0x39, 0x39, 0x5F, 0x4B, 0x45, 0x59, // _999_KEY
-  ];
+  static const String orderIdPrefsKey = ProReceiptVerifier.orderIdPrefsKey;
 
   final SharedPreferences? sharedPreferences;
 
@@ -50,18 +47,33 @@ class BillingLocalCacheSourceImpl implements IBillingLocalCacheSource {
     return sharedPreferences ?? await SharedPreferences.getInstance();
   }
 
+  /// Synchronously verifies whether [prefs] holds a valid cryptographic Pro receipt.
+  static bool isProUnlockedInPrefs(SharedPreferences prefs) {
+    return ProReceiptVerifier.isProUnlockedInPrefs(prefs);
+  }
+
+  /// Synchronously encodes and signs [status] into a base64url receipt payload.
+  static String encodeSignedReceipt(ProUnlockStatusEntity status) {
+    return ProReceiptVerifier.encodeSignedReceipt(
+      isUnlocked: status.isUnlocked,
+      purchaseDateMs: status.purchaseDateMs,
+      orderId: status.orderId,
+    );
+  }
+
   @override
   Future<ProUnlockStatusEntity> getProUnlockStatus() async {
     try {
       final prefs = await _resolvePrefs();
-
-      final encryptedPayload = prefs.getString(encryptedReceiptPrefsKey);
-      if (encryptedPayload != null && encryptedPayload.isNotEmpty) {
-        final decodedStatus = _decodeAndVerifyReceipt(encryptedPayload);
-        if (decodedStatus != null) {
-          return decodedStatus;
-        }
+      final verified = ProReceiptVerifier.readVerifiedReceiptSync(prefs);
+      if (!verified.isUnlocked) {
+        return ProUnlockStatusEntity.locked;
       }
+      return ProUnlockStatusEntity(
+        isUnlocked: true,
+        purchaseDateMs: verified.purchaseDateMs,
+        orderId: verified.orderId,
+      );
     } on Exception catch (e) {
       developer.log(
         'Failed to read Pro unlock status from local cache',
@@ -70,33 +82,20 @@ class BillingLocalCacheSourceImpl implements IBillingLocalCacheSource {
       );
       return ProUnlockStatusEntity.locked;
     }
-
-    return ProUnlockStatusEntity.locked;
   }
 
   @override
   Future<void> saveProUnlockStatus(ProUnlockStatusEntity status) async {
     try {
       final prefs = await _resolvePrefs();
-      final encodedReceipt = _encodeAndSignReceipt(status);
-
-      await prefs.setString(encryptedReceiptPrefsKey, encodedReceipt);
-      await prefs.setBool(proUnlockedPrefsKey, status.isUnlocked);
-      await prefs.setBool(lifetimeProLegacyPrefsKey, status.isUnlocked);
-
-      final purchaseDateMs = status.purchaseDateMs;
-      if (purchaseDateMs != null) {
-        await prefs.setInt(purchaseDateMsPrefsKey, purchaseDateMs);
-      } else if (!status.isUnlocked) {
-        await prefs.remove(purchaseDateMsPrefsKey);
-      }
-
-      final orderId = status.orderId;
-      if (orderId != null) {
-        await prefs.setString(orderIdPrefsKey, orderId);
-      } else if (!status.isUnlocked) {
-        await prefs.remove(orderIdPrefsKey);
-      }
+      await ProReceiptVerifier.persistVerifiedReceipt(
+        prefs,
+        VerifiedProReceipt(
+          isUnlocked: status.isUnlocked,
+          purchaseDateMs: status.purchaseDateMs,
+          orderId: status.orderId,
+        ),
+      );
     } on Exception catch (e) {
       developer.log(
         'Failed to persist Pro unlock status to local cache',
@@ -104,83 +103,5 @@ class BillingLocalCacheSourceImpl implements IBillingLocalCacheSource {
         name: 'BillingLocalCacheSource',
       );
     }
-  }
-
-  String _encodeAndSignReceipt(ProUnlockStatusEntity status) {
-    final payloadMap = <String, Object?>{
-      'u': status.isUnlocked,
-      'd': status.purchaseDateMs,
-      'o': status.orderId,
-      'p': ProUnlockStatusEntity.lifetimeProProductId,
-    };
-    final jsonString = jsonEncode(payloadMap);
-    final signature = _computeFnv1aHash(jsonString);
-    final envelope = jsonEncode(<String, Object?>{
-      'p': jsonString,
-      's': signature,
-    });
-    final plainBytes = utf8.encode(envelope);
-    final cipherBytes = _xorTransform(plainBytes);
-    return base64UrlEncode(cipherBytes);
-  }
-
-  ProUnlockStatusEntity? _decodeAndVerifyReceipt(String encoded) {
-    try {
-      final cipherBytes = base64Url.decode(encoded);
-      final plainBytes = _xorTransform(cipherBytes);
-      final envelopeString = utf8.decode(plainBytes);
-      final dynamic decodedEnvelope = jsonDecode(envelopeString);
-      if (decodedEnvelope is! Map<String, dynamic>) {
-        return null;
-      }
-
-      final payloadString = decodedEnvelope['p'];
-      final signature = decodedEnvelope['s'];
-      if (payloadString is! String || signature is! int) {
-        return null;
-      }
-
-      if (_computeFnv1aHash(payloadString) != signature) {
-        return null;
-      }
-
-      final dynamic payload = jsonDecode(payloadString);
-      if (payload is! Map<String, dynamic>) {
-        return null;
-      }
-
-      final isUnlocked = payload['u'];
-      final purchaseDateMs = payload['d'];
-      final orderId = payload['o'];
-
-      if (isUnlocked is! bool) {
-        return null;
-      }
-
-      return ProUnlockStatusEntity(
-        isUnlocked: isUnlocked,
-        purchaseDateMs: purchaseDateMs is int ? purchaseDateMs : null,
-        orderId: orderId is String ? orderId : null,
-      );
-    } on Exception {
-      return null;
-    }
-  }
-
-  Uint8List _xorTransform(List<int> input) {
-    final output = Uint8List(input.length);
-    for (var i = 0; i < input.length; i++) {
-      output[i] = input[i] ^ _cipherKeyBytes[i % _cipherKeyBytes.length];
-    }
-    return output;
-  }
-
-  int _computeFnv1aHash(String input) {
-    var hash = 0x811c9dc5;
-    for (var i = 0; i < input.length; i++) {
-      hash ^= input.codeUnitAt(i);
-      hash = (hash * 0x01000193) & 0x7fffffff;
-    }
-    return hash;
   }
 }

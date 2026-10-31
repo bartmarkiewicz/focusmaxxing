@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
 import 'package:focusmaxxing/features/schedule/domain/repositories/i_schedule_repository.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
@@ -40,7 +41,8 @@ class ScheduleNotifier extends ChangeNotifier {
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
-    _isPro = sharedPreferences?.getBool(proUnlockedPrefsKey) ?? false;
+    final prefs = sharedPreferences;
+    _isPro = prefs != null && ProReceiptVerifier.isProUnlockedInPrefs(prefs);
     if (autoInitialize) {
       unawaited(loadSchedule());
     }
@@ -199,7 +201,7 @@ class ScheduleNotifier extends ChangeNotifier {
     _isPro = true;
     _requiresProPrompt = false;
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
-    await prefs.setBool(proUnlockedPrefsKey, true);
+    await ProReceiptVerifier.ensureUnlockedInPrefs(prefs);
     notifyListeners();
   }
 
@@ -241,6 +243,6 @@ class ScheduleNotifier extends ChangeNotifier {
 
   Future<void> _loadProStatus() async {
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
-    _isPro = prefs.getBool(proUnlockedPrefsKey) ?? _isPro;
+    _isPro = ProReceiptVerifier.isProUnlockedInPrefs(prefs) || _isPro;
   }
 }

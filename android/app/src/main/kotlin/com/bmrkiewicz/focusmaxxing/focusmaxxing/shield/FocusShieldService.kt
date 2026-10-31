@@ -21,6 +21,7 @@ import android.provider.Settings
 import android.telecom.TelecomManager
 import androidx.core.app.NotificationCompat
 import com.bmrkiewicz.focusmaxxing.focusmaxxing.MainActivity
+import com.bmrkiewicz.focusmaxxing.focusmaxxing.R
 import flutter.overlay.window.flutter_overlay_window.OverlayService
 import flutter.overlay.window.flutter_overlay_window.WindowSetup
 import io.flutter.FlutterInjector
@@ -50,6 +51,7 @@ class FocusShieldService : Service() {
         const val OVERLAY_CACHED_ENGINE_ID = "myCachedEngine"
         private const val FULL_COVER_SIZE = -1999
         private const val EMERGENCY_PASS_DURATION_MS = 120_000L
+        private const val MAX_EVENT_LOOKBACK_MS = 60_000L
         private const val SHIELD_PREFS_NAME = "focusmaxxing_shield_prefs"
         private const val PREF_EMERGENCY_PASS_LAST_USED_DATE = "emergency_pass_last_used_date"
 
@@ -430,7 +432,7 @@ class FocusShieldService : Service() {
 
         if (!isRunning) {
             isRunning = true
-            lastProcessedEventTime = System.currentTimeMillis() - 500L
+            lastProcessedEventTime = System.currentTimeMillis() - MAX_EVENT_LOOKBACK_MS
             createNotificationChannel()
             lastNotificationText = notificationText
             lastNotificationTargetEndMs = if (!isScheduled && !isDegraded && !currentIsPaused) targetEndTimeEpochMs else 0L
@@ -530,7 +532,7 @@ class FocusShieldService : Service() {
                         // Allow critical emergency/dialer/clock packages even in Maximum Focus
                         var emergencyForeground = false
                         if (usageStatsManager != null && hasUsageStatsPermission()) {
-                            val queryStart = maxOf(lastProcessedEventTime - 250L, now - 2500L)
+                            val queryStart = maxOf(lastProcessedEventTime - 250L, now - MAX_EVENT_LOOKBACK_MS)
                             val events = usageStatsManager.queryEvents(queryStart, now)
                             if (events != null) {
                                 val event = UsageEvents.Event()
@@ -539,18 +541,21 @@ class FocusShieldService : Service() {
                                 while (events.hasNextEvent()) {
                                     events.getNextEvent(event)
                                     if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED &&
-                                        event.timeStamp > lastProcessedEventTime
+                                        event.timeStamp > lastProcessedEventTime &&
+                                        event.timeStamp >= latestTs
                                     ) {
                                         resumedPkg = event.packageName
-                                        if (event.timeStamp > latestTs) {
-                                            latestTs = event.timeStamp
-                                        }
+                                        latestTs = event.timeStamp
                                     }
                                 }
                                 if (latestTs > lastProcessedEventTime) {
                                     lastProcessedEventTime = latestTs
                                 }
-                                if (resumedPkg != null && isExemptPackage(applicationContext, resumedPkg)) {
+                                if (resumedPkg != null) {
+                                    lastResumedPackage = resumedPkg
+                                }
+                                val activePkg = resumedPkg ?: lastResumedPackage
+                                if (activePkg != null && isExemptPackage(applicationContext, activePkg)) {
                                     emergencyForeground = true
                                     if (OverlayService.isRunning) {
                                         withContext(Dispatchers.Main) {
@@ -578,7 +583,7 @@ class FocusShieldService : Service() {
                     }
 
                     if (usageStatsManager != null && blockedPackages.isNotEmpty()) {
-                        val queryStart = maxOf(lastProcessedEventTime - 250L, now - 2500L)
+                        val queryStart = maxOf(lastProcessedEventTime - 250L, now - MAX_EVENT_LOOKBACK_MS)
                         val events = usageStatsManager.queryEvents(queryStart, now)
                         if (events != null) {
                             val event = UsageEvents.Event()
@@ -588,12 +593,11 @@ class FocusShieldService : Service() {
                             while (events.hasNextEvent()) {
                                 events.getNextEvent(event)
                                 if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED &&
-                                    event.timeStamp > lastProcessedEventTime
+                                    event.timeStamp > lastProcessedEventTime &&
+                                    event.timeStamp >= latestTimestamp
                                 ) {
                                     resumedPackage = event.packageName
-                                    if (event.timeStamp > latestTimestamp) {
-                                        latestTimestamp = event.timeStamp
-                                    }
+                                    latestTimestamp = event.timeStamp
                                 }
                             }
 
@@ -603,12 +607,16 @@ class FocusShieldService : Service() {
 
                             if (resumedPackage != null) {
                                 lastResumedPackage = resumedPackage
-                                if (resumedPackage != packageName &&
-                                    !isExemptPackage(applicationContext, resumedPackage) &&
-                                    blockedPackages.contains(resumedPackage)
+                            }
+
+                            val activeForeground = resumedPackage ?: lastResumedPackage
+                            if (activeForeground != null) {
+                                if (activeForeground != packageName &&
+                                    !isExemptPackage(applicationContext, activeForeground) &&
+                                    blockedPackages.contains(activeForeground)
                                 ) {
                                     triggerOverlay()
-                                } else if (!blockedPackages.contains(resumedPackage) &&
+                                } else if (!blockedPackages.contains(activeForeground) &&
                                     OverlayService.isRunning &&
                                     !currentIsMaximumFocus
                                 ) {
@@ -729,7 +737,7 @@ class FocusShieldService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Brainrot Shield Active")
             .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)

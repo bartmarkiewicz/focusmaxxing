@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:focusmaxxing/core/constants/schedule_constants.dart';
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/check_schedule_active_now_usecase.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
@@ -23,7 +24,8 @@ enum ShieldToggleResult {
 
 class ShieldNotifier extends ChangeNotifier {
   static const int freeTierAppCap = 2;
-  static const String proUnlockedPrefsKey = 'is_lifetime_pro';
+  static const String proUnlockedPrefsKey =
+      ProReceiptVerifier.lifetimeProLegacyPrefsKey;
   static const String maximumFocusPrefsKey = 'is_maximum_focus_enabled';
 
   final GetShieldedAppsUseCase getShieldedAppsUseCase;
@@ -48,9 +50,10 @@ class ShieldNotifier extends ChangeNotifier {
     this.sharedPreferences,
     bool autoInitialize = true,
   }) {
-    _isPro = sharedPreferences?.getBool(proUnlockedPrefsKey) ?? false;
+    final prefs = sharedPreferences;
+    _isPro = prefs != null && ProReceiptVerifier.isProUnlockedInPrefs(prefs);
     _isMaximumFocusEnabled =
-        sharedPreferences?.getBool(maximumFocusPrefsKey) ?? false;
+        prefs?.getBool(maximumFocusPrefsKey) ?? false;
     _bindOverlayEvents();
     if (autoInitialize) {
       unawaited(refresh());
@@ -354,7 +357,7 @@ class ShieldNotifier extends ChangeNotifier {
     _isPro = true;
     _requiresUpgradePrompt = false;
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
-    await prefs.setBool(proUnlockedPrefsKey, true);
+    await ProReceiptVerifier.ensureUnlockedInPrefs(prefs);
 
     final candidate = _pendingSwapCandidate;
     _pendingSwapCandidate = null;
@@ -493,7 +496,7 @@ class ShieldNotifier extends ChangeNotifier {
 
   Future<void> _loadProStatus() async {
     final prefs = sharedPreferences ?? await SharedPreferences.getInstance();
-    _isPro = prefs.getBool(proUnlockedPrefsKey) ?? _isPro;
+    _isPro = ProReceiptVerifier.isProUnlockedInPrefs(prefs) || _isPro;
     _isMaximumFocusEnabled =
         prefs.getBool(maximumFocusPrefsKey) ?? _isMaximumFocusEnabled;
   }

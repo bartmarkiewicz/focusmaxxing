@@ -1,3 +1,5 @@
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
+
 /// Constants for Scheduled Auto-Shield persistence, alarms, and notifications.
 abstract final class ScheduleConstants {
   static const String schedulePrefsKey = 'scheduled_auto_shield_config';
@@ -5,7 +7,8 @@ abstract final class ScheduleConstants {
       'scheduled_auto_shield_active_days';
   static const String schedulePackagesPrefsKey =
       'scheduled_auto_shield_packages';
-  static const String proUnlockedPrefsKey = 'is_lifetime_pro';
+  static const String proUnlockedPrefsKey =
+      ProReceiptVerifier.lifetimeProLegacyPrefsKey;
 
   static const int startAlarmId = 2001;
   static const int endAlarmId = 2002;

@@ -442,19 +442,47 @@ void main() {
       },
     );
 
-    test(
-      'unlockLifetimePro is idempotent and does not re-notify when already unlocked without pending candidate',
-      () async {
-        await notifier.unlockLifetimePro();
-        expect(notifier.isPro, isTrue);
+      test(
+        'unlockLifetimePro is idempotent and does not re-notify when already unlocked without pending candidate',
+        () async {
+          await notifier.unlockLifetimePro();
+          expect(notifier.isPro, isTrue);
 
-        var notifyCount = 0;
-        notifier.addListener(() => notifyCount++);
+          var notifyCount = 0;
+          notifier.addListener(() => notifyCount++);
 
-        await notifier.unlockLifetimePro();
-        expect(notifyCount, equals(0));
-      },
-    );
+          await notifier.unlockLifetimePro();
+          expect(notifyCount, equals(0));
+        },
+      );
+
+      test(
+        'ignores tampered plaintext is_lifetime_pro flag when cryptographic receipt is missing',
+        () async {
+          SharedPreferences.setMockInitialValues({
+            ShieldNotifier.proUnlockedPrefsKey: true,
+          });
+          final tamperedPrefs = await SharedPreferences.getInstance();
+
+          final tamperedNotifier = ShieldNotifier(
+            getShieldedAppsUseCase: GetShieldedAppsUseCase(repository),
+            getInstalledAppsUseCase: GetInstalledAppsUseCase(repository),
+            toggleShieldAppUseCase: ToggleShieldAppUseCase(repository),
+            checkShieldPermissionsUseCase:
+                CheckShieldPermissionsUseCase(repository),
+            requestPermissionUseCase: RequestPermissionUseCase(repository),
+            syncShieldWithOverlayUseCase:
+                SyncShieldWithOverlayUseCase(repository),
+            repository: repository,
+            sharedPreferences: tamperedPrefs,
+            autoInitialize: false,
+          );
+          addTearDown(tamperedNotifier.dispose);
+
+          await tamperedNotifier.refresh();
+          expect(tamperedNotifier.isPro, isFalse);
+        },
+      );
 
     test(
       'search query filtering correctly filters allInstalledApps by app title and package name',

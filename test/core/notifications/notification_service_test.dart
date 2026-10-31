@@ -80,6 +80,13 @@ void main() {
   });
 
   group('NotificationService', () {
+    test('uses monochrome @drawable/ic_notification status bar small icon', () {
+      expect(
+        NotificationService.androidSmallIcon,
+        equals('@drawable/ic_notification'),
+      );
+    });
+
     test(
         'showOngoingTimer displays silent low-importance active countdown notification with native chronometer',
         () async {

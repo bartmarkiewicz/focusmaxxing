@@ -50,6 +50,49 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
             return null
         }
 
+        fun calendarToDartWeekday(calendarDayOfWeek: Int): Int {
+            return when (calendarDayOfWeek) {
+                Calendar.MONDAY -> 1
+                Calendar.TUESDAY -> 2
+                Calendar.WEDNESDAY -> 3
+                Calendar.THURSDAY -> 4
+                Calendar.FRIDAY -> 5
+                Calendar.SATURDAY -> 6
+                Calendar.SUNDAY -> 7
+                else -> 1
+            }
+        }
+
+        fun isWithinScheduleWindow(
+            startHour: Int,
+            startMinute: Int,
+            endHour: Int,
+            endMinute: Int,
+            activeDays: List<String>,
+            calendar: Calendar = Calendar.getInstance()
+        ): Boolean {
+            val startTotalMinutes = startHour * 60 + startMinute
+            val endTotalMinutes = endHour * 60 + endMinute
+            if (startTotalMinutes == endTotalMinutes) return false
+
+            val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+            val todayWeekday = calendarToDartWeekday(calendar.get(Calendar.DAY_OF_WEEK))
+
+            return if (startTotalMinutes < endTotalMinutes) {
+                activeDays.contains(todayWeekday.toString()) &&
+                    currentMinutes in startTotalMinutes until endTotalMinutes
+            } else {
+                if (currentMinutes >= startTotalMinutes) {
+                    activeDays.contains(todayWeekday.toString())
+                } else if (currentMinutes < endTotalMinutes) {
+                    val prevWeekday = if (todayWeekday == 1) 7 else todayWeekday - 1
+                    activeDays.contains(prevWeekday.toString())
+                } else {
+                    false
+                }
+            }
+        }
+
         fun scheduleAlarm(context: Context, isStart: Boolean, hour: Int, minute: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val action = if (isStart) ACTION_START_AUTO_SHIELD else ACTION_STOP_AUTO_SHIELD
@@ -71,7 +114,7 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-            if (target.before(now)) {
+            if (!target.after(now)) {
                 target.add(Calendar.DAY_OF_YEAR, 1)
             }
 
@@ -153,16 +196,6 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
                 val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
                 val calendar = Calendar.getInstance()
-                val dartWeekday = when (calendar.get(Calendar.DAY_OF_WEEK)) {
-                    Calendar.MONDAY -> 1
-                    Calendar.TUESDAY -> 2
-                    Calendar.WEDNESDAY -> 3
-                    Calendar.THURSDAY -> 4
-                    Calendar.FRIDAY -> 5
-                    Calendar.SATURDAY -> 6
-                    Calendar.SUNDAY -> 7
-                    else -> 1
-                }
 
                 var startHour = 9
                 var startMinute = 0
@@ -192,7 +225,7 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
 
                 val activeDays = getFlutterStringList(context, "flutter.scheduled_auto_shield_active_days")
                     ?: listOf("1", "2", "3", "4", "5")
-                if (!activeDays.contains(dartWeekday.toString())) {
+                if (!isWithinScheduleWindow(startHour, startMinute, endHour, endMinute, activeDays, calendar)) {
                     return
                 }
 
@@ -257,6 +290,19 @@ class AutoShieldAlarmReceiver : BroadcastReceiver() {
                         val eM = obj.optInt("endMinute", 0)
                         scheduleAlarm(context, true, sH, sM)
                         scheduleAlarm(context, false, eH, eM)
+
+                        val activeDays = getFlutterStringList(context, "flutter.scheduled_auto_shield_active_days")
+                            ?: listOf("1", "2", "3", "4", "5")
+                        if (isWithinScheduleWindow(sH, sM, eH, eM, activeDays) && !FocusShieldService.isRunning) {
+                            val parsedPackages = getFlutterStringList(context, "flutter.scheduled_auto_shield_packages") ?: emptyList()
+                            val timeRangeText = String.format("%02d:%02d - %02d:%02d", sH, sM, eH, eM)
+                            val serviceIntent = Intent(context, FocusShieldService::class.java).apply {
+                                putStringArrayListExtra(FocusShieldService.EXTRA_BLOCKED_PACKAGES, ArrayList(parsedPackages))
+                                putExtra(FocusShieldService.EXTRA_TIME_RANGE, timeRangeText)
+                                putExtra(FocusShieldService.EXTRA_IS_SCHEDULED, true)
+                            }
+                            ContextCompat.startForegroundService(context, serviceIntent)
+                        }
                     }
                 } catch (_: Exception) {}
             }

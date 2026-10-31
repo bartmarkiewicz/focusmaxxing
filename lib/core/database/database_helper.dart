@@ -14,6 +14,7 @@ class DatabaseHelper {
   static const String tableShieldedApps = 'shielded_apps';
 
   static Database? _database;
+  static bool _isMockDatabase = false;
   static Future<Database>? _initFuture;
   static DatabaseFactory? _databaseFactory;
   static MigrationRunner? _customMigrationRunner;
@@ -27,6 +28,7 @@ class DatabaseHelper {
     MigrationRunner? migrationRunner,
   }) {
     _database = db;
+    _isMockDatabase = db != null;
     _initFuture = null;
     _databaseFactory = factory;
     _customMigrationRunner = migrationRunner;
@@ -42,12 +44,14 @@ class DatabaseHelper {
   Future<Database> get database async {
     final currentDb = _database;
     if (currentDb != null) {
-      if (!currentDb.isOpen) {
-        _database = null;
-        _initFuture = null;
+      if (currentDb.isOpen) {
+        return currentDb;
+      }
+      if (_isMockDatabase) {
         throw const DatabaseException('Database is closed');
       }
-      return currentDb;
+      _database = null;
+      _initFuture = null;
     }
     final future = _initFuture ??= _initDatabase();
     try {
@@ -89,7 +93,7 @@ class DatabaseHelper {
     await db.execute('PRAGMA foreign_keys = ON;');
     try {
       await db.rawQuery('PRAGMA journal_mode = WAL;');
-    } catch (_) {
+    } on Exception catch (_) {
       // Ignore if WAL mode is unsupported on the current SQLite driver.
     }
   }
@@ -109,6 +113,7 @@ class DatabaseHelper {
   Future<void> close() async {
     final currentDb = _database;
     _database = null;
+    _isMockDatabase = false;
     _initFuture = null;
     if (currentDb != null && currentDb.isOpen) {
       await currentDb.close();

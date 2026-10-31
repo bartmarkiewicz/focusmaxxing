@@ -19,21 +19,20 @@ void autoShieldStartAlarmCallback() async {
   final activeDays =
       prefs.getStringList(ScheduleConstants.scheduleActiveDaysPrefsKey) ??
           ['1', '2', '3', '4', '5'];
-  if (!activeDays.contains(now.weekday.toString())) {
-    return;
-  }
 
-  const channel = MethodChannel('com.focusmaxxing/shield');
-  final blockedPackages =
-      prefs.getStringList(ScheduleConstants.schedulePackagesPrefsKey) ??
-          <String>[];
+  int? startHour;
+  int? startMinute;
+  int? endHour;
+  int? endMinute;
+  var isEnabled = true;
   String? timeRange;
   try {
     final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
-    final startHour = decoded['startHour'] as int?;
-    final startMinute = decoded['startMinute'] as int?;
-    final endHour = decoded['endHour'] as int?;
-    final endMinute = decoded['endMinute'] as int?;
+    isEnabled = decoded['isEnabled'] as bool? ?? true;
+    startHour = decoded['startHour'] as int?;
+    startMinute = decoded['startMinute'] as int?;
+    endHour = decoded['endHour'] as int?;
+    endMinute = decoded['endMinute'] as int?;
     if (startHour != null &&
         startMinute != null &&
         endHour != null &&
@@ -45,6 +44,31 @@ void autoShieldStartAlarmCallback() async {
       timeRange = '$sH:$sM - $eH:$eM';
     }
   } catch (_) {}
+
+  if (!isEnabled) return;
+
+  var effectiveWeekday = now.weekday;
+  if (startHour != null &&
+      startMinute != null &&
+      endHour != null &&
+      endMinute != null) {
+    final startTotal = startHour * 60 + startMinute;
+    final endTotal = endHour * 60 + endMinute;
+    final currentTotal = now.hour * 60 + now.minute;
+    if (startTotal > endTotal && currentTotal < endTotal) {
+      effectiveWeekday =
+          now.weekday == DateTime.monday ? DateTime.sunday : now.weekday - 1;
+    }
+  }
+
+  if (!activeDays.contains(effectiveWeekday.toString())) {
+    return;
+  }
+
+  const channel = MethodChannel('com.focusmaxxing/shield');
+  final blockedPackages =
+      prefs.getStringList(ScheduleConstants.schedulePackagesPrefsKey) ??
+          <String>[];
 
   try {
     await channel.invokeMethod<bool>('startShield', {
@@ -80,6 +104,7 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
 
   final bool isTestMode;
   final MethodChannel? methodChannel;
+  final DateTime Function() _clock;
   final Future<bool> Function(
     Duration period,
     int id,
@@ -94,9 +119,92 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
   ScheduleAlarmDataSourceImpl({
     this.isTestMode = false,
     this.methodChannel,
+    DateTime Function()? clock,
     this.alarmPeriodicOverride,
     this.alarmCancelOverride,
-  });
+  }) : _clock = clock ?? DateTime.now;
+
+  /// Computes the next start and end alarm times using local calendar arithmetic
+  /// so Daylight Saving Time (23h / 25h days) never causes a 1-hour drift, and
+  /// active overnight windows activate immediately without a 24-hour delay.
+  static ({DateTime nextStart, DateTime nextEnd}) computeNextAlarmTimes(
+    ScheduleConfigEntity schedule,
+    DateTime now,
+  ) {
+    final activeEvaluation = schedule.copyWith(isEnabled: true);
+    if (activeEvaluation.isWithinSchedule(now)) {
+      var nextEnd = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        schedule.endHour,
+        schedule.endMinute,
+      );
+      if (!nextEnd.isAfter(now)) {
+        nextEnd = DateTime(
+          now.year,
+          now.month,
+          now.day + 1,
+          schedule.endHour,
+          schedule.endMinute,
+        );
+      }
+      return (nextStart: now, nextEnd: nextEnd);
+    }
+
+    var dayOffset = 0;
+    var nextStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      schedule.startHour,
+      schedule.startMinute,
+    );
+    if (!nextStart.isAfter(now)) {
+      dayOffset = 1;
+      nextStart = DateTime(
+        now.year,
+        now.month,
+        now.day + 1,
+        schedule.startHour,
+        schedule.startMinute,
+      );
+    }
+
+    if (schedule.activeDays.isNotEmpty) {
+      for (var i = 0; i < 7; i++) {
+        if (schedule.isActiveOn(nextStart.weekday)) {
+          break;
+        }
+        dayOffset++;
+        nextStart = DateTime(
+          now.year,
+          now.month,
+          now.day + dayOffset,
+          schedule.startHour,
+          schedule.startMinute,
+        );
+      }
+    }
+
+    final nextEnd = schedule.isOvernight
+        ? DateTime(
+            nextStart.year,
+            nextStart.month,
+            nextStart.day + 1,
+            schedule.endHour,
+            schedule.endMinute,
+          )
+        : DateTime(
+            nextStart.year,
+            nextStart.month,
+            nextStart.day,
+            schedule.endHour,
+            schedule.endMinute,
+          );
+
+    return (nextStart: nextStart, nextEnd: nextEnd);
+  }
 
   bool get _canUseAlarmManager =>
       methodChannel != null || (!isTestMode && !kIsWeb && Platform.isAndroid);
@@ -117,31 +225,42 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
 
     if (alarmPeriodicOverride != null) {
       try {
-        final now = DateTime.now();
-        var nextStart = DateTime(
-          now.year,
-          now.month,
-          now.day,
+        final now = _clock();
+        final (:nextStart, :nextEnd) = computeNextAlarmTimes(schedule, now);
+        final startAnchor = DateTime(
+          nextStart.year,
+          nextStart.month,
+          nextStart.day,
           schedule.startHour,
           schedule.startMinute,
         );
-        if (nextStart.isBefore(now)) {
-          nextStart = nextStart.add(const Duration(days: 1));
-        }
+        final nextDayStartAnchor = DateTime(
+          nextStart.year,
+          nextStart.month,
+          nextStart.day + 1,
+          schedule.startHour,
+          schedule.startMinute,
+        );
+        final startPeriod = nextDayStartAnchor.difference(startAnchor);
 
-        var nextEnd = DateTime(
-          now.year,
-          now.month,
-          now.day,
+        final endAnchor = DateTime(
+          nextEnd.year,
+          nextEnd.month,
+          nextEnd.day,
           schedule.endHour,
           schedule.endMinute,
         );
-        if (nextEnd.isBefore(now)) {
-          nextEnd = nextEnd.add(const Duration(days: 1));
-        }
+        final nextDayEndAnchor = DateTime(
+          nextEnd.year,
+          nextEnd.month,
+          nextEnd.day + 1,
+          schedule.endHour,
+          schedule.endMinute,
+        );
+        final endPeriod = nextDayEndAnchor.difference(endAnchor);
 
         final startScheduled = await alarmPeriodicOverride!(
-          const Duration(days: 1),
+          startPeriod,
           startAlarmId,
           autoShieldStartAlarmCallback,
           startAt: nextStart,
@@ -151,7 +270,7 @@ class ScheduleAlarmDataSourceImpl implements IScheduleAlarmDataSource {
         );
 
         final endScheduled = await alarmPeriodicOverride!(
-          const Duration(days: 1),
+          endPeriod,
           endAlarmId,
           autoShieldEndAlarmCallback,
           startAt: nextEnd,

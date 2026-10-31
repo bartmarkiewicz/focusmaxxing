@@ -126,5 +126,97 @@ void main() {
         containsAll(['scheduleAlarms', 'cancelAlarms']),
       );
     });
+
+    test(
+        'computeNextAlarmTimes activates immediately when enabled inside an active overnight window before midnight',
+        () {
+      const overnightSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+        activeDays: [1, 2, 3, 4, 5],
+      );
+      final now = DateTime(2026, 10, 26, 23, 30); // Monday 23:30
+
+      final (:nextStart, :nextEnd) =
+          ScheduleAlarmDataSourceImpl.computeNextAlarmTimes(
+        overnightSchedule,
+        now,
+      );
+
+      expect(nextStart, equals(now));
+      expect(nextEnd, equals(DateTime(2026, 10, 27, 6, 0)));
+    });
+
+    test(
+        'computeNextAlarmTimes activates immediately when enabled inside an active overnight window after midnight',
+        () {
+      const overnightSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+        activeDays: [1, 2, 3, 4, 5],
+      );
+      final now = DateTime(2026, 10, 31, 1, 30); // Saturday 01:30 (Friday night window)
+
+      final (:nextStart, :nextEnd) =
+          ScheduleAlarmDataSourceImpl.computeNextAlarmTimes(
+        overnightSchedule,
+        now,
+      );
+
+      expect(nextStart, equals(now));
+      expect(nextEnd, equals(DateTime(2026, 10, 31, 6, 0)));
+    });
+
+    test(
+        'computeNextAlarmTimes schedules next start and next-day end when outside overnight window',
+        () {
+      const overnightSchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 22,
+        startMinute: 0,
+        endHour: 6,
+        endMinute: 0,
+        activeDays: [1, 2, 3, 4, 5],
+      );
+      final now = DateTime(2026, 10, 26, 20, 0); // Monday 20:00
+
+      final (:nextStart, :nextEnd) =
+          ScheduleAlarmDataSourceImpl.computeNextAlarmTimes(
+        overnightSchedule,
+        now,
+      );
+
+      expect(nextStart, equals(DateTime(2026, 10, 26, 22, 0)));
+      expect(nextEnd, equals(DateTime(2026, 10, 27, 6, 0)));
+    });
+
+    test(
+        'computeNextAlarmTimes skips inactive weekend days and preserves wall-clock hour and minute',
+        () {
+      const weekdaySchedule = ScheduleConfigEntity(
+        isEnabled: true,
+        startHour: 9,
+        startMinute: 30,
+        endHour: 17,
+        endMinute: 30,
+        activeDays: [1, 2, 3, 4, 5],
+      );
+      final fridayNight = DateTime(2026, 10, 30, 18, 0); // Friday 18:00
+
+      final (:nextStart, :nextEnd) =
+          ScheduleAlarmDataSourceImpl.computeNextAlarmTimes(
+        weekdaySchedule,
+        fridayNight,
+      );
+
+      expect(nextStart, equals(DateTime(2026, 11, 2, 9, 30))); // Monday 09:30
+      expect(nextEnd, equals(DateTime(2026, 11, 2, 17, 30))); // Monday 17:30
+    });
   });
 }

@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/audio/domain/entities/soundscape_entity.dart';
 import 'package:focusmaxxing/features/audio/domain/repositories/i_audio_repository.dart';
 import 'package:focusmaxxing/features/audio/domain/usecases/play_chime_usecase.dart';
@@ -341,12 +342,13 @@ void main() {
     });
 
     test(
-        'loads persisted soundscape, volume, and Pro status and syncs volume to repository',
+        'loads persisted soundscape, volume, and Pro status from verified cryptographic receipt and syncs volume to repository',
         () async {
       SharedPreferences.setMockInitialValues({
         AudioNotifier.selectedSoundscapePrefsKey: 'rain',
         AudioNotifier.audioVolumePrefsKey: 0.75,
-        AudioNotifier.proUnlockedPrefsKey: true,
+        ProReceiptVerifier.encryptedReceiptPrefsKey:
+            ProReceiptVerifier.encodeSignedReceipt(isUnlocked: true),
       });
       final savedPrefs = await SharedPreferences.getInstance();
       final freshRepo = _FakeAudioRepository();
@@ -364,6 +366,28 @@ void main() {
       expect(restoredNotifier.volume, equals(0.75));
       expect(restoredNotifier.isProUnlocked, isTrue);
       expect(freshRepo.volumeHistory, contains(0.75));
+    });
+
+    test(
+        'ignores tampered plaintext Pro booleans when cryptographic receipt is absent',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        AudioNotifier.proUnlockedPrefsKey: true,
+        AudioNotifier.billingProUnlockedPrefsKey: true,
+      });
+      final savedPrefs = await SharedPreferences.getInstance();
+      final freshRepo = _FakeAudioRepository();
+
+      final restoredNotifier = AudioNotifier(
+        playSoundscapeUseCase: PlaySoundscapeUseCase(freshRepo),
+        stopSoundscapeUseCase: StopSoundscapeUseCase(freshRepo),
+        setAudioVolumeUseCase: SetAudioVolumeUseCase(freshRepo),
+        repository: freshRepo,
+        sharedPreferences: savedPrefs,
+      );
+      addTearDown(restoredNotifier.dispose);
+
+      expect(restoredNotifier.isProUnlocked, isFalse);
     });
 
     test('synchronizes playback with attached TimerNotifier lifecycle',

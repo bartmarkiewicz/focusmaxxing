@@ -14,6 +14,8 @@ class NotificationService {
       ScheduleConstants.autoShieldNotificationId;
   static const int sessionCompletionNotificationId = 1004;
 
+  static const String androidSmallIcon = '@drawable/ic_notification';
+
   static const String legacyTimerChannelId = 'focusmaxxing_timer_channel';
   static const String timerChannelId = 'focusmaxxing_timer_silent_channel';
   static const String timerChannelName = 'Focus Countdown';
@@ -75,8 +77,7 @@ class NotificationService {
       } catch (_) {}
     }
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(androidSmallIcon);
     const darwinSettings = DarwinInitializationSettings();
 
     const initializationSettings = InitializationSettings(

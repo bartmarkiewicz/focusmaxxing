@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
+import 'package:focusmaxxing/core/security/pro_receipt_verifier.dart';
 import 'package:focusmaxxing/features/schedule/domain/entities/schedule_config_entity.dart';
 import 'package:focusmaxxing/features/schedule/domain/repositories/i_schedule_repository.dart';
 import 'package:focusmaxxing/features/schedule/domain/usecases/get_schedule_usecase.dart';
@@ -110,7 +111,10 @@ void main() {
     });
 
     test('pro user can enable auto-shield, arming background alarms', () async {
-      SharedPreferences.setMockInitialValues({'is_lifetime_pro': true});
+      SharedPreferences.setMockInitialValues({
+        ProReceiptVerifier.encryptedReceiptPrefsKey:
+            ProReceiptVerifier.encodeSignedReceipt(isUnlocked: true),
+      });
       final prefs = await SharedPreferences.getInstance();
 
       final notifier = ScheduleNotifier(
@@ -131,6 +135,27 @@ void main() {
       expect(disableSuccess, isTrue);
       expect(notifier.isEnabled, isFalse);
       expect(repository.cancelAlarmsCalled, isTrue);
+    });
+
+    test(
+        'rejects tampered plaintext is_lifetime_pro when cryptographic receipt is missing',
+        () async {
+      SharedPreferences.setMockInitialValues({'is_lifetime_pro': true});
+      final prefs = await SharedPreferences.getInstance();
+
+      final notifier = ScheduleNotifier(
+        getScheduleUseCase: getScheduleUseCase,
+        saveScheduleUseCase: saveScheduleUseCase,
+        toggleAutoShieldUseCase: toggleAutoShieldUseCase,
+        repository: repository,
+        sharedPreferences: prefs,
+        autoInitialize: false,
+      );
+
+      expect(notifier.isPro, isFalse);
+      final success = await notifier.setEnabled(true);
+      expect(success, isFalse);
+      expect(notifier.requiresProPrompt, isTrue);
     });
 
     test('setStartTime validates identical times while allowing overnight schedules', () async {
