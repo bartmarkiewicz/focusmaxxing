@@ -586,42 +586,54 @@ void main() {
     testWidgets(
         'renders active audio mini player during running session when soundscape is selected and toggles playback',
         (tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       final audioRepo = _FakeAudioRepository();
       final audioNotifier = AudioNotifier(
         playSoundscapeUseCase: PlaySoundscapeUseCase(audioRepo),
         stopSoundscapeUseCase: StopSoundscapeUseCase(audioRepo),
         setAudioVolumeUseCase: SetAudioVolumeUseCase(audioRepo),
-      );
+      )..attachTimerNotifier(timerNotifier);
+      addTearDown(audioNotifier.dispose);
       await audioNotifier.selectSoundscape('brown_noise');
 
       await tester.pumpWidget(buildWidget(audioNotifier: audioNotifier));
       await tester.pumpAndSettle();
 
-      // Idle: mini player should not be rendered
       expect(
         find.byKey(const ValueKey('active_audio_mini_player')),
         findsNothing,
       );
 
-      // Start session
       await timerNotifier.startFocusSession('Mini Player Test');
       await tester.pumpAndSettle();
 
-      // Mini player should now be visible with Brown Noise
       expect(
         find.byKey(const ValueKey('active_audio_mini_player')),
         findsOneWidget,
       );
       expect(find.text('Brown Noise'), findsOneWidget);
+      expect(audioNotifier.isPlaying, isTrue);
 
-      // Tap play/pause button
-      await tester.tap(find.byKey(const ValueKey('mini_player_play_pause')));
+      final playPauseFinder =
+          find.byKey(const ValueKey('mini_player_play_pause'));
+      await tester.ensureVisible(playPauseFinder);
       await tester.pumpAndSettle();
+      await tester.tap(playPauseFinder);
+      await tester.pumpAndSettle();
+      expect(audioNotifier.isPlaying, isFalse);
+
+      await tester.tap(playPauseFinder);
+      await tester.pump();
+      expect(audioNotifier.isPlaying, isTrue);
 
       await timerNotifier.cancelSession();
       await tester.pumpAndSettle();
-
-      audioNotifier.dispose();
     });
 
     testWidgets(

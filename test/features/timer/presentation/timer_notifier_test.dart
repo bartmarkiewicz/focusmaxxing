@@ -5,10 +5,12 @@ import 'package:focusmaxxing/core/notifications/notification_service.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/domain/repositories/i_backlog_repository.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/active_session_tombstone_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/recover_active_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,7 @@ class _FakeSessionRepository implements ISessionRepository {
   int? lastUpdatedSessionId;
   String? lastUpdatedStatus;
   int? lastUpdatedDuration;
+  List<SessionEntity> storedSessions = <SessionEntity>[];
 
   @override
   Future<Either<Failure, int>> createSession(SessionEntity session) async {
@@ -42,7 +45,7 @@ class _FakeSessionRepository implements ISessionRepository {
     int startMs,
     int endMs,
   ) async =>
-      const Right<Failure, List<SessionEntity>>([]);
+      Right<Failure, List<SessionEntity>>(storedSessions);
 }
 
 class _FakeBacklogRepository implements IBacklogRepository {
@@ -595,6 +598,284 @@ void main() {
       expect(notifier.linkedBacklogTaskId, isNull);
 
       await notifier.cancelSession();
+    });
+
+    test(
+        'cold-start crash tombstone recovery restores in-progress running session and clears on cancel',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      notifier.setDurationPreset(30 * 60);
+      await notifier.startFocusSession('Crash Recovery Goal',
+          backlogTaskId: 19);
+
+      expect(prefs.getString(TimerNotifier.sessionTombstoneKey), isNotNull);
+
+      final coldStartNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(coldStartNotifier.dispose);
+
+      final recovered = await coldStartNotifier.recoverActiveSession();
+      expect(recovered, isTrue);
+      expect(coldStartNotifier.status, equals(TimerStatus.running));
+      expect(coldStartNotifier.activeSessionId, equals(101));
+      expect(coldStartNotifier.currentTaskGoal, equals('Crash Recovery Goal'));
+      expect(coldStartNotifier.linkedBacklogTaskId, equals(19));
+      expect(coldStartNotifier.targetDurationSeconds, equals(30 * 60));
+      expect(coldStartNotifier.remainingSeconds, greaterThan(0));
+
+      await coldStartNotifier.cancelSession();
+      expect(prefs.getString(TimerNotifier.sessionTombstoneKey), isNull);
+    });
+
+    test(
+        'cold-start crash tombstone recovery transitions expired running session to completed and updates SQLite to LOCKED_IN',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      final pastEndMs = DateTime.now()
+          .subtract(const Duration(minutes: 2))
+          .millisecondsSinceEpoch;
+      final expiredTombstone = ActiveSessionTombstoneEntity(
+        sessionId: 303,
+        status: TombstoneSessionStatus.running,
+        taskGoal: 'Finished While Killed',
+        linkedBacklogTaskId: 11,
+        focusDurationSeconds: 1500,
+        targetDurationSeconds: 1500,
+        remainingSeconds: 600,
+        targetEndTimeEpochMs: pastEndMs,
+        savedAtEpochMs: pastEndMs - 600000,
+      );
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        expiredTombstone.toJson(),
+      );
+
+      final coldStartNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(coldStartNotifier.dispose);
+
+      final recovered = await coldStartNotifier.recoverActiveSession();
+      expect(recovered, isTrue);
+      expect(coldStartNotifier.status, equals(TimerStatus.completed));
+      expect(coldStartNotifier.activeSessionId, equals(303));
+      expect(coldStartNotifier.currentTaskGoal, equals('Finished While Killed'));
+      expect(coldStartNotifier.remainingSeconds, equals(0));
+      expect(sessionRepository.lastUpdatedSessionId, equals(303));
+      expect(sessionRepository.lastUpdatedStatus, equals(SessionStatus.lockedIn));
+      expect(sessionRepository.lastUpdatedDuration, equals(1500));
+    });
+
+    test(
+        'cold-start crash tombstone recovery restores paused session and SQLite fallback when prefs tombstone absent',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      await notifier.startFocusSession('Paused Recovery', backlogTaskId: 5);
+      notifier.pause();
+
+      final pausedNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(pausedNotifier.dispose);
+
+      final recoveredPaused = await pausedNotifier.recoverActiveSession();
+      expect(recoveredPaused, isTrue);
+      expect(pausedNotifier.status, equals(TimerStatus.paused));
+      expect(pausedNotifier.currentTaskGoal, equals('Paused Recovery'));
+      expect(pausedNotifier.linkedBacklogTaskId, equals(5));
+      await pausedNotifier.cancelSession();
+
+      // Verify SQLite fallback via RecoverActiveSessionUseCase when SharedPreferences tombstone is absent
+      final now = DateTime.now();
+      final startMs =
+          now.subtract(const Duration(minutes: 5)).millisecondsSinceEpoch;
+      sessionRepository.storedSessions = <SessionEntity>[
+        SessionEntity(
+          id: 777,
+          taskGoal: 'SQLite Tombstone Goal',
+          sessionType: SessionType.focus,
+          targetDurationSeconds: 1500,
+          actualDurationSeconds: 0,
+          startTimeEpochMs: startMs,
+          endTimeEpochMs: startMs + 1500 * 1000,
+          status: SessionStatus.cancelled,
+        ),
+      ];
+
+      final sqliteRecoveredNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        recoverActiveSessionUseCase:
+            RecoverActiveSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(sqliteRecoveredNotifier.dispose);
+
+      final recovered =
+          await sqliteRecoveredNotifier.recoverActiveSession(now: now);
+      expect(recovered, isTrue);
+      expect(sqliteRecoveredNotifier.status, equals(TimerStatus.running));
+      expect(sqliteRecoveredNotifier.activeSessionId, equals(777));
+      expect(
+        sqliteRecoveredNotifier.currentTaskGoal,
+        equals('SQLite Tombstone Goal'),
+      );
+      await sqliteRecoveredNotifier.cancelSession();
+    });
+
+    test(
+        'cold-start crash tombstone recovery restores completed, breakRunning (active and expired), and breakCompleted states',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime(2026, 10, 31, 14, 0, 0);
+
+      final completedTombstone = ActiveSessionTombstoneEntity(
+        sessionId: 401,
+        status: TombstoneSessionStatus.completed,
+        taskGoal: 'Awaiting Check-In',
+        linkedBacklogTaskId: 7,
+        focusDurationSeconds: 1500,
+        targetDurationSeconds: 1500,
+        remainingSeconds: 0,
+        savedAtEpochMs: now.millisecondsSinceEpoch - 5000,
+      );
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        completedTombstone.toJson(),
+      );
+
+      final completedNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(completedNotifier.dispose);
+      expect(await completedNotifier.recoverActiveSession(now: now), isTrue);
+      expect(completedNotifier.status, equals(TimerStatus.completed));
+      expect(completedNotifier.activeSessionId, equals(401));
+      expect(completedNotifier.currentTaskGoal, equals('Awaiting Check-In'));
+
+      final activeBreakTombstone = ActiveSessionTombstoneEntity(
+        status: TombstoneSessionStatus.breakRunning,
+        taskGoal: 'Post-Focus Break',
+        focusDurationSeconds: 1500,
+        targetDurationSeconds: 300,
+        remainingSeconds: 180,
+        targetEndTimeEpochMs:
+            now.add(const Duration(minutes: 3)).millisecondsSinceEpoch,
+        savedAtEpochMs: now.millisecondsSinceEpoch - 120000,
+      );
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        activeBreakTombstone.toJson(),
+      );
+
+      final breakRunningNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(breakRunningNotifier.dispose);
+      expect(await breakRunningNotifier.recoverActiveSession(now: now), isTrue);
+      expect(breakRunningNotifier.status, equals(TimerStatus.breakRunning));
+      expect(breakRunningNotifier.remainingSeconds, equals(180));
+      breakRunningNotifier.endAllSessions();
+
+      final expiredBreakTombstone = ActiveSessionTombstoneEntity(
+        status: TombstoneSessionStatus.breakRunning,
+        taskGoal: 'Expired Break',
+        focusDurationSeconds: 1500,
+        targetDurationSeconds: 300,
+        remainingSeconds: 60,
+        targetEndTimeEpochMs:
+            now.subtract(const Duration(seconds: 30)).millisecondsSinceEpoch,
+        savedAtEpochMs: now.millisecondsSinceEpoch - 300000,
+      );
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        expiredBreakTombstone.toJson(),
+      );
+
+      final expiredBreakNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(expiredBreakNotifier.dispose);
+      expect(await expiredBreakNotifier.recoverActiveSession(now: now), isTrue);
+      expect(expiredBreakNotifier.status, equals(TimerStatus.breakCompleted));
+      expect(expiredBreakNotifier.remainingSeconds, equals(0));
+
+      final breakCompletedTombstone = ActiveSessionTombstoneEntity(
+        status: TombstoneSessionStatus.breakCompleted,
+        taskGoal: 'Break Already Done',
+        focusDurationSeconds: 1500,
+        targetDurationSeconds: 300,
+        remainingSeconds: 0,
+        savedAtEpochMs: now.millisecondsSinceEpoch - 10000,
+      );
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        breakCompletedTombstone.toJson(),
+      );
+
+      final breakCompletedNotifier = TimerNotifier(
+        startSessionUseCase: StartSessionUseCase(sessionRepository),
+        completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
+        cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+        notificationService: notificationService,
+        prefs: prefs,
+      );
+      addTearDown(breakCompletedNotifier.dispose);
+      expect(
+        await breakCompletedNotifier.recoverActiveSession(now: now),
+        isTrue,
+      );
+      expect(breakCompletedNotifier.status, equals(TimerStatus.breakCompleted));
+    });
+
+    test(
+        'endAllSessions during active session finalizes SQLite status via cancelSessionUseCase and ignores malformed tombstone JSON types',
+        () async {
+      final prefs = await SharedPreferences.getInstance();
+      await notifier.startFocusSession('Session Ended Early');
+      notifier.endAllSessions();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sessionRepository.lastUpdatedSessionId, equals(101));
+      expect(sessionRepository.lastUpdatedStatus, equals(SessionStatus.cancelled));
+
+      await prefs.setString(
+        TimerNotifier.sessionTombstoneKey,
+        '{"status":123,"taskGoal":false,"focusDurationSeconds":"invalid"}',
+      );
+      expect(
+        ActiveSessionTombstoneEntity.tryFromJson(
+          prefs.getString(TimerNotifier.sessionTombstoneKey),
+        ),
+        isNull,
+      );
     });
   });
 }

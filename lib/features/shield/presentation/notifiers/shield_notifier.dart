@@ -168,6 +168,9 @@ class ShieldNotifier extends ChangeNotifier {
     _attachedTimerNotifier?.removeListener(_onTimerChanged);
     _attachedTimerNotifier = timerNotifier;
     timerNotifier.addListener(_onTimerChanged);
+    if (timerNotifier.status != TimerStatus.idle) {
+      unawaited(syncWithTimer(timerNotifier));
+    }
   }
 
   void _onTimerChanged() {
@@ -203,6 +206,10 @@ class ShieldNotifier extends ChangeNotifier {
     );
 
     _syncInstalledAppsActiveFlags();
+    final attachedTimer = _attachedTimerNotifier;
+    if (attachedTimer != null && attachedTimer.status != TimerStatus.idle) {
+      await syncWithTimer(attachedTimer);
+    }
     await _reconcileNativeShieldForActiveSession();
     _isLoading = false;
     notifyListeners();

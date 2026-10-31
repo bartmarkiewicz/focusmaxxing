@@ -329,6 +329,98 @@ void main() {
       // Preceding 2-day streak preserved across Wednesday freeze even though Thursday has 0 sessions so far
       expect(result, const Right<Failure, int>(2));
     });
+
+    test('two consecutive missed weekdays break streak when freeze is exhausted',
+        () async {
+      final monSession = SessionModel(
+        taskGoal: 'Mon Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 12, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 12, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+      fakeDataSource.sessions = [monSession];
+
+      // Tue 2026-10-13 and Wed 2026-10-14 both missed; Thu 2026-10-15 has no session yet
+      final resultNoToday = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 15),
+      );
+      expect(resultNoToday, const Right<Failure, int>(0));
+
+      // Even if Thu 2026-10-15 has a session, Mon is not connected across two consecutive misses
+      final thuSession = SessionModel(
+        taskGoal: 'Thu Goal',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        actualDurationSeconds: 1500,
+        startTimeEpochMs: DateTime(2026, 10, 15, 9, 0).millisecondsSinceEpoch,
+        endTimeEpochMs: DateTime(2026, 10, 15, 9, 25).millisecondsSinceEpoch,
+        status: SessionStatus.lockedIn,
+      );
+      fakeDataSource.sessions = [monSession, thuSession];
+      final resultWithToday = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 15),
+      );
+      expect(resultWithToday, const Right<Failure, int>(1));
+    });
+
+    test(
+        'streak freeze boundary requires 6 completed active days between two missed days',
+        () async {
+      SessionModel sessionOn(int year, int month, int day) {
+        final start = DateTime(year, month, day, 9, 0);
+        return SessionModel(
+          taskGoal: 'Goal $day',
+          sessionType: SessionType.focus,
+          targetDurationSeconds: 1500,
+          actualDurationSeconds: 1500,
+          startTimeEpochMs: start.millisecondsSinceEpoch,
+          endTimeEpochMs: start.add(const Duration(minutes: 25)).millisecondsSinceEpoch,
+          status: SessionStatus.lockedIn,
+        );
+      }
+
+      // Case 1: Only 5 completed days between two missed days (includeWeekends: true)
+      // Oct 10 (completed), Oct 11 (MISSED #2), Oct 12..16 (5 completed days), Oct 17 (MISSED #1), Oct 18 (completed today)
+      fakeDataSource.sessions = [
+        sessionOn(2026, 10, 10),
+        sessionOn(2026, 10, 12),
+        sessionOn(2026, 10, 13),
+        sessionOn(2026, 10, 14),
+        sessionOn(2026, 10, 15),
+        sessionOn(2026, 10, 16),
+        sessionOn(2026, 10, 18),
+      ];
+
+      final fiveDayGapResult = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 18),
+        includeWeekends: true,
+      );
+      // Oct 18 (1) + Oct 17 (frozen) + Oct 16..12 (5) = 6; Oct 11 breaks because daysSinceLastFreeze == 5 < 6
+      expect(fiveDayGapResult, const Right<Failure, int>(6));
+
+      // Case 2: Exactly 6 completed days between two missed days (includeWeekends: true)
+      // Oct 9 (completed), Oct 10 (MISSED #2), Oct 11..16 (6 completed days), Oct 17 (MISSED #1), Oct 18 (completed today)
+      fakeDataSource.sessions = [
+        sessionOn(2026, 10, 9),
+        sessionOn(2026, 10, 11),
+        sessionOn(2026, 10, 12),
+        sessionOn(2026, 10, 13),
+        sessionOn(2026, 10, 14),
+        sessionOn(2026, 10, 15),
+        sessionOn(2026, 10, 16),
+        sessionOn(2026, 10, 18),
+      ];
+
+      final sixDayGapResult = await repository.calculateStreak(
+        referenceDate: DateTime(2026, 10, 18),
+        includeWeekends: true,
+      );
+      // Oct 18 (1) + Oct 17 (frozen #1) + Oct 16..11 (6) + Oct 10 (frozen #2) + Oct 9 (1) = 8
+      expect(sixDayGapResult, const Right<Failure, int>(8));
+    });
   });
 
   group('getRecentSessions', () {

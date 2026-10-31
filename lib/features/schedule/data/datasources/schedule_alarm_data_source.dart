@@ -10,8 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Retained as a backwards-compatibility callback for legacy alarms and the unit test harness.
 /// Production alarms are handled directly by native [AutoShieldAlarmReceiver].
 @pragma('vm:entry-point')
-void autoShieldStartAlarmCallback() async {
-  final now = DateTime.now();
+Future<void> autoShieldStartAlarmCallback([
+  @visibleForTesting DateTime? nowOverride,
+]) async {
+  final now = nowOverride ?? DateTime.now();
   final prefs = await SharedPreferences.getInstance();
   final rawJson = prefs.getString(ScheduleConstants.schedulePrefsKey);
   if (rawJson == null) return;
@@ -27,23 +29,32 @@ void autoShieldStartAlarmCallback() async {
   var isEnabled = true;
   String? timeRange;
   try {
-    final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
-    isEnabled = decoded['isEnabled'] as bool? ?? true;
-    startHour = decoded['startHour'] as int?;
-    startMinute = decoded['startMinute'] as int?;
-    endHour = decoded['endHour'] as int?;
-    endMinute = decoded['endMinute'] as int?;
-    if (startHour != null &&
-        startMinute != null &&
-        endHour != null &&
-        endMinute != null) {
-      final sH = startHour.toString().padLeft(2, '0');
-      final sM = startMinute.toString().padLeft(2, '0');
-      final eH = endHour.toString().padLeft(2, '0');
-      final eM = endMinute.toString().padLeft(2, '0');
-      timeRange = '$sH:$sM - $eH:$eM';
+    final decoded = jsonDecode(rawJson);
+    if (decoded is Map<String, dynamic>) {
+      final rawEnabled = decoded['isEnabled'];
+      if (rawEnabled is bool) {
+        isEnabled = rawEnabled;
+      }
+      final rawStartHour = decoded['startHour'];
+      final rawStartMinute = decoded['startMinute'];
+      final rawEndHour = decoded['endHour'];
+      final rawEndMinute = decoded['endMinute'];
+      if (rawStartHour is int) startHour = rawStartHour;
+      if (rawStartMinute is int) startMinute = rawStartMinute;
+      if (rawEndHour is int) endHour = rawEndHour;
+      if (rawEndMinute is int) endMinute = rawEndMinute;
+      if (startHour != null &&
+          startMinute != null &&
+          endHour != null &&
+          endMinute != null) {
+        final sH = startHour.toString().padLeft(2, '0');
+        final sM = startMinute.toString().padLeft(2, '0');
+        final eH = endHour.toString().padLeft(2, '0');
+        final eM = endMinute.toString().padLeft(2, '0');
+        timeRange = '$sH:$sM - $eH:$eM';
+      }
     }
-  } catch (_) {}
+  } on Exception catch (_) {}
 
   if (!isEnabled) return;
 
@@ -76,21 +87,17 @@ void autoShieldStartAlarmCallback() async {
       'isScheduled': true,
       if (timeRange != null) 'timeRange': timeRange,
     });
-  } catch (_) {
-    // Ignore native background startup errors
-  }
+  } on Exception catch (_) {}
 }
 
 /// Retained as a backwards-compatibility callback for legacy alarms and the unit test harness.
 /// Production alarms are handled directly by native [AutoShieldAlarmReceiver].
 @pragma('vm:entry-point')
-void autoShieldEndAlarmCallback() async {
+Future<void> autoShieldEndAlarmCallback() async {
   const channel = MethodChannel('com.focusmaxxing/shield');
   try {
     await channel.invokeMethod<bool>('stopShield', {'force': true});
-  } catch (_) {
-    // Ignore native background shutdown errors
-  }
+  } on Exception catch (_) {}
 }
 
 abstract interface class IScheduleAlarmDataSource {

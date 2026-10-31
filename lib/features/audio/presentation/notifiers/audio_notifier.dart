@@ -134,6 +134,9 @@ class AudioNotifier extends ChangeNotifier {
     _attachedTimerNotifier = timerNotifier;
     _lastTimerStatus = timerNotifier.status;
     timerNotifier.addListener(_onTimerChanged);
+    if (timerNotifier.status != TimerStatus.idle) {
+      unawaited(_syncWithTimerStatus(timerNotifier.status));
+    }
   }
 
   void _onTimerChanged() {

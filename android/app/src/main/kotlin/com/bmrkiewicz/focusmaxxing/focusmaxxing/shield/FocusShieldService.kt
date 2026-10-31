@@ -9,8 +9,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -29,11 +31,14 @@ import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.FlutterEngineGroup
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -357,6 +362,51 @@ class FocusShieldService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    private val screenInteractiveFlow = MutableStateFlow(true)
+
+    @Volatile
+    private var isScreenReceiverRegistered: Boolean = false
+
+    private val screenStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    screenInteractiveFlow.value = false
+                }
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
+                    screenInteractiveFlow.value = true
+                }
+            }
+        }
+    }
+
+    private fun registerScreenStateReceiver() {
+        if (isScreenReceiverRegistered) return
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        screenInteractiveFlow.value = powerManager?.isInteractive ?: true
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenStateReceiver, filter)
+            }
+            isScreenReceiverRegistered = true
+        } catch (_: Exception) {}
+    }
+
+    private fun unregisterScreenStateReceiver() {
+        if (!isScreenReceiverRegistered) return
+        try {
+            unregisterReceiver(screenStateReceiver)
+        } catch (_: Exception) {}
+        isScreenReceiverRegistered = false
+    }
+
     @Volatile
     private var blockedPackages: Set<String> = emptySet()
 
@@ -437,6 +487,7 @@ class FocusShieldService : Service() {
             lastNotificationText = notificationText
             lastNotificationTargetEndMs = if (!isScheduled && !isDegraded && !currentIsPaused) targetEndTimeEpochMs else 0L
             startForeground(NOTIFICATION_ID, buildForegroundNotification(notificationText))
+            registerScreenStateReceiver()
             startPollingLoop()
         } else {
             updateNotification(notificationText)
@@ -477,8 +528,11 @@ class FocusShieldService : Service() {
             var lastResumedPackage: String? = null
             while (isRunning) {
                 try {
-                    val isInteractive = powerManager?.isInteractive ?: true
-                    if (!isInteractive) {
+                    if (!screenInteractiveFlow.value) {
+                        screenInteractiveFlow.first { it }
+                        continue
+                    }
+                    if (!(powerManager?.isInteractive ?: true)) {
                         delay(2000)
                         continue
                     }
@@ -632,6 +686,8 @@ class FocusShieldService : Service() {
                         isDegraded = false
                         updateNotification(formatSessionNotificationText())
                     }
+                } catch (cancelEx: CancellationException) {
+                    throw cancelEx
                 } catch (securityEx: SecurityException) {
                     if (!isDegraded) {
                         isDegraded = true
@@ -775,6 +831,7 @@ class FocusShieldService : Service() {
         if (instance === this) {
             instance = null
         }
+        unregisterScreenStateReceiver()
         scope.cancel()
 
         dismissOverlayOnly(applicationContext)

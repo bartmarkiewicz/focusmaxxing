@@ -59,6 +59,7 @@ import 'package:focusmaxxing/features/timer/data/datasources/session_local_data_
 import 'package:focusmaxxing/features/timer/data/repositories/session_repository_impl.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/recover_active_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:focusmaxxing/features/widget/data/services/widget_sync_service_impl.dart';
@@ -138,6 +139,7 @@ void main() async {
     startSessionUseCase: StartSessionUseCase(sessionRepository),
     completeSessionUseCase: CompleteSessionUseCase(sessionRepository),
     cancelSessionUseCase: CancelSessionUseCase(sessionRepository),
+    recoverActiveSessionUseCase: RecoverActiveSessionUseCase(sessionRepository),
     notificationService: notificationService,
     markTaskCompletedUseCase: markTaskCompletedUseCase,
     prefs: sharedPreferences,
@@ -198,6 +200,12 @@ void main() async {
     watchProEntitlementUseCase: watchProEntitlementUseCase,
     sharedPreferences: sharedPreferences,
   )..attachTimerNotifier(timerNotifier);
+
+  try {
+    await timerNotifier.recoverActiveSession();
+  } catch (e, st) {
+    debugPrint('Failed to recover active session on startup: $e\n$st');
+  }
 
   final scheduleNotifier = ScheduleNotifier(
     getScheduleUseCase: GetScheduleUseCase(scheduleRepository),
@@ -401,6 +409,7 @@ class FocusmaxxingApp extends StatelessWidget {
       startSessionUseCase: StartSessionUseCase(sessionRepo),
       completeSessionUseCase: CompleteSessionUseCase(sessionRepo),
       cancelSessionUseCase: CancelSessionUseCase(sessionRepo),
+      recoverActiveSessionUseCase: RecoverActiveSessionUseCase(sessionRepo),
       notificationService: NotificationService(),
       markTaskCompletedUseCase: MarkTaskCompletedUseCase(backlogRepo),
       widgetSyncService: widgetSyncService,

@@ -6,9 +6,11 @@ import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/backlog/domain/usecases/mark_task_completed_usecase.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/active_session_tombstone_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/usecases/recover_active_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
 import 'package:focusmaxxing/features/widget/domain/services/i_widget_sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,12 +30,14 @@ class TimerNotifier extends ChangeNotifier {
   static const int cancelHoldTotalMs = 5000;
   static const String recentGoalsKey = 'recent_focus_goals';
   static const String singleSessionModeKey = 'is_single_session_mode';
+  static const String sessionTombstoneKey = 'active_session_tombstone_v1';
 
   final StartSessionUseCase startSessionUseCase;
   final CompleteSessionUseCase completeSessionUseCase;
   final CancelSessionUseCase cancelSessionUseCase;
   final NotificationService notificationService;
   final MarkTaskCompletedUseCase? markTaskCompletedUseCase;
+  final RecoverActiveSessionUseCase? recoverActiveSessionUseCase;
   final SharedPreferences? prefs;
   final IWidgetSyncService? widgetSyncService;
   final GetDailySummaryUseCase? getDailySummaryUseCase;
@@ -45,6 +49,7 @@ class TimerNotifier extends ChangeNotifier {
     required this.cancelSessionUseCase,
     required this.notificationService,
     this.markTaskCompletedUseCase,
+    this.recoverActiveSessionUseCase,
     this.prefs,
     this.widgetSyncService,
     this.getDailySummaryUseCase,
@@ -200,6 +205,7 @@ class TimerNotifier extends ChangeNotifier {
 
           _activeSessionId = sessionId;
           _status = TimerStatus.running;
+          await _persistTombstone();
           _startTicker();
           _updateNotification();
           final targetEnd = _targetEndTime;
@@ -247,6 +253,7 @@ class TimerNotifier extends ChangeNotifier {
     _targetEndTime = null;
     _remainingSeconds = (_remainingDuration.inMilliseconds / 1000).ceil();
     _status = TimerStatus.paused;
+    unawaited(_persistTombstone());
     _updateNotification();
     unawaited(notificationService.cancelSessionCompletionNotification());
     final syncService = widgetSyncService;
@@ -268,6 +275,7 @@ class TimerNotifier extends ChangeNotifier {
     _targetEndTime = DateTime.now().add(_remainingDuration);
     _status = TimerStatus.running;
     cancelHoldProgressNotifier.value = 0.0;
+    unawaited(_persistTombstone());
     _startTicker();
     _updateNotification();
     final targetEnd = _targetEndTime;
@@ -373,6 +381,7 @@ class TimerNotifier extends ChangeNotifier {
       _targetDurationSeconds = _focusDurationSeconds;
       _remainingSeconds = _focusDurationSeconds;
       _remainingDuration = Duration(seconds: _focusDurationSeconds);
+      await _clearTombstone();
       notifyListeners();
 
       final syncService = widgetSyncService;
@@ -499,6 +508,7 @@ class TimerNotifier extends ChangeNotifier {
         _remainingDuration = Duration(seconds: _focusDurationSeconds);
         _targetEndTime = null;
         _currentTaskGoal = '';
+        await _clearTombstone();
         notifyListeners();
       } else {
         // Transition into 5-minute rest mode so UI never stays stuck at 00:00
@@ -507,6 +517,7 @@ class TimerNotifier extends ChangeNotifier {
         _remainingSeconds = defaultBreakSeconds;
         _remainingDuration = const Duration(seconds: defaultBreakSeconds);
         _targetEndTime = DateTime.now().add(_remainingDuration);
+        await _persistTombstone();
         final breakEnd = _targetEndTime;
         if (breakEnd != null) {
           unawaited(
@@ -531,6 +542,18 @@ class TimerNotifier extends ChangeNotifier {
     _cancelHoldStartTime = null;
     cancelHoldProgressNotifier.value = 0.0;
     _targetEndTime = null;
+    final sessionId = _activeSessionId;
+    if (sessionId != null &&
+        (_status == TimerStatus.running || _status == TimerStatus.paused)) {
+      final elapsed = (_targetDurationSeconds - _remainingSeconds)
+          .clamp(0, _targetDurationSeconds);
+      unawaited(
+        cancelSessionUseCase(
+          sessionId: sessionId,
+          actualDurationSeconds: elapsed,
+        ).then((_) {}, onError: (_) {}),
+      );
+    }
     unawaited(
       notificationService.cancelTimerNotification().catchError((Object _) {}),
     );
@@ -544,6 +567,7 @@ class TimerNotifier extends ChangeNotifier {
     _remainingSeconds = _focusDurationSeconds;
     _remainingDuration = Duration(seconds: _focusDurationSeconds);
     _activeSessionId = null;
+    unawaited(_clearTombstone());
     notifyListeners();
   }
 
@@ -576,6 +600,18 @@ class TimerNotifier extends ChangeNotifier {
     _cancelHoldStartTime = null;
     cancelHoldProgressNotifier.value = 0.0;
     _targetEndTime = null;
+    final sessionId = _activeSessionId;
+    if (sessionId != null &&
+        (_status == TimerStatus.running || _status == TimerStatus.paused)) {
+      final elapsed = (_targetDurationSeconds - _remainingSeconds)
+          .clamp(0, _targetDurationSeconds);
+      unawaited(
+        cancelSessionUseCase(
+          sessionId: sessionId,
+          actualDurationSeconds: elapsed,
+        ).then((_) {}, onError: (_) {}),
+      );
+    }
     unawaited(
       notificationService.cancelTimerNotification().catchError((Object _) {}),
     );
@@ -591,6 +627,7 @@ class TimerNotifier extends ChangeNotifier {
     _activeSessionId = null;
     _currentTaskGoal = '';
     _linkedBacklogTaskId = null;
+    unawaited(_clearTombstone());
     notifyListeners();
   }
 
@@ -617,6 +654,7 @@ class TimerNotifier extends ChangeNotifier {
 
       if (_status == TimerStatus.running) {
         _status = TimerStatus.completed;
+        unawaited(_persistTombstone());
         final sessionId = _activeSessionId;
         if (sessionId != null) {
           unawaited(
@@ -640,6 +678,7 @@ class TimerNotifier extends ChangeNotifier {
         _triggerCompletionFeedback();
       } else if (_status == TimerStatus.breakRunning) {
         _status = TimerStatus.breakCompleted;
+        unawaited(_persistTombstone());
         unawaited(
           notificationService
               .cancelTimerNotification()
@@ -661,6 +700,255 @@ class TimerNotifier extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  /// Recovers an active or interrupted session from a persisted crash tombstone
+  /// in [SharedPreferences] or an unfinalized session in SQLite via [recoverActiveSessionUseCase].
+  Future<bool> recoverActiveSession({DateTime? now}) async {
+    if (_status != TimerStatus.idle) return true;
+    final effectiveNow = now ?? DateTime.now();
+
+    try {
+      final sharedPrefs = prefs ?? await SharedPreferences.getInstance();
+      final rawTombstone = sharedPrefs.getString(sessionTombstoneKey);
+      final tombstone = ActiveSessionTombstoneEntity.tryFromJson(rawTombstone);
+      if (tombstone != null) {
+        return await _applyTombstoneRecovery(
+          tombstone,
+          now: effectiveNow,
+          notify: true,
+        );
+      }
+    } on Exception catch (_) {}
+
+    final recoverUseCase = recoverActiveSessionUseCase;
+    if (recoverUseCase == null) return false;
+
+    try {
+      final result = await recoverUseCase(now: effectiveNow);
+      final session = result.fold<SessionEntity?>(
+        (_) => null,
+        (recovered) => recovered,
+      );
+      if (session == null || _status != TimerStatus.idle) return false;
+      final fallbackTombstone = ActiveSessionTombstoneEntity(
+        sessionId: session.id,
+        status: TombstoneSessionStatus.running,
+        taskGoal: session.taskGoal,
+        focusDurationSeconds: session.targetDurationSeconds,
+        targetDurationSeconds: session.targetDurationSeconds,
+        remainingSeconds: session.targetDurationSeconds,
+        targetEndTimeEpochMs: session.endTimeEpochMs,
+        savedAtEpochMs: session.startTimeEpochMs,
+      );
+      return await _applyTombstoneRecovery(
+        fallbackTombstone,
+        now: effectiveNow,
+        notify: true,
+      );
+    } on Exception catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _applyTombstoneRecovery(
+    ActiveSessionTombstoneEntity tombstone, {
+    required DateTime now,
+    required bool notify,
+  }) async {
+    final nowMs = now.millisecondsSinceEpoch;
+    switch (tombstone.status) {
+      case TombstoneSessionStatus.running:
+        _activeSessionId = tombstone.sessionId;
+        _currentTaskGoal = tombstone.taskGoal;
+        _linkedBacklogTaskId = tombstone.linkedBacklogTaskId;
+        _focusDurationSeconds = tombstone.focusDurationSeconds;
+        _targetDurationSeconds = tombstone.targetDurationSeconds;
+
+        final targetEndMs = tombstone.targetEndTimeEpochMs;
+        if (targetEndMs != null && targetEndMs > nowMs) {
+          final targetEnd = DateTime.fromMillisecondsSinceEpoch(targetEndMs);
+          final diff = targetEnd.difference(now);
+          _targetEndTime = targetEnd;
+          _remainingDuration = diff;
+          _remainingSeconds = (diff.inMilliseconds / 1000).ceil();
+          _status = TimerStatus.running;
+          _startTicker();
+          _updateNotification();
+          unawaited(
+            notificationService.scheduleSessionCompletionNotification(
+              targetEndTime: targetEnd,
+              goal: _currentTaskGoal,
+            ),
+          );
+          final syncService = widgetSyncService;
+          if (syncService != null) {
+            unawaited(
+              syncService.updateGlanceableWidget(
+                isRunning: true,
+                targetEndTimeEpochMs: targetEndMs,
+                taskGoal: _currentTaskGoal,
+              ),
+            );
+          }
+          await _persistTombstone();
+        } else {
+          _targetEndTime = null;
+          _remainingDuration = Duration.zero;
+          _remainingSeconds = 0;
+          _status = TimerStatus.completed;
+          final sessionId = _activeSessionId;
+          if (sessionId != null) {
+            try {
+              await completeSessionUseCase(
+                sessionId: sessionId,
+                status: SessionStatus.lockedIn,
+                actualDurationSeconds: _targetDurationSeconds,
+              );
+            } on Exception catch (_) {}
+          }
+          await _persistTombstone();
+          unawaited(
+            notificationService
+                .cancelTimerNotification()
+                .catchError((Object _) {}),
+          );
+          unawaited(
+            notificationService
+                .cancelSessionCompletionNotification()
+                .catchError((Object _) {}),
+          );
+        }
+        if (notify) notifyListeners();
+        return true;
+
+      case TombstoneSessionStatus.paused:
+        _activeSessionId = tombstone.sessionId;
+        _currentTaskGoal = tombstone.taskGoal;
+        _linkedBacklogTaskId = tombstone.linkedBacklogTaskId;
+        _focusDurationSeconds = tombstone.focusDurationSeconds;
+        _targetDurationSeconds = tombstone.targetDurationSeconds;
+        _remainingSeconds =
+            tombstone.remainingSeconds.clamp(1, tombstone.targetDurationSeconds);
+        _remainingDuration = Duration(seconds: _remainingSeconds);
+        _targetEndTime = null;
+        _status = TimerStatus.paused;
+        _updateNotification();
+        if (notify) notifyListeners();
+        return true;
+
+      case TombstoneSessionStatus.completed:
+        _activeSessionId = tombstone.sessionId;
+        _currentTaskGoal = tombstone.taskGoal;
+        _linkedBacklogTaskId = tombstone.linkedBacklogTaskId;
+        _focusDurationSeconds = tombstone.focusDurationSeconds;
+        _targetDurationSeconds = tombstone.targetDurationSeconds;
+        _remainingSeconds = 0;
+        _remainingDuration = Duration.zero;
+        _targetEndTime = null;
+        _status = TimerStatus.completed;
+        if (notify) notifyListeners();
+        return true;
+
+      case TombstoneSessionStatus.breakRunning:
+        _activeSessionId = null;
+        _currentTaskGoal = tombstone.taskGoal;
+        _linkedBacklogTaskId = tombstone.linkedBacklogTaskId;
+        _focusDurationSeconds = tombstone.focusDurationSeconds;
+        _targetDurationSeconds = tombstone.targetDurationSeconds;
+
+        final targetEndMs = tombstone.targetEndTimeEpochMs;
+        if (targetEndMs != null && targetEndMs > nowMs) {
+          final targetEnd = DateTime.fromMillisecondsSinceEpoch(targetEndMs);
+          final diff = targetEnd.difference(now);
+          _targetEndTime = targetEnd;
+          _remainingDuration = diff;
+          _remainingSeconds = (diff.inMilliseconds / 1000).ceil();
+          _status = TimerStatus.breakRunning;
+          _startTicker();
+          _updateBreakNotification();
+        } else {
+          _targetEndTime = null;
+          _remainingDuration = Duration.zero;
+          _remainingSeconds = 0;
+          _status = TimerStatus.breakCompleted;
+          await _persistTombstone();
+          unawaited(
+            notificationService
+                .cancelTimerNotification()
+                .catchError((Object _) {}),
+          );
+          unawaited(
+            notificationService
+                .cancelSessionCompletionNotification()
+                .catchError((Object _) {}),
+          );
+        }
+        if (notify) notifyListeners();
+        return true;
+
+      case TombstoneSessionStatus.breakCompleted:
+        _activeSessionId = null;
+        _currentTaskGoal = tombstone.taskGoal;
+        _linkedBacklogTaskId = tombstone.linkedBacklogTaskId;
+        _focusDurationSeconds = tombstone.focusDurationSeconds;
+        _targetDurationSeconds = tombstone.targetDurationSeconds;
+        _remainingSeconds = 0;
+        _remainingDuration = Duration.zero;
+        _targetEndTime = null;
+        _status = TimerStatus.breakCompleted;
+        if (notify) notifyListeners();
+        return true;
+    }
+  }
+
+  TombstoneSessionStatus? _toTombstoneStatus(TimerStatus status) {
+    switch (status) {
+      case TimerStatus.idle:
+        return null;
+      case TimerStatus.running:
+        return TombstoneSessionStatus.running;
+      case TimerStatus.paused:
+        return TombstoneSessionStatus.paused;
+      case TimerStatus.completed:
+        return TombstoneSessionStatus.completed;
+      case TimerStatus.breakRunning:
+        return TombstoneSessionStatus.breakRunning;
+      case TimerStatus.breakCompleted:
+        return TombstoneSessionStatus.breakCompleted;
+    }
+  }
+
+  Future<void> _persistTombstone() async {
+    final sharedPrefs = prefs;
+    if (sharedPrefs == null) return;
+    final tombstoneStatus = _toTombstoneStatus(_status);
+    if (tombstoneStatus == null) {
+      await _clearTombstone();
+      return;
+    }
+    try {
+      final tombstone = ActiveSessionTombstoneEntity(
+        sessionId: _activeSessionId,
+        status: tombstoneStatus,
+        taskGoal: _currentTaskGoal.isNotEmpty ? _currentTaskGoal : 'Deep Work',
+        linkedBacklogTaskId: _linkedBacklogTaskId,
+        focusDurationSeconds: _focusDurationSeconds,
+        targetDurationSeconds: _targetDurationSeconds,
+        remainingSeconds: _remainingSeconds,
+        targetEndTimeEpochMs: _targetEndTime?.millisecondsSinceEpoch,
+        savedAtEpochMs: DateTime.now().millisecondsSinceEpoch,
+      );
+      await sharedPrefs.setString(sessionTombstoneKey, tombstone.toJson());
+    } on Exception catch (_) {}
+  }
+
+  Future<void> _clearTombstone() async {
+    final sharedPrefs = prefs;
+    if (sharedPrefs == null) return;
+    try {
+      await sharedPrefs.remove(sessionTombstoneKey);
+    } on Exception catch (_) {}
   }
 
   void _triggerCompletionFeedback() {
