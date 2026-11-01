@@ -8,6 +8,7 @@ import 'package:focusmaxxing/features/backlog/presentation/widgets/in_session_qu
 import 'package:focusmaxxing/features/shield/domain/entities/shield_permission_status.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/shield/presentation/widgets/permission_guidance_sheet.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/active_audio_mini_player.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/active_lock_in_banner.dart';
@@ -15,9 +16,9 @@ import 'package:focusmaxxing/features/timer/presentation/widgets/break_info_card
 import 'package:focusmaxxing/features/timer/presentation/widgets/celebration_spark_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/duration_presets_widget.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/goal_anchor_pill.dart';
-import 'package:focusmaxxing/features/timer/presentation/widgets/goal_input_dialog.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/in_session_quick_capture_pill.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/maximum_focus_pill.dart';
+import 'package:focusmaxxing/features/timer/presentation/widgets/multi_target_picker_sheet.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/recent_goal_chips.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/session_checkin_dialog.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/shield_pre_flight_dialog.dart';
@@ -123,14 +124,14 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _handleEditGoal(TimerNotifier timerNotifier) async {
     final durationMinutes = (timerNotifier.targetDurationSeconds / 60).round();
-    final result = await GoalInputDialog.showWithAction(
+    final result = await MultiTargetPickerSheet.show(
       context,
       durationMinutes: durationMinutes,
-      initialGoal: timerNotifier.currentTaskGoal,
+      initialTargets: timerNotifier.currentTargets,
     );
     if (!mounted || result == null) return;
-    if (result.goal.trim().isNotEmpty) {
-      timerNotifier.setTaskGoal(result.goal.trim());
+    if (result.targets.isNotEmpty) {
+      timerNotifier.setTargets(result.targets);
     }
     if (result.startImmediately) {
       await _handleStartLockIn(timerNotifier);
@@ -290,8 +291,14 @@ class _TimerPageState extends State<TimerPage> {
               return Column(
                 children: [
                   if (isRunningOrPaused) ...[
-                    ActiveLockInBanner(
-                      isPaused: status == TimerStatus.paused,
+                    Selector<TimerNotifier, List<SessionTargetAllocation>>(
+                      selector: (_, notifier) => notifier.currentTargets,
+                      builder: (context, targets, _) {
+                        return ActiveLockInBanner(
+                          isPaused: status == TimerStatus.paused,
+                          targets: targets,
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     InSessionQuickCapturePill(
@@ -299,11 +306,16 @@ class _TimerPageState extends State<TimerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  Selector<TimerNotifier, String>(
-                    selector: (_, notifier) => notifier.currentTaskGoal,
-                    builder: (context, currentTaskGoal, _) {
+                  Selector<TimerNotifier,
+                      ({String goal, List<SessionTargetAllocation> targets})>(
+                    selector: (_, notifier) => (
+                      goal: notifier.currentTaskGoal,
+                      targets: notifier.currentTargets,
+                    ),
+                    builder: (context, anchorState, _) {
                       return GoalAnchorPill(
-                        goal: currentTaskGoal,
+                        goal: anchorState.goal,
+                        targets: anchorState.targets,
                         isIdle: isIdle,
                         onTap: () => _handleEditGoal(timerNotifier),
                       );

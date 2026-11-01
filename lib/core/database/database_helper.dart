@@ -1,17 +1,22 @@
 import 'package:focusmaxxing/core/database/migrations/migration_runner.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v1.dart';
 import 'package:focusmaxxing/core/database/migrations/migration_v2.dart';
+import 'package:focusmaxxing/core/database/migrations/migration_v3.dart';
+import 'package:focusmaxxing/core/database/migrations/migration_v4.dart';
 import 'package:focusmaxxing/core/errors/exceptions.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart' hide DatabaseException;
 
 class DatabaseHelper {
   static const String databaseName = 'focusmaxxing.db';
-  static const int databaseVersion = 2;
+  static const int databaseVersion = 4;
 
   static const String tableSessions = 'sessions';
   static const String tableBacklogTasks = 'backlog_tasks';
   static const String tableShieldedApps = 'shielded_apps';
+  static const String tableDailyFocusMetrics = 'daily_focus_metrics';
+  static const String tableFocusTargets = 'focus_targets';
+  static const String tableSessionTargets = 'session_targets';
 
   static Database? _database;
   static bool _isMockDatabase = false;
@@ -39,6 +44,8 @@ class DatabaseHelper {
       MigrationRunner(migrations: const [
         MigrationV1(),
         MigrationV2(),
+        MigrationV3(),
+        MigrationV4(),
       ]);
 
   Future<Database> get database async {

@@ -8,10 +8,12 @@ import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_not
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/active_session_tombstone_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/complete_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/recover_active_session_usecase.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
+import 'package:focusmaxxing/features/timer/domain/utils/target_allocation_balancer.dart';
 import 'package:focusmaxxing/features/widget/domain/services/i_widget_sync_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,8 +66,17 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void clearLinkedBacklogTaskIfMatches(int taskId) {
+    var modified = false;
     if (_linkedBacklogTaskId == taskId) {
       _linkedBacklogTaskId = null;
+      modified = true;
+    }
+    if (_linkedBacklogTaskIds.contains(taskId)) {
+      _linkedBacklogTaskIds =
+          _linkedBacklogTaskIds.where((id) => id != taskId).toList();
+      modified = true;
+    }
+    if (modified) {
       notifyListeners();
     }
   }
@@ -77,7 +88,9 @@ class TimerNotifier extends ChangeNotifier {
   Duration _remainingDuration = const Duration(seconds: defaultFocusSeconds);
   DateTime? _targetEndTime;
   String _currentTaskGoal = '';
+  List<SessionTargetAllocation> _currentTargets = const [];
   int? _linkedBacklogTaskId;
+  List<int> _linkedBacklogTaskIds = const [];
   int? _activeSessionId;
   final ValueNotifier<double> cancelHoldProgressNotifier =
       ValueNotifier<double>(0.0);
@@ -100,7 +113,9 @@ class TimerNotifier extends ChangeNotifier {
   int get targetDurationSeconds => _targetDurationSeconds;
   int get remainingSeconds => _remainingSeconds;
   String get currentTaskGoal => _currentTaskGoal;
+  List<SessionTargetAllocation> get currentTargets => _currentTargets;
   int? get linkedBacklogTaskId => _linkedBacklogTaskId;
+  List<int> get linkedBacklogTaskIds => _linkedBacklogTaskIds;
   List<String> get recentGoals => _recentGoals;
   bool get isSingleSessionMode => _isSingleSessionMode;
   double get cancelHoldProgress => cancelHoldProgressNotifier.value;
@@ -143,6 +158,41 @@ class TimerNotifier extends ChangeNotifier {
   void setTaskGoal(String goal, {int? backlogTaskId}) {
     _currentTaskGoal = goal;
     _linkedBacklogTaskId = backlogTaskId;
+    if (goal.trim().isNotEmpty) {
+      _currentTargets = [
+        SessionTargetAllocation(
+          targetName: goal.trim(),
+          percentage: 100,
+          backlogTaskId: backlogTaskId,
+        ),
+      ];
+      _linkedBacklogTaskIds =
+          backlogTaskId != null ? [backlogTaskId] : const [];
+    } else {
+      _currentTargets = const [];
+      _linkedBacklogTaskIds = const [];
+    }
+    notifyListeners();
+  }
+
+  void setTargets(
+    List<SessionTargetAllocation> targets, {
+    List<int>? backlogTaskIds,
+  }) {
+    _currentTargets = List.unmodifiable(targets);
+    if (backlogTaskIds != null) {
+      _linkedBacklogTaskIds = List.unmodifiable(backlogTaskIds);
+      _linkedBacklogTaskId =
+          backlogTaskIds.isNotEmpty ? backlogTaskIds.first : null;
+    } else {
+      final taskIds = targets
+          .map((t) => t.backlogTaskId)
+          .whereType<int>()
+          .toList();
+      _linkedBacklogTaskIds = List.unmodifiable(taskIds);
+      _linkedBacklogTaskId = taskIds.isNotEmpty ? taskIds.first : null;
+    }
+    _currentTaskGoal = TargetAllocationBalancer.formatGoalSummary(targets);
     notifyListeners();
   }
 
@@ -161,7 +211,27 @@ class TimerNotifier extends ChangeNotifier {
     await setSingleSessionMode(!_isSingleSessionMode);
   }
 
-  Future<bool> startFocusSession(String goal, {int? backlogTaskId}) async {
+  Future<bool> startFocusSessionWithTargets(
+    List<SessionTargetAllocation> targets, {
+    List<int>? backlogTaskIds,
+  }) async {
+    final summary = TargetAllocationBalancer.formatGoalSummary(targets);
+    return startFocusSession(
+      summary,
+      backlogTaskId: backlogTaskIds?.isNotEmpty == true
+          ? backlogTaskIds!.first
+          : (targets.isNotEmpty ? targets.first.backlogTaskId : null),
+      targets: targets,
+      backlogTaskIds: backlogTaskIds,
+    );
+  }
+
+  Future<bool> startFocusSession(
+    String goal, {
+    int? backlogTaskId,
+    List<SessionTargetAllocation>? targets,
+    List<int>? backlogTaskIds,
+  }) async {
     if ((_status != TimerStatus.idle &&
             _status != TimerStatus.breakCompleted &&
             _status != TimerStatus.breakRunning) ||
@@ -175,10 +245,24 @@ class TimerNotifier extends ChangeNotifier {
       final trimmed = goal.trim();
       final effectiveGoal = trimmed.isNotEmpty ? trimmed : 'Deep Work';
 
+      final effectiveTargets = (targets != null && targets.isNotEmpty)
+          ? targets
+          : (_currentTargets.isNotEmpty &&
+                  (trimmed.isEmpty || trimmed == _currentTaskGoal.trim())
+              ? _currentTargets
+              : [
+                  SessionTargetAllocation(
+                    targetName: effectiveGoal,
+                    percentage: 100,
+                    backlogTaskId: backlogTaskId,
+                  ),
+                ]);
+
       final result = await startSessionUseCase(
         taskGoal: effectiveGoal,
         sessionType: SessionType.focus,
         targetDurationSeconds: _focusDurationSeconds,
+        targets: effectiveTargets,
       );
 
       final isSuccess = await result.fold(
@@ -193,7 +277,17 @@ class TimerNotifier extends ChangeNotifier {
         (sessionId) async {
           _periodicTicker?.cancel();
           _currentTaskGoal = effectiveGoal;
-          _linkedBacklogTaskId = backlogTaskId;
+          _currentTargets = List.unmodifiable(effectiveTargets);
+
+          final taskIdsSet = <int>{
+            if (backlogTaskId != null) backlogTaskId,
+            if (backlogTaskIds != null) ...backlogTaskIds,
+            ...effectiveTargets.map((t) => t.backlogTaskId).whereType<int>(),
+          };
+          _linkedBacklogTaskIds = List.unmodifiable(taskIdsSet.toList());
+          _linkedBacklogTaskId =
+              taskIdsSet.isNotEmpty ? taskIdsSet.first : null;
+
           _targetDurationSeconds = _focusDurationSeconds;
           _remainingSeconds = _targetDurationSeconds;
           _remainingDuration = Duration(seconds: _remainingSeconds);
@@ -201,7 +295,11 @@ class TimerNotifier extends ChangeNotifier {
           cancelHoldProgressNotifier.value = 0.0;
           _errorMessage = null;
 
-          await _cacheRecentGoal(_currentTaskGoal);
+          for (final target in effectiveTargets) {
+            if (target.targetName.trim().isNotEmpty) {
+              await _cacheRecentGoal(target.targetName.trim());
+            }
+          }
 
           _activeSessionId = sessionId;
           _status = TimerStatus.running;
@@ -381,6 +479,10 @@ class TimerNotifier extends ChangeNotifier {
       _targetDurationSeconds = _focusDurationSeconds;
       _remainingSeconds = _focusDurationSeconds;
       _remainingDuration = Duration(seconds: _focusDurationSeconds);
+      _currentTaskGoal = '';
+      _currentTargets = const [];
+      _linkedBacklogTaskId = null;
+      _linkedBacklogTaskIds = const [];
       await _clearTombstone();
       notifyListeners();
 
@@ -425,6 +527,7 @@ class TimerNotifier extends ChangeNotifier {
     _activeSessionId = null;
     if (lockedIn || endAllSessions || _isSingleSessionMode) {
       _linkedBacklogTaskId = null;
+      _linkedBacklogTaskIds = const [];
     }
     _targetEndTime = null;
 
@@ -442,19 +545,29 @@ class TimerNotifier extends ChangeNotifier {
           );
         } catch (_) {}
 
-        // Auto-complete linked backlog task only if session was locked in
-        if (lockedIn && taskId != null && completeTask != null) {
-          try {
-            final taskResult = await completeTask(
-              id: taskId,
-              sessionId: sessionId,
-            );
-            taskResult.fold(
-              (failure) => _errorMessage = failure.message,
-              (_) {},
-            );
+        // Batch auto-complete all linked backlog tasks only if session was locked in
+        if (lockedIn && completeTask != null) {
+          final taskIds = <int>{
+            if (taskId != null) taskId,
+            ..._linkedBacklogTaskIds,
+            ..._currentTargets.map((t) => t.backlogTaskId).whereType<int>(),
+          }.toList();
+
+          for (final id in taskIds) {
+            try {
+              final taskResult = await completeTask(
+                id: id,
+                sessionId: sessionId,
+              );
+              taskResult.fold(
+                (failure) => _errorMessage = failure.message,
+                (_) {},
+              );
+            } catch (_) {}
+          }
+          if (taskIds.isNotEmpty) {
             unawaited(backlogNotifier?.loadPendingTasks(showLoading: false));
-          } catch (_) {}
+          }
         }
 
         final syncService = widgetSyncService;
@@ -508,6 +621,9 @@ class TimerNotifier extends ChangeNotifier {
         _remainingDuration = Duration(seconds: _focusDurationSeconds);
         _targetEndTime = null;
         _currentTaskGoal = '';
+        _currentTargets = const [];
+        _linkedBacklogTaskId = null;
+        _linkedBacklogTaskIds = const [];
         await _clearTombstone();
         notifyListeners();
       } else {
@@ -590,7 +706,19 @@ class TimerNotifier extends ChangeNotifier {
           .cancelSessionCompletionNotification()
           .catchError((Object _) {}),
     );
-    return startFocusSession(goal, backlogTaskId: linkedTaskId);
+    final preserveTargets =
+        overrideGoal == null || overrideGoal.trim() == _currentTaskGoal.trim();
+    final targetsToPass = preserveTargets ? _currentTargets : null;
+    final backlogIdsToPass =
+        preserveTargets && _linkedBacklogTaskIds.isNotEmpty
+            ? _linkedBacklogTaskIds
+            : null;
+    return startFocusSession(
+      goal,
+      backlogTaskId: linkedTaskId,
+      targets: targetsToPass,
+      backlogTaskIds: backlogIdsToPass,
+    );
   }
 
   void endAllSessions() {
@@ -626,7 +754,9 @@ class TimerNotifier extends ChangeNotifier {
     _remainingDuration = Duration(seconds: _focusDurationSeconds);
     _activeSessionId = null;
     _currentTaskGoal = '';
+    _currentTargets = const [];
     _linkedBacklogTaskId = null;
+    _linkedBacklogTaskIds = const [];
     unawaited(_clearTombstone());
     notifyListeners();
   }

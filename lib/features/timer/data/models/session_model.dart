@@ -1,4 +1,5 @@
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 
 class SessionModel extends SessionEntity {
   const SessionModel({
@@ -10,9 +11,13 @@ class SessionModel extends SessionEntity {
     required super.startTimeEpochMs,
     required super.endTimeEpochMs,
     required super.status,
+    super.targets = const [],
   });
 
-  factory SessionModel.fromMap(Map<String, dynamic> map) {
+  factory SessionModel.fromMap(
+    Map<String, dynamic> map, [
+    List<SessionTargetAllocation>? targets,
+  ]) {
     return SessionModel(
       id: (map['id'] as num?)?.toInt(),
       taskGoal: map['task_goal']?.toString() ?? 'Deep Work',
@@ -24,6 +29,7 @@ class SessionModel extends SessionEntity {
       startTimeEpochMs: (map['start_time_epoch_ms'] as num?)?.toInt() ?? 0,
       endTimeEpochMs: (map['end_time_epoch_ms'] as num?)?.toInt() ?? 0,
       status: map['status']?.toString() ?? SessionStatus.cancelled,
+      targets: targets ?? const [],
     );
   }
 
@@ -37,6 +43,7 @@ class SessionModel extends SessionEntity {
       startTimeEpochMs: entity.startTimeEpochMs,
       endTimeEpochMs: entity.endTimeEpochMs,
       status: entity.status,
+      targets: entity.targets,
     );
   }
 
@@ -63,6 +70,7 @@ class SessionModel extends SessionEntity {
       startTimeEpochMs: startTimeEpochMs,
       endTimeEpochMs: endTimeEpochMs,
       status: status,
+      targets: targets,
     );
   }
 }

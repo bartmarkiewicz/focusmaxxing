@@ -5,7 +5,9 @@ import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/features/insights/data/repositories/insights_repository_impl.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/timer/data/datasources/session_local_data_source.dart';
+import 'package:focusmaxxing/features/timer/data/models/focus_target_model.dart';
 import 'package:focusmaxxing/features/timer/data/models/session_model.dart';
+import 'package:focusmaxxing/features/timer/data/models/session_target_allocation_model.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 
 class _FakeSessionLocalDataSource implements ISessionLocalDataSource {
@@ -44,6 +46,22 @@ class _FakeSessionLocalDataSource implements ISessionLocalDataSource {
         .map((s) => s.startTimeEpochMs)
         .toList();
   }
+
+  @override
+  Future<List<FocusTargetModel>> getFocusTargets({bool includeArchived = false}) async => [];
+
+  @override
+  Future<FocusTargetModel> findOrCreateFocusTarget(
+    String name, {
+    String colorHex = '#00E5FF',
+  }) async =>
+      FocusTargetModel(name: name, colorHex: colorHex);
+
+  @override
+  Future<List<FocusTargetModel>> getRecentFocusTargets({int limit = 10}) async => [];
+
+  @override
+  Future<List<SessionTargetAllocationModel>> getSessionTargets(int sessionId) async => [];
 }
 
 void main() {

@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/start_session_usecase.dart';
 
@@ -111,6 +112,57 @@ void main() {
       expect(repository.lastCreatedSession?.taskGoal, 'Finish Unit Tests');
       expect(repository.lastCreatedSession?.targetDurationSeconds, 1800);
       expect(repository.lastCreatedSession?.status, SessionStatus.cancelled);
+    });
+
+    test('allows multi-target session with individual targets <= 60 chars whose concatenated summary exceeds 60 chars', () async {
+      const targets = [
+        SessionTargetAllocation(
+          targetName: 'Authentication Bug Fix #12', // 26 chars
+          percentage: 50,
+        ),
+        SessionTargetAllocation(
+          targetName: 'Database Migration Verification Tests', // 37 chars
+          percentage: 50,
+        ),
+      ];
+      // Combined string is 26 + 3 + 37 = 66 chars (> 60)
+
+      final result = await useCase(
+        taskGoal: '',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        targets: targets,
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(repository.lastCreatedSession?.targets.length, 2);
+      expect(
+        repository.lastCreatedSession?.taskGoal,
+        'Authentication Bug Fix #12 • Database Migration Verification Tests',
+      );
+    });
+
+    test('rejects multi-target session when an individual target exceeds 60 characters', () async {
+      final targets = [
+        SessionTargetAllocation(
+          targetName: 'A' * 61,
+          percentage: 100,
+        ),
+      ];
+
+      final result = await useCase(
+        taskGoal: '',
+        sessionType: SessionType.focus,
+        targetDurationSeconds: 1500,
+        targets: targets,
+      );
+
+      expect(
+        result,
+        const Left<Failure, int>(
+          ValidationFailure('Target name cannot exceed 60 characters'),
+        ),
+      );
     });
   });
 }

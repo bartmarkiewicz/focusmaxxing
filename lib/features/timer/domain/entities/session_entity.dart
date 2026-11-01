@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 
 abstract final class SessionType {
   static const String focus = 'FOCUS';
@@ -21,6 +22,7 @@ class SessionEntity extends Equatable {
     required this.startTimeEpochMs,
     required this.endTimeEpochMs,
     required this.status,
+    this.targets = const [],
   });
 
   final int? id;
@@ -31,6 +33,7 @@ class SessionEntity extends Equatable {
   final int startTimeEpochMs;
   final int endTimeEpochMs;
   final String status;
+  final List<SessionTargetAllocation> targets;
 
   SessionEntity copyWith({
     int? id,
@@ -41,6 +44,7 @@ class SessionEntity extends Equatable {
     int? startTimeEpochMs,
     int? endTimeEpochMs,
     String? status,
+    List<SessionTargetAllocation>? targets,
   }) {
     return SessionEntity(
       id: id ?? this.id,
@@ -53,6 +57,7 @@ class SessionEntity extends Equatable {
       startTimeEpochMs: startTimeEpochMs ?? this.startTimeEpochMs,
       endTimeEpochMs: endTimeEpochMs ?? this.endTimeEpochMs,
       status: status ?? this.status,
+      targets: targets ?? this.targets,
     );
   }
 
@@ -66,5 +71,6 @@ class SessionEntity extends Equatable {
         startTimeEpochMs,
         endTimeEpochMs,
         status,
+        targets,
       ];
 }

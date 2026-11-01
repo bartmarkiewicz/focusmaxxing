@@ -342,7 +342,7 @@ void main() {
     });
 
     testWidgets(
-        'tapping goal anchor pill opens GoalInputDialog for editing without starting timer',
+        'tapping goal anchor pill opens MultiTargetPickerSheet for editing without starting timer',
         (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
@@ -351,7 +351,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-          find.text('What ONE thing are you locking in on?'), findsOneWidget);
+          find.text('🎯 What are you locking in on?'), findsOneWidget);
       expect(timerNotifier.status, TimerStatus.idle);
     });
 
