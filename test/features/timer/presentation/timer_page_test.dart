@@ -387,9 +387,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Custom Duration'), findsOneWidget);
-      expect(find.text('Set Duration'), findsOneWidget);
+      expect(find.text('Set duration'), findsOneWidget);
 
-      await tester.tap(find.text('Set Duration'));
+      await tester.tap(find.text('Set duration'));
       await tester.pumpAndSettle();
 
       expect(find.text('Custom Duration'), findsNothing);

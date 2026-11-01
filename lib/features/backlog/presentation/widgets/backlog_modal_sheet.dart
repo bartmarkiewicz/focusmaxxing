@@ -97,28 +97,27 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
     final colorScheme = theme.colorScheme;
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-        ),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 12,
-            bottom: viewInsetsBottom + 16,
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsetsBottom),
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.85,
           ),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-                width: 1,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(
+                top: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
             ),
-          ),
           child: CustomScrollView(
             shrinkWrap: true,
             slivers: [
@@ -294,6 +293,7 @@ class _BacklogModalSheetState extends State<BacklogModalSheet> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

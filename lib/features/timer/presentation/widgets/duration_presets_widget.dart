@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
+import 'package:focusmaxxing/core/ui/sheet.dart';
 import 'package:focusmaxxing/core/ui/tag.dart';
 
 /// Displays quick duration preset tags (15m, 25m, 45m, 60m, Custom) when idle.
@@ -72,9 +75,8 @@ class CustomDurationBottomSheet extends StatefulWidget {
     BuildContext context, {
     required int initialDurationSeconds,
   }) {
-    return showModalBottomSheet<int>(
+    return Sheet.show<int>(
       context: context,
-      isScrollControlled: true,
       builder: (_) => CustomDurationBottomSheet(
         initialDurationSeconds: initialDurationSeconds,
       ),
@@ -86,63 +88,110 @@ class CustomDurationBottomSheet extends StatefulWidget {
       _CustomDurationBottomSheetState();
 }
 
-class _CustomDurationBottomSheetState extends State<CustomDurationBottomSheet> {
+class _CustomDurationBottomSheetState
+    extends State<CustomDurationBottomSheet> {
   late int _selectedMinutes;
 
   @override
   void initState() {
     super.initState();
-    _selectedMinutes = (widget.initialDurationSeconds / 60).round().clamp(1, 180);
+    _selectedMinutes =
+        (widget.initialDurationSeconds / 60).round().clamp(5, 120);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
+    final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Custom Duration',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
+      padding: EdgeInsets.only(bottom: viewInsetsBottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(InstrumentTokens.r3),
+            ),
+            border: Border(
+              top: BorderSide(color: tokens.rule, width: 1),
+              left: BorderSide(color: tokens.rule, width: 1),
+              right: BorderSide(color: tokens.rule, width: 1),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            '$_selectedMinutes min',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.primary,
-            ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: tokens.ruleStrong,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Custom Duration',
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontUi,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.ink,
+                    ),
+                  ),
+                  Text(
+                    '$_selectedMinutes min',
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontMono,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: tokens.accent,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: tokens.accent,
+                  inactiveTrackColor: tokens.rule,
+                  thumbColor: tokens.accent,
+                  trackHeight: 3.0,
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 8),
+                  overlayShape:
+                      const RoundSliderOverlayShape(overlayRadius: 16),
+                ),
+                child: Slider(
+                  value: _selectedMinutes.toDouble(),
+                  min: 5,
+                  max: 120,
+                  divisions: 23,
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedMinutes = val.round();
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              InstrumentButton.primary(
+                label: 'Set duration',
+                icon: const Icon(Icons.check_rounded, size: 18),
+                onPressed: () => Navigator.of(context).pop(_selectedMinutes),
+              ),
+            ],
           ),
-          Slider(
-            value: _selectedMinutes.toDouble(),
-            min: 5,
-            max: 120,
-            divisions: 23,
-            label: '$_selectedMinutes min',
-            onChanged: (val) {
-              setState(() {
-                _selectedMinutes = val.round();
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(_selectedMinutes),
-            child: const Text('Set Duration'),
-          ),
-        ],
+        ),
       ),
     );
   }

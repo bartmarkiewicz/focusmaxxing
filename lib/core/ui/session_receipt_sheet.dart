@@ -160,10 +160,15 @@ class _SessionReceiptSheetState extends State<SessionReceiptSheet> {
       ),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             Center(
               child: Container(
                 width: 32,
@@ -285,6 +290,8 @@ class _SessionReceiptSheetState extends State<SessionReceiptSheet> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

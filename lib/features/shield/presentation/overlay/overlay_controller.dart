@@ -348,6 +348,13 @@ class OverlayController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void cancelBreather() {
+    if (_isDisposed) return;
+    unawaited(HapticFeedback.lightImpact());
+    _breatherStage = OverlayBreatherStage.none;
+    notifyListeners();
+  }
+
   void completeBreather() {
     if (_isDisposed) return;
     _breatherStage = OverlayBreatherStage.decision;

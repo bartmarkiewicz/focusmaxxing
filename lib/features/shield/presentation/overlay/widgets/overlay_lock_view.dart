@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/copy/strings.dart';
 import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
@@ -6,7 +7,7 @@ import 'package:focusmaxxing/core/ui/instrument_button.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/overlay_controller.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/widgets/overlay_theme.dart';
 
-/// Primary Hard-Lock Overlay presentation view designed as a calm, final wall.
+/// Primary Hard-Lock Overlay presentation view designed as a calm, centered, final wall.
 class OverlayLockView extends StatelessWidget {
   const OverlayLockView({
     super.key,
@@ -46,76 +47,124 @@ class OverlayLockView extends StatelessWidget {
         ? 'Session completed'
         : AppStrings.youAreWorkingOn;
 
+    final bottomPadding =
+        math.max(MediaQuery.paddingOf(context).bottom, 28.0) + 16.0;
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: InstrumentTokens.gutter,
-            vertical: InstrumentTokens.s32,
+          padding: EdgeInsets.fromLTRB(
+            InstrumentTokens.gutter,
+            InstrumentTokens.s24,
+            InstrumentTokens.gutter,
+            bottomPadding,
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                headline,
-                style: const TextStyle(
-                  fontFamily: InstrumentTokens.fontMono,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                  color: OverlayTheme.alertColor,
+              const Spacer(flex: 1),
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: OverlayTheme.surfaceElevatedColor,
+                  borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+                  border: Border.all(
+                    color: OverlayTheme.borderColor,
+                    width: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: InstrumentTokens.s16),
-              Text(
-                noticeText,
-                style: const TextStyle(
-                  fontFamily: InstrumentTokens.fontUi,
-                  fontSize: 24,
-                  height: 30 / 24,
-                  fontWeight: FontWeight.w600,
-                  color: OverlayTheme.ink,
+                child: Text(
+                  headline,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: InstrumentTokens.fontMono,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                    color: OverlayTheme.alertColor,
+                  ),
                 ),
               ),
               const SizedBox(height: InstrumentTokens.s20),
               // Prominent digital countdown readout
-              Text(
-                controller.timerDisplay,
-                style: const TextStyle(
-                  fontFamily: InstrumentTokens.fontMono,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w700,
-                  color: OverlayTheme.ink,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-              const SizedBox(height: InstrumentTokens.s12),
-              if (!isBreakMode) ...[
-                Text(
-                  subheadline,
-                  style: const TextStyle(
-                    fontFamily: InstrumentTokens.fontUi,
-                    fontSize: 14,
-                    color: OverlayTheme.subtextColor,
-                  ),
-                ),
-                const SizedBox(height: InstrumentTokens.s4),
-                Text(
-                  '"$goalText"',
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  controller.timerDisplay,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: InstrumentTokens.fontMono,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 48,
+                    fontWeight: FontWeight.w300,
+                    height: 1.0,
                     color: OverlayTheme.ink,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              const SizedBox(height: InstrumentTokens.s16),
+              // Notice headline
+              Text(
+                noticeText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: InstrumentTokens.fontUi,
+                  fontSize: 18,
+                  height: 24 / 18,
+                  fontWeight: FontWeight.w500,
+                  color: OverlayTheme.ink,
+                ),
+              ),
+              const SizedBox(height: InstrumentTokens.s16),
+              // Task Goal Anchor
+              if (!isBreakMode) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: OverlayTheme.surfaceElevatedColor,
+                    borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+                    border: Border.all(
+                      color: OverlayTheme.borderColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        subheadline,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 12,
+                          color: OverlayTheme.subtextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '"$goalText"',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: InstrumentTokens.fontMono,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: OverlayTheme.ink,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-              const Spacer(),
-              // Actions in the thumb zone
+              const Spacer(flex: 2),
+              // Actions in the thumb zone (above the Android home navigation bar)
               InstrumentButton.primary(
                 key: const Key('overlay_return_button'),
                 label: isSessionFinished ? AppStrings.save : AppStrings.backToWork,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
                 onPressed: controller.handleReturn,
               ),
               if (!isSessionFinished) ...[
@@ -124,6 +173,7 @@ class OverlayLockView extends StatelessWidget {
                   child: InstrumentButton.text(
                     key: const Key('overlay_take_breather_button'),
                     label: AppStrings.breatheForAMinute,
+                    icon: const Icon(Icons.air_rounded, size: 16),
                     onPressed: controller.startBreather,
                   ),
                 ),
@@ -137,6 +187,7 @@ class OverlayLockView extends StatelessWidget {
                   onTriggered: controller.handleCancelSession,
                 ),
               ],
+              const Spacer(),
             ],
           ),
         ),

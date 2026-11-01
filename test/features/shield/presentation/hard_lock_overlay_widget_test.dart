@@ -638,5 +638,38 @@ void main() {
       expect(calls, contains('grantEmergencyPass'));
       expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
     });
+
+    testWidgets('tapping cancel button during breathing exits back to lock screen',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay());
+
+      await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('overlay_breather_cancel_button')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsNothing);
+      expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
+      expect(find.byKey(const Key('overlay_take_breather_button')), findsOneWidget);
+    });
+
+    testWidgets('tapping close icon in breather header exits back to lock screen',
+        (tester) async {
+      await tester.pumpWidget(buildOverlay());
+
+      await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('overlay_breather_close_button')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('overlay_box_breathing')), findsNothing);
+      expect(find.text('MAXIMUM FOCUS'), findsOneWidget);
+    });
   });
 }

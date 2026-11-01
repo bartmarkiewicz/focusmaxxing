@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
 import 'package:focusmaxxing/core/ui/sheet.dart';
+import 'package:focusmaxxing/core/ui/tag.dart';
 import 'package:focusmaxxing/core/utils/color_utils.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
@@ -130,7 +132,8 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
 
-    if (_selectedTargets.any((t) => t.name.toLowerCase() == trimmed.toLowerCase())) {
+    if (_selectedTargets
+        .any((t) => t.name.toLowerCase() == trimmed.toLowerCase())) {
       _showWarning('Target already selected');
       return;
     }
@@ -144,7 +147,8 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
     final defaultPercentages = TargetAllocationBalancer.defaultSplit(newCount);
 
     setState(() {
-      final colorHex = MultiTargetPickerSheet.targetPalette[_selectedTargets.length];
+      final colorHex =
+          MultiTargetPickerSheet.targetPalette[_selectedTargets.length];
       _selectedTargets.add(
         _TargetDraft(
           name: trimmed,
@@ -169,10 +173,12 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
       _selectedTargets.removeAt(index);
       final newCount = _selectedTargets.length;
       if (newCount > 0) {
-        final defaultPercentages = TargetAllocationBalancer.defaultSplit(newCount);
+        final defaultPercentages =
+            TargetAllocationBalancer.defaultSplit(newCount);
         for (var i = 0; i < newCount; i++) {
           _selectedTargets[i].percentage = defaultPercentages[i];
-          _selectedTargets[i].colorHex = MultiTargetPickerSheet.targetPalette[i];
+          _selectedTargets[i].colorHex =
+              MultiTargetPickerSheet.targetPalette[i];
         }
       }
       _warningMessage = null;
@@ -180,7 +186,8 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
   }
 
   void _onSliderChanged(int index, int newPercentage) {
-    final currentPercentages = _selectedTargets.map((t) => t.percentage).toList();
+    final currentPercentages =
+        _selectedTargets.map((t) => t.percentage).toList();
     final balanced = TargetAllocationBalancer.rebalancePercentages(
       currentPercentages: currentPercentages,
       changedIndex: index,
@@ -194,7 +201,8 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
   }
 
   void _resetToEqual() {
-    final defaultPercentages = TargetAllocationBalancer.defaultSplit(_selectedTargets.length);
+    final defaultPercentages =
+        TargetAllocationBalancer.defaultSplit(_selectedTargets.length);
     setState(() {
       for (var i = 0; i < _selectedTargets.length; i++) {
         _selectedTargets[i].percentage = defaultPercentages[i];
@@ -203,6 +211,15 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
   }
 
   void _submit({bool startImmediately = true}) {
+    // Automatically capture any non-empty text currently typed in the field
+    final pendingText = _inputController.text.trim();
+    if (pendingText.isNotEmpty &&
+        _selectedTargets.length < TargetAllocationBalancer.maxTargets &&
+        !_selectedTargets
+            .any((t) => t.name.toLowerCase() == pendingText.toLowerCase())) {
+      _addTarget(pendingText);
+    }
+
     List<SessionTargetAllocation> finalTargets;
     if (_selectedTargets.isEmpty) {
       final input = _inputController.text.trim();
@@ -240,9 +257,7 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final tokens = context.tokens;
-    final colorScheme = theme.colorScheme;
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
 
     final timerNotifier = context.watch<TimerNotifier?>();
@@ -254,228 +269,311 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
     final targetCount = _selectedTargets.length;
     final isMulti = targetCount > 1;
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-        ),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 14,
-            bottom: viewInsetsBottom + 16,
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsetsBottom),
+      child: SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
           ),
-          decoration: BoxDecoration(
-            color: tokens.surface,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(InstrumentTokens.r3),
-            ),
-            border: Border(
-              top: BorderSide(
-                color: tokens.rule,
+          child: Container(
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(InstrumentTokens.r3),
+              ),
+              border: Border(
+                top: BorderSide(color: tokens.rule, width: 1),
+                left: BorderSide(color: tokens.rule, width: 1),
+                right: BorderSide(color: tokens.rule, width: 1),
               ),
             ),
-          ),
-          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Pinned Header
+                const SizedBox(height: InstrumentTokens.s12),
                 Center(
-                  child: ExcludeSemantics(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'What are you working on?',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Max 3',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_warningMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Container(
+                    width: 32,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: colorScheme.error.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: colorScheme.error.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 16, color: colorScheme.error),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _warningMessage!,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.error,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                      color: tokens.ruleStrong,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ],
-                const SizedBox(height: 12),
-
-                // Rapid Freeform Input
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _inputController,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: _addTarget,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: targetCount >= 3
-                              ? 'Max 3 targets selected'
-                              : 'Add focus target (e.g. Mobile UI)...',
-                          hintStyle: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      onPressed: () => _addTarget(_inputController.text),
-                      tooltip: 'Add Target',
-                      icon: const Icon(Icons.add_rounded),
-                    ),
-                  ],
                 ),
-                const SizedBox(height: 12),
-
-                // Selected Target Chips
-                if (targetCount > 0) ...[
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 12, 10),
+                  child: Row(
                     children: [
-                      for (var i = 0; i < targetCount; i++) ...[
-                        Chip(
-                          avatar: CircleAvatar(
-                            backgroundColor: ColorUtils.fromHex(_selectedTargets[i].colorHex),
-                            radius: 6,
-                          ),
-                          label: Text(_selectedTargets[i].name),
-                          deleteIcon: const Icon(Icons.close_rounded, size: 16),
-                          onDeleted: () => _removeTarget(i),
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          side: BorderSide(
-                            color: ColorUtils.fromHex(_selectedTargets[i].colorHex)
-                                .withValues(alpha: 0.6),
+                      Expanded(
+                        child: Text(
+                          'What are you working on?',
+                          style: TextStyle(
+                            fontFamily: InstrumentTokens.fontUi,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.ink,
                           ),
                         ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Proportional Sliders Distribution Card (when 2 or 3 targets are selected)
-                if (isMulti) ...[
-                  _TimeAllocationCard(
-                    targets: _selectedTargets,
-                    totalMinutes: widget.durationMinutes,
-                    onSliderChanged: _onSliderChanged,
-                    onResetToEqual: _resetToEqual,
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Recent Targets Rack
-                if (recentGoals.isNotEmpty) ...[
-                  _RecentTargetsRack(
-                    recentGoals: recentGoals,
-                    onGoalSelected: _addTarget,
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Backlog Task Picker
-                if (pendingBacklogTasks.isNotEmpty) ...[
-                  _BacklogPickerSection(
-                    tasks: pendingBacklogTasks,
-                    selectedTargets: _selectedTargets,
-                    onTaskSelected: (task) => _addTarget(task.title, backlogTaskId: task.id),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Action Launch Button
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _submit(startImmediately: false),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text('SAVE TARGETS'),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: () => _submit(startImmediately: true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: tokens.surfaceSunken,
+                          borderRadius:
+                              BorderRadius.circular(InstrumentTokens.r1),
+                          border: Border.all(color: tokens.rule, width: 1),
                         ),
                         child: Text(
-                          targetCount > 0
-                              ? 'LOCK IN · ${widget.durationMinutes}m [$targetCount Target${targetCount > 1 ? "s" : ""}]'
-                              : 'START FOCUS · ${widget.durationMinutes}m',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
+                          'Max 3',
+                          style: TextStyle(
+                            fontFamily: InstrumentTokens.fontMono,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: tokens.inkMuted,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        iconSize: 20,
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 32, minHeight: 32),
+                        icon: Icon(Icons.close_rounded, color: tokens.inkMuted),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(height: 1, color: tokens.rule),
+
+                // Scrollable Body
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_warningMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: InstrumentTokens.s12,
+                              vertical: InstrumentTokens.s8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: tokens.surfaceSunken,
+                              borderRadius:
+                                  BorderRadius.circular(InstrumentTokens.r1),
+                              border: Border.all(color: tokens.danger, width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline,
+                                    size: 16, color: tokens.danger),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _warningMessage!,
+                                    style: TextStyle(
+                                      fontFamily: InstrumentTokens.fontUi,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: tokens.danger,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+
+                        // Freeform Input Box
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: tokens.surfaceSunken,
+                                  borderRadius:
+                                      BorderRadius.circular(InstrumentTokens.r1),
+                                  border: Border.all(
+                                      color: tokens.ruleStrong, width: 1),
+                                ),
+                                child: TextField(
+                                  controller: _inputController,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: _addTarget,
+                                  style: TextStyle(
+                                    fontFamily: InstrumentTokens.fontUi,
+                                    fontSize: 14,
+                                    color: tokens.ink,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: targetCount >= 3
+                                        ? 'Max 3 targets selected'
+                                        : 'Add focus target (e.g. Mobile UI)...',
+                                    hintStyle: TextStyle(
+                                      fontFamily: InstrumentTokens.fontUi,
+                                      fontSize: 14,
+                                      color: tokens.inkMuted,
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => _addTarget(_inputController.text),
+                              borderRadius:
+                                  BorderRadius.circular(InstrumentTokens.r1),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: tokens.accent,
+                                  borderRadius:
+                                      BorderRadius.circular(InstrumentTokens.r1),
+                                ),
+                                child: Tooltip(
+                                  message: 'Add Target',
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    color: tokens.accentInk,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Selected Target Chips
+                        if (targetCount > 0) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (var i = 0; i < targetCount; i++) ...[
+                                Chip(
+                                  avatar: CircleAvatar(
+                                    backgroundColor: ColorUtils.fromHex(
+                                        _selectedTargets[i].colorHex),
+                                    radius: 5,
+                                  ),
+                                  label: Text(
+                                    _selectedTargets[i].name,
+                                    style: TextStyle(
+                                      fontFamily: InstrumentTokens.fontUi,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: tokens.ink,
+                                    ),
+                                  ),
+                                  deleteIcon: Icon(
+                                    Icons.close_rounded,
+                                    size: 15,
+                                    color: tokens.inkMuted,
+                                  ),
+                                  onDeleted: () => _removeTarget(i),
+                                  backgroundColor: tokens.surfaceSunken,
+                                  side: BorderSide(
+                                    color: ColorUtils.fromHex(
+                                            _selectedTargets[i].colorHex)
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        InstrumentTokens.r1),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+
+                        // Time Allocation Card (when 2+ targets selected)
+                        if (isMulti) ...[
+                          _TimeAllocationCard(
+                            targets: _selectedTargets,
+                            totalMinutes: widget.durationMinutes,
+                            onSliderChanged: _onSliderChanged,
+                            onResetToEqual: _resetToEqual,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+
+                        // Recent Targets Rack
+                        if (recentGoals.isNotEmpty) ...[
+                          _RecentTargetsRack(
+                            recentGoals: recentGoals,
+                            onGoalSelected: _addTarget,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+
+                        // Backlog Task Picker
+                        if (pendingBacklogTasks.isNotEmpty) ...[
+                          _BacklogPickerSection(
+                            tasks: pendingBacklogTasks,
+                            selectedTargets: _selectedTargets,
+                            onTaskSelected: (task) => _addTarget(
+                              task.title,
+                              backlogTaskId: task.id,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
+                ),
+
+                // Pinned Bottom Action Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tokens.surface,
+                    border: Border(top: BorderSide(color: tokens.rule, width: 1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InstrumentButton.secondary(
+                          label: 'Save targets',
+                          icon: const Icon(Icons.check_rounded, size: 18),
+                          onPressed: () => _submit(startImmediately: false),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InstrumentButton.primary(
+                          label: 'Start session',
+                          icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                          onPressed: () => _submit(startImmediately: true),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -515,18 +613,15 @@ class _TimeAllocationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final maxPercentage = 100 - (targets.length - 1);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(InstrumentTokens.s12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+        color: tokens.surfaceSunken,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+        border: Border.all(color: tokens.rule, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -536,19 +631,35 @@ class _TimeAllocationCard extends StatelessWidget {
             children: [
               Text(
                 'TIME ALLOCATION',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: tokens.inkMuted,
                 ),
               ),
-              TextButton.icon(
-                onPressed: onResetToEqual,
-                icon: const Icon(Icons.sync_rounded, size: 14),
-                label: const Text('Equalize Split'),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  visualDensity: VisualDensity.compact,
+              InkWell(
+                onTap: onResetToEqual,
+                borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.sync_rounded, size: 13, color: tokens.inkMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Equalize Split',
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 12,
+                          color: tokens.inkMuted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -581,17 +692,18 @@ class _RecentTargetsRack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Recent & Quick Anchors:',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontUi,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: tokens.inkMuted,
           ),
         ),
         const SizedBox(height: 8),
@@ -599,16 +711,16 @@ class _RecentTargetsRack extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              ActionChip(
-                avatar: const Icon(Icons.bolt, size: 14),
-                label: const Text('Deep Work'),
-                onPressed: () => onGoalSelected('Deep Work'),
+              Tag(
+                label: 'Deep Work',
+                icon: const Icon(Icons.adjust_outlined, size: 13),
+                onTap: () => onGoalSelected('Deep Work'),
               ),
               for (final goal in recentGoals) ...[
                 const SizedBox(width: 8),
-                ActionChip(
-                  label: Text(goal),
-                  onPressed: () => onGoalSelected(goal),
+                Tag(
+                  label: goal,
+                  onTap: () => onGoalSelected(goal),
                 ),
               ],
             ],
@@ -632,8 +744,7 @@ class _BacklogPickerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,52 +753,60 @@ class _BacklogPickerSection extends StatelessWidget {
           children: [
             Icon(
               Icons.inbox_outlined,
-              size: 16,
-              color: colorScheme.onSurfaceVariant,
+              size: 15,
+              color: tokens.inkMuted,
             ),
             const SizedBox(width: 6),
             Text(
-              'Link from Backlog (Auto-completes upon Lock-In):',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+              'Link from Backlog (auto-completes):',
+              style: TextStyle(
+                fontFamily: InstrumentTokens.fontUi,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: tokens.inkMuted,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
-          constraints: const BoxConstraints(maxHeight: 140),
+          constraints: const BoxConstraints(maxHeight: 130),
+          decoration: BoxDecoration(
+            color: tokens.surfaceSunken,
+            borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+            border: Border.all(color: tokens.rule, width: 1),
+          ),
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: tasks.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            separatorBuilder: (_, __) =>
+                Container(height: 1, color: tokens.rule),
             itemBuilder: (context, idx) {
               final task = tasks[idx];
-              final isAlreadyAdded = selectedTargets
-                  .any((t) => t.backlogTaskId == task.id);
+              final isAlreadyAdded =
+                  selectedTargets.any((t) => t.backlogTaskId == task.id);
 
               return ListTile(
                 dense: true,
                 visualDensity: VisualDensity.compact,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                 leading: Icon(
                   isAlreadyAdded
                       ? Icons.check_circle_rounded
                       : Icons.radio_button_unchecked_rounded,
-                  size: 18,
-                  color: isAlreadyAdded
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
+                  size: 16,
+                  color: isAlreadyAdded ? tokens.accent : tokens.inkMuted,
                 ),
                 title: Text(
                   task.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface,
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 13,
+                    color: isAlreadyAdded ? tokens.accent : tokens.ink,
                     fontWeight: isAlreadyAdded
-                        ? FontWeight.bold
+                        ? FontWeight.w600
                         : FontWeight.normal,
                   ),
                 ),

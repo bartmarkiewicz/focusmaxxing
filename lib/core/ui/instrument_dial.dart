@@ -146,85 +146,92 @@ class _InstrumentDialState extends State<InstrumentDial> {
                     ),
                   ),
                 ),
-                // Center Readout
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: (dialSize * 0.12).clamp(16.0, 36.0),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.isPaused)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: InstrumentTokens.s8,
-                            vertical: 2,
+                // Center Readout strictly bounded inside dial indicators
+                SizedBox(
+                  width: (dialSize * 0.62).clamp(100.0, dialSize - 54.0),
+                  height: (dialSize * 0.60).clamp(90.0, dialSize - 54.0),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.isPaused)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: InstrumentTokens.s8,
+                              vertical: 2,
+                            ),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: tokens.surface,
+                              borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+                              border: Border.all(color: tokens.ruleStrong, width: 1),
+                            ),
+                            child: Text(
+                              'PAUSED',
+                              style: TextStyle(
+                                fontFamily: InstrumentTokens.fontMono,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.8,
+                                color: tokens.inkMuted,
+                              ),
+                            ),
                           ),
-                          margin: const EdgeInsets.only(bottom: InstrumentTokens.s4),
-                          decoration: BoxDecoration(
-                            color: tokens.surface,
-                            borderRadius: BorderRadius.circular(InstrumentTokens.r1),
-                            border: Border.all(color: tokens.ruleStrong, width: 1),
-                          ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
                           child: Text(
-                            'PAUSED',
+                            formattedTime,
                             style: TextStyle(
                               fontFamily: InstrumentTokens.fontMono,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.8,
-                              color: tokens.inkMuted,
+                              fontSize: (dialSize * 0.22).clamp(38.0, 58.0),
+                              height: 1.0,
+                              fontWeight: FontWeight.w300,
+                              color: tokens.ink,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          formattedTime,
-                          style: TextStyle(
-                            fontFamily: InstrumentTokens.fontMono,
-                            fontSize: 72,
-                            height: 1.0,
-                            fontWeight: FontWeight.w300,
-                            color: tokens.ink,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+                        const SizedBox(height: 6),
+                        if (hasGoal)
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              trimmedGoal,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: InstrumentTokens.fontUi,
+                                fontSize: 13,
+                                height: 1.2,
+                                color: tokens.inkMuted,
+                              ),
+                            ),
+                          )
+                        else if (widget.isRestMode)
+                          Text(
+                            'Break',
+                            style: TextStyle(
+                              fontFamily: InstrumentTokens.fontUi,
+                              fontSize: 13,
+                              color: tokens.inkMuted,
+                            ),
+                          )
+                        else if (isInteractive)
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'ROTATE TO SET TIME',
+                              style: TextStyle(
+                                fontFamily: InstrumentTokens.fontMono,
+                                fontSize: 10.5,
+                                letterSpacing: 0.8,
+                                color: tokens.inkMuted,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: InstrumentTokens.s8),
-                      if (hasGoal)
-                        Text(
-                          trimmedGoal,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: InstrumentTokens.fontUi,
-                            fontSize: 15,
-                            height: 22 / 15,
-                            color: tokens.inkMuted,
-                          ),
-                        )
-                      else if (widget.isRestMode)
-                        Text(
-                          'Break',
-                          style: TextStyle(
-                            fontFamily: InstrumentTokens.fontUi,
-                            fontSize: 15,
-                            color: tokens.inkMuted,
-                          ),
-                        )
-                      else if (isInteractive)
-                        Text(
-                          'ROTATE TO SET TIME',
-                          style: TextStyle(
-                            fontFamily: InstrumentTokens.fontMono,
-                            fontSize: 11,
-                            letterSpacing: 0.8,
-                            color: tokens.inkMuted,
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -277,7 +284,12 @@ class _DialFacePainter extends CustomPainter {
     for (int i = 0; i < totalTicks; i++) {
       final angle = (i * 2 * math.pi / totalTicks) - (math.pi / 2);
       final isMajor = i % 5 == 0;
-      final tickLength = isMajor ? 12.0 : 6.0;
+      final isQuarter = i % 15 == 0;
+      final tickLength = isQuarter
+          ? (outerRadius < 90 ? 7.0 : 9.0)
+          : (isMajor
+              ? (outerRadius < 90 ? 5.0 : 6.5)
+              : (outerRadius < 90 ? 2.5 : 3.5));
 
       final startX = center.dx + (outerRadius - tickLength) * math.cos(angle);
       final startY = center.dy + (outerRadius - tickLength) * math.sin(angle);
@@ -286,15 +298,18 @@ class _DialFacePainter extends CustomPainter {
 
       canvas.drawLine(Offset(startX, startY), Offset(endX, endY), tickPaint);
 
-      // Draw numeral for major ticks
-      if (isMajor && outerRadius > 65) {
+      // On compact/standard dials (radius < 110), render cardinal numerals (0, 15, 30, 45)
+      // to keep generous breathing room around the central countdown.
+      // On expansive dials (radius >= 110), render every 5-minute detent numeral.
+      final shouldDrawNumeral = outerRadius >= 110 ? isMajor : isQuarter;
+      if (shouldDrawNumeral && outerRadius > 65) {
         final numeralString = i.toString();
         final textPainter = TextPainter(
           text: TextSpan(
             text: numeralString,
             style: TextStyle(
               fontFamily: InstrumentTokens.fontMono,
-              fontSize: outerRadius < 90 ? 8.5 : 10,
+              fontSize: outerRadius < 90 ? 8.0 : 9.5,
               fontWeight: FontWeight.w400,
               color: numeralColor,
             ),
@@ -302,8 +317,8 @@ class _DialFacePainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
 
-        final textRadius =
-            outerRadius - tickLength - (outerRadius < 90 ? 7.0 : 10.0);
+        final numeralInset = outerRadius < 90 ? 6.5 : 8.5;
+        final textRadius = outerRadius - tickLength - numeralInset;
         final textX =
             center.dx + textRadius * math.cos(angle) - (textPainter.width / 2);
         final textY =

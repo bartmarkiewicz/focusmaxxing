@@ -313,5 +313,22 @@ void main() {
       expect(changedSeconds, isNotNull);
       expect(changedSeconds! % 300, equals(0)); // Detent of 5 minutes (300s)
     });
+
+    testWidgets('renders cleanly on compact size without overflowing dial bounds', (tester) async {
+      await tester.pumpWidget(
+        _buildTestBoilerplate(
+          child: const InstrumentDial(
+            size: 180,
+            remainingSeconds: 1500,
+            totalSeconds: 1500,
+            taskGoal: 'Deep Work',
+          ),
+        ),
+      );
+
+      expect(find.text('25:00'), findsOneWidget);
+      expect(find.text('Deep Work'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

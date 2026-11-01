@@ -90,11 +90,13 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget> {
                 !_controller.isSessionFinished;
         return PopScope(
           canPop: false,
-          onPopInvokedWithResult: (didPop, _) {},
+          onPopInvokedWithResult: (didPop, _) {
+            if (_controller.breatherStage != OverlayBreatherStage.none) {
+              _controller.cancelBreather();
+            }
+          },
           child: Scaffold(
             backgroundColor: OverlayTheme.surfaceColor,
-            extendBody: !isBreatherActive,
-            extendBodyBehindAppBar: !isBreatherActive,
             body: SizedBox.expand(
               child: ColoredBox(
                 color: OverlayTheme.surfaceColor,
@@ -110,6 +112,7 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget> {
                             onBreatherComplete: _controller.completeBreather,
                             onReadyToFocus: _controller.handleReturn,
                             onEmergencyPass: _controller.handleEmergencyPass,
+                            onCancelBreather: _controller.cancelBreather,
                           )
                         : OverlayLockView(controller: _controller),
                   ),

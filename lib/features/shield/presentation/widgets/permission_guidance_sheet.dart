@@ -36,26 +36,34 @@ class PermissionGuidanceSheet extends StatelessWidget {
 
     final spec = _getSpec(permissionType);
 
-    return Container(
-      padding: const EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: 32,
-      ),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          top: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.88,
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        child: Container(
+          padding: const EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 14,
+            bottom: 24,
+          ),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           Center(
             child: Container(
               width: 36,
@@ -156,8 +164,11 @@ class PermissionGuidanceSheet extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+),
+);
+}
 
   static _PermissionGuidanceSpec _getSpec(ShieldPermissionType type) {
     switch (type) {
