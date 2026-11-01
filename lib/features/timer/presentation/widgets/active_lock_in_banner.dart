@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 import 'package:focusmaxxing/core/utils/color_utils.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 import 'package:provider/provider.dart';
 
-/// Displays the active focus lock-in status banner when a session is running or paused.
+/// Displays active session status with clean instrument styling and zero emojis.
 class ActiveLockInBanner extends StatelessWidget {
   const ActiveLockInBanner({
     super.key,
@@ -17,8 +18,7 @@ class ActiveLockInBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final shieldState = context.select<
         ShieldNotifier?,
         ({int activeAppCount, bool isMaximumFocusEnabled})>(
@@ -30,31 +30,25 @@ class ActiveLockInBanner extends StatelessWidget {
     final activeShieldCount = shieldState.activeAppCount;
     final isMaxFocus = shieldState.isMaximumFocusEnabled;
 
-    final accentColor = isPaused
-        ? colorScheme.tertiary
-        : (isMaxFocus ? colorScheme.error : colorScheme.primary);
     final statusTitle = isPaused
-        ? '⏸ FOCUS SESSION PAUSED'
-        : (isMaxFocus
-            ? '🔥 MAXIMUM FOCUS · PHONE LOCKED'
-            : '🔒 LOCKED IN · ACTIVE FOCUS');
+        ? 'Focus paused'
+        : (isMaxFocus ? 'Maximum Focus active' : 'Session running');
+
     final statusSubtitle = isPaused
-        ? 'Countdown paused · Resume below to keep your streak'
-        : isMaxFocus
-            ? 'Full-screen phone lock enforced until session completes'
-            : activeShieldCount > 0
-                ? 'Brainrot Shield active ($activeShieldCount ${activeShieldCount == 1 ? "app" : "apps"} blocked) · Ongoing timer in notification bar'
-                : 'Focus countdown active in notification bar';
+        ? 'Countdown paused'
+        : activeShieldCount > 0
+            ? '$activeShieldCount ${activeShieldCount == 1 ? "app" : "apps"} blocked by Brainrot Shield'
+            : 'Timer active in status bar';
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(16),
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.5),
-          width: 1.5,
+          color: isPaused ? tokens.ruleStrong : (isMaxFocus ? tokens.danger : tokens.accent),
+          width: 1,
         ),
       ),
       child: Column(
@@ -64,82 +58,76 @@ class ActiveLockInBanner extends StatelessWidget {
             children: [
               Icon(
                 isPaused
-                    ? Icons.pause_circle_filled_rounded
-                    : (isMaxFocus
-                        ? Icons.gpp_maybe_rounded
-                        : Icons.shield_rounded),
-                color: accentColor,
-                size: 22,
+                    ? Icons.pause_outlined
+                    : (isMaxFocus ? Icons.lock_outlined : Icons.timer_outlined),
+                size: 16,
+                color: isPaused ? tokens.inkMuted : (isMaxFocus ? tokens.danger : tokens.accent),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Text(
+                  statusTitle,
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            statusSubtitle,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontUi,
+              fontSize: 12,
+              color: tokens.inkMuted,
+            ),
+          ),
+          if (targets.length > 1) ...[
+            const SizedBox(height: 8),
+            Container(height: 1, color: tokens.rule),
+            const SizedBox(height: 8),
+            for (final target in targets)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
                   children: [
-                    Text(
-                      statusTitle,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: ColorUtils.fromHex(target.colorHex),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        target.targetName,
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 13,
+                          color: tokens.ink,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Text(
-                      statusSubtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                      '${target.percentage}% (${(target.allocatedSeconds / 60).round()}m)',
+                      style: TextStyle(
+                        fontFamily: InstrumentTokens.fontMono,
+                        fontSize: 12,
+                        color: tokens.inkMuted,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          if (targets.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final target in targets) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: ColorUtils.fromHex(target.colorHex)
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: ColorUtils.fromHex(target.colorHex)
-                            .withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: ColorUtils.fromHex(target.colorHex),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${target.targetName} (${target.percentage}%)',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
           ],
         ],
       ),

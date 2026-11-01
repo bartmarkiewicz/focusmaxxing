@@ -34,7 +34,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('24:35'), findsOneWidget);
-      expect(find.text('"Clean Architecture Refactor"'), findsOneWidget);
+      expect(find.text('Clean Architecture Refactor'), findsOneWidget);
       expect(find.text('PAUSED'), findsNothing);
     });
 
@@ -60,7 +60,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('05:00'), findsOneWidget);
-      expect(find.text('RECHARGE YOUR BRAIN'), findsOneWidget);
+      expect(find.text('Break'), findsOneWidget);
     });
 
     testWidgets(
@@ -132,7 +132,7 @@ void main() {
         of: find.byType(TimerDialWidget),
         matching: find.byType(CustomPaint),
       );
-      var customPaint = tester.widget<CustomPaint>(dialPaintFinder);
+      var customPaint = tester.widgetList<CustomPaint>(dialPaintFinder).last;
       dynamic painter = customPaint.painter;
       expect(painter.progress as double, closeTo(0.5, 0.01));
 
@@ -149,7 +149,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      customPaint = tester.widget<CustomPaint>(dialPaintFinder);
+      customPaint = tester.widgetList<CustomPaint>(dialPaintFinder).last;
       painter = customPaint.painter;
       expect(painter.progress as double, closeTo(0.5, 0.01));
     });

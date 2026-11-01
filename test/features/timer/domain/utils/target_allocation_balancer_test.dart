@@ -147,7 +147,7 @@ void main() {
         ];
         expect(
           TargetAllocationBalancer.formatAnchorPillText(targets),
-          '🎯 Mobile UI',
+          'Mobile UI',
         );
       });
 
@@ -158,7 +158,7 @@ void main() {
         ];
         expect(
           TargetAllocationBalancer.formatAnchorPillText(targets),
-          '🎯 Mobile UI (60%) • API Refactor (40%)',
+          'Mobile UI (60%) • API Refactor (40%)',
         );
       });
 
@@ -170,7 +170,7 @@ void main() {
         ];
         expect(
           TargetAllocationBalancer.formatAnchorPillText(targets),
-          '🎯 Mobile UI • +2 targets',
+          'Mobile UI • +2 targets',
         );
       });
     });

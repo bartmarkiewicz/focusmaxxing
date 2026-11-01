@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focusmaxxing/core/theme/app_theme.dart';
 import 'package:focusmaxxing/core/theme/pro_accent_variant.dart';
 import 'package:focusmaxxing/core/theme/theme_notifier.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
@@ -14,6 +15,7 @@ void main() {
     bool isProUnlocked = false,
   }) {
     return MaterialApp(
+      theme: AppTheme.buildDarkTheme(null),
       home: Scaffold(
         body: SingleChildScrollView(
           child: ProAccentColorSection(
@@ -27,7 +29,7 @@ void main() {
 
   group('ProAccentColorSection Widget Tests', () {
     testWidgets(
-        'renders header, all 4 accent variants, and correct default selection',
+        'renders header, all 4 accent finishes, and correct default selection',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -41,19 +43,19 @@ void main() {
       );
 
       expect(find.text('Focus Accent Color'), findsOneWidget);
-      expect(find.text('Electric Emerald · Default Focus'), findsOneWidget);
+      expect(find.text('Brass · Classic Instrument'), findsOneWidget);
 
       // Verify all 4 variants are present
-      expect(find.byKey(const ValueKey('accent_variant_electric_emerald')),
+      expect(find.byKey(const ValueKey('accent_variant_brass')),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('accent_variant_cyber_amber')),
+      expect(find.byKey(const ValueKey('accent_variant_signal')),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('accent_variant_hyper_violet')),
+      expect(find.byKey(const ValueKey('accent_variant_ink')),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('accent_variant_glacier_blue')),
+      expect(find.byKey(const ValueKey('accent_variant_moss')),
           findsOneWidget);
 
-      // Initially Electric Emerald has checkmark
+      // Initially Brass has checkmark
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
 
       // In non-pro mode, 3 Pro variants have PRO badges
@@ -90,16 +92,16 @@ void main() {
         ),
       );
 
-      // Tap Cyber Amber (Pro only)
+      // Tap Signal (Pro only)
       await tester
-          .tap(find.byKey(const ValueKey('accent_variant_cyber_amber')));
+          .tap(find.byKey(const ValueKey('accent_variant_signal')));
       await tester.pumpAndSettle();
 
       // Modal bottom sheet with LifetimeProBanner opens
       expect(find.byType(LifetimeProBanner), findsOneWidget);
 
       // Accent was not changed
-      expect(themeNotifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(themeNotifier.currentAccent, ProAccentVariant.cyberAmber);
     });
 
     testWidgets(
@@ -116,9 +118,9 @@ void main() {
         ),
       );
 
-      // Tap Hyper Violet
+      // Tap Ink (hyperViolet)
       await tester
-          .tap(find.byKey(const ValueKey('accent_variant_hyper_violet')));
+          .tap(find.byKey(const ValueKey('accent_variant_ink')));
       await tester.pumpAndSettle();
 
       // No modal sheet opened
@@ -126,14 +128,14 @@ void main() {
 
       // Current accent updated
       expect(themeNotifier.currentAccent, ProAccentVariant.hyperViolet);
-      expect(find.text('Hyper Violet · Deep Meditative Flow'), findsOneWidget);
+      expect(find.text('Ink · Muted Technical Slate'), findsOneWidget);
     });
 
     testWidgets(
-        'tapping Electric Emerald when non-pro works without triggering upgrade banner',
+        'tapping Brass when non-pro works without triggering upgrade banner',
         (tester) async {
       SharedPreferences.setMockInitialValues({
-        ThemeNotifier.prefThemeAccentColorKey: 'electric_emerald',
+        ThemeNotifier.prefThemeAccentColorKey: 'brass',
       });
       final prefs = await SharedPreferences.getInstance();
       final themeNotifier = ThemeNotifier(sharedPreferences: prefs);
@@ -146,11 +148,11 @@ void main() {
       );
 
       await tester
-          .tap(find.byKey(const ValueKey('accent_variant_electric_emerald')));
+          .tap(find.byKey(const ValueKey('accent_variant_brass')));
       await tester.pumpAndSettle();
 
       expect(find.byType(LifetimeProBanner), findsNothing);
-      expect(themeNotifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(themeNotifier.currentAccent, ProAccentVariant.cyberAmber);
     });
   });
 }

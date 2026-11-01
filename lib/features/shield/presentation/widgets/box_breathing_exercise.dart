@@ -1,30 +1,30 @@
 import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/utils/haptic_feedback_helper.dart';
+import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 
 enum BreathingPhase {
-  inhale('INHALE'),
-  holdFull('HOLD'),
-  exhale('EXHALE'),
-  holdEmpty('HOLD');
+  inhale(AppStrings.breathIn),
+  holdFull(AppStrings.breathHold),
+  exhale(AppStrings.breathOut),
+  holdEmpty(AppStrings.breathHold);
 
   const BreathingPhase(this.label);
 
   final String label;
 }
 
-/// A guided box-breathing exercise (inhale, hold, exhale, hold) that calls
-/// [onComplete] once [totalDuration] has elapsed.
+/// A guided square-tracing breathing exercise (4s In, 4s Hold, 4s Out, 4s Hold).
 class BoxBreathingExercise extends StatefulWidget {
   const BoxBreathingExercise({
     super.key,
     required this.onComplete,
     this.totalDuration = const Duration(seconds: 60),
     this.phaseDuration = const Duration(seconds: 4),
-    this.color = const Color(0xFF00E676),
+    this.color = const Color(0xFFC9A227),
     this.enableHaptics = true,
+    this.size = 180.0,
   });
 
   final VoidCallback onComplete;
@@ -32,6 +32,7 @@ class BoxBreathingExercise extends StatefulWidget {
   final Duration phaseDuration;
   final Color color;
   final bool enableHaptics;
+  final double size;
 
   @override
   State<BoxBreathingExercise> createState() => _BoxBreathingExerciseState();
@@ -39,9 +40,6 @@ class BoxBreathingExercise extends StatefulWidget {
 
 class _BoxBreathingExerciseState extends State<BoxBreathingExercise>
     with SingleTickerProviderStateMixin {
-  static const double _minScale = 0.45;
-  static const int _phaseCount = 4;
-
   late final AnimationController _controller;
   BreathingPhase? _lastPhase;
 
@@ -58,40 +56,25 @@ class _BoxBreathingExerciseState extends State<BoxBreathingExercise>
   }
 
   void _onStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.completed && mounted) {
+    if (status == AnimationStatus.completed) {
       widget.onComplete();
     }
   }
 
   void _onTick() {
-    final phase = _phaseAt(_elapsed);
-    if (phase != _lastPhase) {
-      _lastPhase = phase;
+    final cycleDurationMs = widget.phaseDuration.inMilliseconds * 4;
+    final elapsedMs = _controller.value * widget.totalDuration.inMilliseconds;
+    final msInCurrentCycle = elapsedMs % cycleDurationMs;
+    final phaseIndex = (msInCurrentCycle ~/ widget.phaseDuration.inMilliseconds) % 4;
+    final currentPhase = BreathingPhase.values[phaseIndex];
+
+    if (currentPhase != _lastPhase) {
+      _lastPhase = currentPhase;
       if (widget.enableHaptics) {
-        unawaited(HapticFeedbackHelper.selectionClick());
+        unawaited(HapticFeedback.selectionClick());
       }
     }
-  }
-
-  Duration get _elapsed => widget.totalDuration * _controller.value;
-
-  BreathingPhase _phaseAt(Duration elapsed) {
-    final phaseMicros = widget.phaseDuration.inMicroseconds;
-    if (phaseMicros <= 0) return BreathingPhase.inhale;
-    final index = (elapsed.inMicroseconds ~/ phaseMicros) % _phaseCount;
-    return BreathingPhase.values[index];
-  }
-
-  double _scaleAt(Duration elapsed) {
-    final phaseMicros = widget.phaseDuration.inMicroseconds;
-    if (phaseMicros <= 0) return 1.0;
-    final progress = (elapsed.inMicroseconds % phaseMicros) / phaseMicros;
-    return switch (_phaseAt(elapsed)) {
-      BreathingPhase.inhale => _minScale + (1 - _minScale) * progress,
-      BreathingPhase.holdFull => 1.0,
-      BreathingPhase.exhale => 1 - (1 - _minScale) * progress,
-      BreathingPhase.holdEmpty => _minScale,
-    };
+    setState(() {});
   }
 
   @override
@@ -102,63 +85,123 @@ class _BoxBreathingExerciseState extends State<BoxBreathingExercise>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final elapsed = _elapsed;
-        final phase = _phaseAt(elapsed);
-        final secondsLeft = math.max(
-          0,
-          (widget.totalDuration - elapsed).inMilliseconds / 1000,
-        ).ceil();
+    final cycleDurationMs = widget.phaseDuration.inMilliseconds * 4;
+    final elapsedMs = _controller.value * widget.totalDuration.inMilliseconds;
+    final msInCurrentCycle = elapsedMs % cycleDurationMs;
+    final cycleProgress = msInCurrentCycle / cycleDurationMs;
+    final currentPhase = _lastPhase ?? BreathingPhase.inhale;
 
-        return Semantics(
-          label: 'Box breathing: ${phase.label}, $secondsLeft seconds remaining',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 180,
-                height: 180,
-                child: Center(
-                  child: Transform.scale(
-                    scale: _scaleAt(elapsed),
-                    child: ExcludeSemantics(
-                      child: Container(
-                        key: const Key('breathing_circle'),
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: widget.color.withValues(alpha: 0.18),
-                          border: Border.all(color: widget.color, width: 3),
-                        ),
-                      ),
-                    ),
+    return Semantics(
+      label: 'Box breathing: ${currentPhase.label}',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: CustomPaint(
+              painter: _SquareTracePainter(
+                progress: cycleProgress,
+                accentColor: widget.color,
+                trackColor: const Color(0xFF2A2825),
+              ),
+              child: Center(
+                child: Text(
+                  currentPhase.label.toUpperCase(),
+                  key: const Key('breathing_phase_label'),
+                  style: const TextStyle(
+                    fontFamily: InstrumentTokens.fontMono,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 2.0,
+                    color: Color(0xFFEDE9E3),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                phase.label,
-                key: const Key('breathing_phase_label'),
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 3,
-                  color: widget.color,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${secondsLeft}s',
-                key: const Key('breathing_seconds_left'),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF8B92A4)),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          const SizedBox(height: InstrumentTokens.s16),
+          const Text(
+            '4s In · 4s Hold · 4s Out · 4s Hold',
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontMono,
+              fontSize: 12,
+              color: Color(0xFF9A948B),
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+class _SquareTracePainter extends CustomPainter {
+  const _SquareTracePainter({
+    required this.progress,
+    required this.accentColor,
+    required this.trackColor,
+  });
+
+  final double progress;
+  final Color accentColor;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(2, 2, size.width - 4, size.height - 4);
+
+    // Track square
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawRect(rect, trackPaint);
+
+    // Tracing active line along the 4 edges
+    // Edge 0 (top): 0.0 -> 0.25
+    // Edge 1 (right): 0.25 -> 0.50
+    // Edge 2 (bottom): 0.50 -> 0.75
+    // Edge 3 (left): 0.75 -> 1.0
+    final linePaint = Paint()
+      ..color = accentColor
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.square
+      ..strokeWidth = 2.0;
+
+    final path = Path();
+    final perimeter = rect.width * 4;
+    final currentDistance = progress * perimeter;
+
+    path.moveTo(rect.left, rect.top);
+
+    if (currentDistance <= rect.width) {
+      path.lineTo(rect.left + currentDistance, rect.top);
+    } else {
+      path.lineTo(rect.right, rect.top);
+      final remaining = currentDistance - rect.width;
+      if (remaining <= rect.height) {
+        path.lineTo(rect.right, rect.top + remaining);
+      } else {
+        path.lineTo(rect.right, rect.bottom);
+        final rem2 = remaining - rect.height;
+        if (rem2 <= rect.width) {
+          path.lineTo(rect.right - rem2, rect.bottom);
+        } else {
+          path.lineTo(rect.left, rect.bottom);
+          final rem3 = rem2 - rect.width;
+          path.lineTo(rect.left, rect.bottom - rem3);
+        }
+      }
+    }
+
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SquareTracePainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.accentColor != accentColor ||
+        oldDelegate.trackColor != trackColor;
   }
 }

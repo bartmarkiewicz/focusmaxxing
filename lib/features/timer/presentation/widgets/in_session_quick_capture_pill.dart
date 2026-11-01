@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 
-/// Quick-capture pill button shown during an active focus session for dumping stray thoughts.
+/// Quick-capture button shown during an active focus session for dumping stray thoughts.
 class InSessionQuickCapturePill extends StatelessWidget {
   const InSessionQuickCapturePill({
     super.key,
@@ -11,8 +12,7 @@ class InSessionQuickCapturePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     return Semantics(
       button: true,
@@ -22,30 +22,30 @@ class InSessionQuickCapturePill extends StatelessWidget {
         child: InkWell(
           key: const Key('in_session_quick_capture_pill'),
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(InstrumentTokens.r1),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-              ),
+              color: tokens.surface,
+              borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+              border: Border.all(color: tokens.rule, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.edit_note_rounded,
-                  size: 18,
-                  color: colorScheme.primary,
+                  Icons.edit_note_outlined,
+                  size: 16,
+                  color: tokens.inkMuted,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   '+ Dump stray thought...',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: tokens.inkMuted,
                   ),
                 ),
               ],

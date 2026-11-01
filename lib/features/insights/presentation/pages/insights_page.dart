@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
+import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
+import 'package:focusmaxxing/core/ui/section_header.dart';
+import 'package:focusmaxxing/core/utils/date_utils.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
-import 'package:focusmaxxing/features/insights/presentation/widgets/pro_accent_color_section.dart';
 import 'package:focusmaxxing/features/insights/presentation/widgets/session_history_list.dart';
-import 'package:focusmaxxing/features/insights/presentation/widgets/streak_card.dart';
+import 'package:focusmaxxing/features/settings/presentation/pages/settings_page.dart';
+import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:provider/provider.dart';
 
 class InsightsPage extends StatefulWidget {
@@ -31,30 +36,43 @@ class _InsightsPageState extends State<InsightsPage> {
   Widget build(BuildContext context) {
     final notifier = context.watch<InsightsNotifier>();
     final summary = notifier.dailySummary;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     return Scaffold(
+      backgroundColor: tokens.bg,
       appBar: AppBar(
         title: Text(
-          'Insights & Settings',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+          AppStrings.insightsTitle,
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontUi,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: tokens.ink,
           ),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Center(child: ProSupporterBadge()),
+        actions: [
+          const Center(child: ProSupporterBadge()),
+          IconButton(
+            key: const Key('settings_button'),
+            icon: Icon(Icons.settings_outlined, color: tokens.ink),
+            tooltip: 'Settings',
+            onPressed: () {
+              unawaited(HapticFeedback.selectionClick());
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsPage(),
+                ),
+              );
+            },
           ),
+          const SizedBox(width: InstrumentTokens.s8),
         ],
         centerTitle: false,
       ),
       body: RefreshIndicator(
         onRefresh: notifier.refresh,
-        color: colorScheme.primary,
-        backgroundColor: colorScheme.surfaceContainerHighest,
+        color: tokens.accent,
+        backgroundColor: tokens.surface,
         child: _InsightsBody(
           notifier: notifier,
           summary: summary,
@@ -87,7 +105,7 @@ class _InsightsBody extends StatelessWidget {
       );
     }
 
-    return _InsightsContentList(
+    return _InsightsContent(
       notifier: notifier,
       summary: summary,
     );
@@ -99,27 +117,21 @@ class _InsightsLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Text(
-                'Loading momentum...',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(InstrumentTokens.gutter),
+        child: Text(
+          'LOADING...',
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontMono,
+            fontSize: 12,
+            letterSpacing: 1.2,
+            color: tokens.inkMuted,
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -135,8 +147,7 @@ class _InsightsErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -145,40 +156,33 @@ class _InsightsErrorView extends StatelessWidget {
           hasScrollBody: false,
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(InstrumentTokens.gutter),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    color: colorScheme.error,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
                   Text(
-                    'Unable to load insights',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
+                    'UNABLE TO LOAD INSIGHTS',
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontMono,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                      color: tokens.danger,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: InstrumentTokens.s8),
                   Text(
                     errorMessage,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontUi,
+                      fontSize: 14,
+                      color: tokens.inkMuted,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('RETRY'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      foregroundColor: colorScheme.primary,
-                      side: BorderSide(color: colorScheme.outlineVariant),
-                    ),
+                  const SizedBox(height: InstrumentTokens.s20),
+                  InstrumentButton.secondary(
+                    label: 'Retry',
                     onPressed: onRetry,
                   ),
                 ],
@@ -191,289 +195,556 @@ class _InsightsErrorView extends StatelessWidget {
   }
 }
 
-class _InsightsContentList extends StatelessWidget {
+class _InsightsContent extends StatelessWidget {
   final InsightsNotifier notifier;
   final DailySummaryEntity? summary;
 
-  const _InsightsContentList({
+  const _InsightsContent({
     required this.notifier,
     required this.summary,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final errorMessage = notifier.errorMessage;
 
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      children: [
-        if (errorMessage != null) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: colorScheme.error.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: colorScheme.error.withValues(alpha: 0.4),
-              ),
-            ),
-            child: Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isExpanded = constraints.maxWidth >= 600;
+
+        final readoutsWidget = _HeaderReadouts(
+          todayMinutes: summary?.totalFocusMinutes ?? 0,
+          sessions: notifier.recentSessions,
+          streakDays: summary?.currentStreakDays ?? 0,
+        );
+
+        final chartWidget = _InstrumentBarChart(
+          sessions: notifier.recentSessions,
+        );
+
+        final historyWidget = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SectionHeader(title: 'RECENT SESSIONS'),
+            const SizedBox(height: InstrumentTokens.s8),
+            SessionHistoryList(sessions: notifier.recentSessions),
+          ],
+        );
+
+        if (isExpanded) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(InstrumentTokens.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: colorScheme.error,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    errorMessage,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface,
+                if (errorMessage != null) ...[
+                  _InlineErrorMessage(message: errorMessage),
+                  const SizedBox(height: InstrumentTokens.s16),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          readoutsWidget,
+                          const SizedBox(height: InstrumentTokens.s20),
+                          chartWidget,
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: InstrumentTokens.gutter),
+                    Expanded(
+                      flex: 6,
+                      child: historyWidget,
+                    ),
+                  ],
                 ),
               ],
             ),
+          );
+        }
+
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(
+            horizontal: InstrumentTokens.gutter,
+            vertical: InstrumentTokens.s12,
           ),
-          const SizedBox(height: 16),
-        ],
-        const _SectionHeader(title: "TODAY'S MOMENTUM"),
-        const SizedBox(height: 8),
-        _MomentumRow(
-          focusMinutes: summary?.totalFocusMinutes ?? 0,
-          completedCount: summary?.completedSessionsCount ?? 0,
-        ),
-        const SizedBox(height: 24),
-        const _SectionHeader(title: 'CURRENT STREAK'),
-        const SizedBox(height: 8),
-        StreakCard(streakDays: summary?.currentStreakDays ?? 0),
-        const SizedBox(height: 24),
-        const _SectionHeader(title: 'RECENT SESSIONS'),
-        const SizedBox(height: 8),
-        SessionHistoryList(sessions: notifier.recentSessions),
-        const SizedBox(height: 24),
-        const _SectionHeader(title: 'CONFIG & PREFERENCES'),
-        const SizedBox(height: 8),
-        _PreferencesCard(
-          isDailyReminderEnabled: notifier.isDailyReminderEnabled,
-          reminderHour: notifier.dailyReminderHour,
-          reminderMinute: notifier.dailyReminderMinute,
-          dailyReminderTime: notifier.dailyReminderTime,
-          onReminderToggle: notifier.setDailyReminderEnabled,
-          onReminderTimePick: notifier.setDailyReminderTime,
-        ),
-        const SizedBox(height: 20),
-        const _ProSection(),
-        const SizedBox(height: 32),
-      ],
+          children: [
+            if (errorMessage != null) ...[
+              _InlineErrorMessage(message: errorMessage),
+              const SizedBox(height: InstrumentTokens.s16),
+            ],
+            readoutsWidget,
+            const SizedBox(height: InstrumentTokens.s20),
+            chartWidget,
+            const SizedBox(height: InstrumentTokens.s24),
+            historyWidget,
+            const SizedBox(height: InstrumentTokens.s32),
+          ],
+        );
+      },
     );
   }
 }
 
-class _ProSection extends StatelessWidget {
-  const _ProSection();
+class _InlineErrorMessage extends StatelessWidget {
+  final String message;
+
+  const _InlineErrorMessage({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final billingNotifier = context.watch<BillingNotifier?>();
-    return LifetimeProBanner(notifier: billingNotifier);
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Text(
-      title,
-      style: theme.textTheme.labelSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.2,
-        color: theme.colorScheme.onSurfaceVariant,
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: InstrumentTokens.gutter,
+        vertical: InstrumentTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: tokens.danger.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+        border: Border.all(color: tokens.danger, width: 1),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontFamily: InstrumentTokens.fontUi,
+          fontSize: 13,
+          color: tokens.danger,
+        ),
       ),
     );
   }
 }
 
-class _MomentumRow extends StatelessWidget {
-  final int focusMinutes;
-  final int completedCount;
+/// Large mono readouts: Today 1h 40m · This week 9h 05m · Streak 6 days
+class _HeaderReadouts extends StatelessWidget {
+  final int todayMinutes;
+  final List<SessionEntity> sessions;
+  final int streakDays;
 
-  const _MomentumRow({
-    required this.focusMinutes,
-    required this.completedCount,
+  const _HeaderReadouts({
+    required this.todayMinutes,
+    required this.sessions,
+    required this.streakDays,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '$focusMinutes MINS',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Locked In Today',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '$completedCount',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Sessions Finished',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+    // Calculate this week's minutes
+    int thisWeekMinutes = 0;
+    final now = DateTime.now();
+    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+    for (final s in sessions) {
+      final sDate = DateTime.fromMillisecondsSinceEpoch(s.startTimeEpochMs);
+      if (sDate.isAfter(sevenDaysAgo)) {
+        final sec = (s.actualDurationSeconds > 0 ||
+                s.status == SessionStatus.cancelled)
+            ? s.actualDurationSeconds
+            : s.targetDurationSeconds;
+        thisWeekMinutes += (sec / 60).round();
+      }
+    }
+    // Fallback if todayMinutes is higher than calculated week (e.g. mock test data)
+    if (todayMinutes > thisWeekMinutes) {
+      thisWeekMinutes = todayMinutes;
+    }
 
-class _PreferencesCard extends StatelessWidget {
-  final bool isDailyReminderEnabled;
-  final int reminderHour;
-  final int reminderMinute;
-  final TimeOfDay dailyReminderTime;
-  final ValueChanged<bool> onReminderToggle;
-  final void Function(int hour, int minute) onReminderTimePick;
+    final todayFormatted = _formatDuration(todayMinutes);
+    final weekFormatted = _formatDuration(thisWeekMinutes);
+    final streakText = '$streakDays ${streakDays == 1 ? "day" : "days"}';
 
-  const _PreferencesCard({
-    required this.isDailyReminderEnabled,
-    required this.reminderHour,
-    required this.reminderMinute,
-    required this.dailyReminderTime,
-    required this.onReminderToggle,
-    required this.onReminderTimePick,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final formattedHour = reminderHour.toString().padLeft(2, '0');
-    final formattedMinute = reminderMinute.toString().padLeft(2, '0');
-    final reminderTimeLabel = '$formattedHour:$formattedMinute';
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
+    return Container(
+      padding: const EdgeInsets.all(InstrumentTokens.gutter),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+        border: Border.all(color: tokens.rule, width: 1),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SwitchListTile.adaptive(
-            secondary: Icon(
-              Icons.notifications_active_outlined,
-              color: colorScheme.onSurface,
-            ),
-            title: Text(
-              'Daily Focus Reminder',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+          Row(
+            children: [
+              Expanded(
+                child: _ReadoutItem(
+                  label: 'TODAY',
+                  value: todayFormatted,
+                  isAccent: true,
+                ),
               ),
-            ),
-            subtitle: Text(
-              isDailyReminderEnabled
-                  ? 'Scheduled daily at $reminderTimeLabel'
-                  : 'Off (zero notification spam)',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              Container(
+                width: 1,
+                height: 36,
+                color: tokens.rule,
               ),
-            ),
-            value: isDailyReminderEnabled,
-            activeThumbColor: colorScheme.primary,
-            onChanged: onReminderToggle,
+              Expanded(
+                child: _ReadoutItem(
+                  label: 'THIS WEEK',
+                  value: weekFormatted,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 36,
+                color: tokens.rule,
+              ),
+              Expanded(
+                child: _ReadoutItem(
+                  label: 'STREAK',
+                  value: streakText,
+                ),
+              ),
+            ],
           ),
-          if (isDailyReminderEnabled)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Reminder Time',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.access_time_rounded, size: 16),
-                    label: Text(reminderTimeLabel),
-                    onPressed: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: dailyReminderTime,
-                      );
-                      if (!context.mounted) return;
-                      if (picked != null) {
-                        onReminderTimePick(picked.hour, picked.minute);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          Divider(color: colorScheme.outlineVariant, height: 1),
-          const ProAccentColorSection(),
         ],
       ),
     );
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes < 60) {
+      return '${minutes}m';
+    }
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return '${h}h ${m.toString().padLeft(2, '0')}m';
+  }
+}
+
+class _ReadoutItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isAccent;
+
+  const _ReadoutItem({
+    required this.label,
+    required this.value,
+    this.isAccent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: InstrumentTokens.s8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontMono,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: tokens.inkMuted,
+            ),
+          ),
+          const SizedBox(height: InstrumentTokens.s4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: InstrumentTokens.fontMono,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: isAccent ? tokens.accent : tokens.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 7-day bar chart drawn with CustomPainter.
+/// Bars are ink at 0.8 opacity, today's bar is accent, 1dp baseline rule, mono M T W T F S S.
+class _InstrumentBarChart extends StatefulWidget {
+  final List<SessionEntity> sessions;
+
+  const _InstrumentBarChart({required this.sessions});
+
+  @override
+  State<_InstrumentBarChart> createState() => _InstrumentBarChartState();
+}
+
+class _InstrumentBarChartState extends State<_InstrumentBarChart> {
+  int _selectedPeriodIndex = 0; // 0: 7D, 1: 30D, 2: 1Y
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final daysData = _compute7DaysData(widget.sessions);
+
+    return Container(
+      padding: const EdgeInsets.all(InstrumentTokens.gutter),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+        border: Border.all(color: tokens.rule, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'ACTIVITY',
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: tokens.inkMuted,
+                ),
+              ),
+              // Segmented control 7D 30D 1Y
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _PeriodButton(
+                    label: '7D',
+                    isSelected: _selectedPeriodIndex == 0,
+                    onTap: () => setState(() => _selectedPeriodIndex = 0),
+                  ),
+                  const SizedBox(width: InstrumentTokens.s4),
+                  _PeriodButton(
+                    label: '30D',
+                    isSelected: _selectedPeriodIndex == 1,
+                    onTap: () => setState(() => _selectedPeriodIndex = 1),
+                  ),
+                  const SizedBox(width: InstrumentTokens.s4),
+                  _PeriodButton(
+                    label: '1Y',
+                    isSelected: _selectedPeriodIndex == 2,
+                    onTap: () => setState(() => _selectedPeriodIndex = 2),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: InstrumentTokens.s20),
+          SizedBox(
+            height: 120,
+            child: CustomPaint(
+              painter: _BarChartPainter(
+                days: daysData,
+                tokens: tokens,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_DayBarData> _compute7DaysData(List<SessionEntity> sessions) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final result = <_DayBarData>[];
+
+    const weekLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    for (int i = 6; i >= 0; i--) {
+      final date = today.subtract(Duration(days: i));
+      int minutes = 0;
+      for (final s in sessions) {
+        final sDate = DateTime.fromMillisecondsSinceEpoch(s.startTimeEpochMs);
+        if (AppDateUtils.isSameDay(date, sDate)) {
+          final sec = (s.actualDurationSeconds > 0 ||
+                  s.status == SessionStatus.cancelled)
+              ? s.actualDurationSeconds
+              : s.targetDurationSeconds;
+          minutes += (sec / 60).round();
+        }
+      }
+      final dayLetter = weekLetters[date.weekday - 1];
+      result.add(_DayBarData(
+        label: dayLetter,
+        minutes: minutes,
+        isToday: i == 0,
+      ));
+    }
+    return result;
+  }
+}
+
+class _PeriodButton extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PeriodButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return GestureDetector(
+      onTap: () {
+        unawaited(HapticFeedback.selectionClick());
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isSelected ? tokens.bg : Colors.transparent,
+          borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+          border: Border.all(
+            color: isSelected ? tokens.ruleStrong : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontMono,
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? tokens.ink : tokens.inkMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayBarData {
+  final String label;
+  final int minutes;
+  final bool isToday;
+
+  const _DayBarData({
+    required this.label,
+    required this.minutes,
+    required this.isToday,
+  });
+}
+
+class _BarChartPainter extends CustomPainter {
+  final List<_DayBarData> days;
+  final InstrumentTokens tokens;
+
+  _BarChartPainter({
+    required this.days,
+    required this.tokens,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (days.isEmpty) return;
+
+    const labelHeight = 20.0;
+    final chartHeight = size.height - labelHeight;
+    final baselineY = chartHeight;
+
+    // Draw 1dp baseline rule
+    final baselinePaint = Paint()
+      ..color = tokens.ruleStrong
+      ..strokeWidth = 1.0;
+    canvas.drawLine(
+      Offset(0, baselineY),
+      Offset(size.width, baselineY),
+      baselinePaint,
+    );
+
+    // Find max minutes
+    int maxMinutes = 60; // minimum scale 60m
+    for (final d in days) {
+      if (d.minutes > maxMinutes) {
+        maxMinutes = d.minutes;
+      }
+    }
+
+    final barSlotWidth = size.width / days.length;
+    const barWidth = 18.0;
+
+    final barPaintDefault = Paint()
+      ..color = tokens.ink.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+
+    final barPaintToday = Paint()
+      ..color = tokens.accent
+      ..style = PaintingStyle.fill;
+
+    final textStyle = TextStyle(
+      fontFamily: InstrumentTokens.fontMono,
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      color: tokens.inkMuted,
+    );
+
+    for (int i = 0; i < days.length; i++) {
+      final day = days[i];
+      final slotCenterX = i * barSlotWidth + barSlotWidth / 2;
+
+      // Draw bar if minutes > 0
+      final fraction = (day.minutes / maxMinutes).clamp(0.0, 1.0);
+      final barH = fraction * (chartHeight - 8.0);
+
+      if (barH > 0) {
+        final left = slotCenterX - barWidth / 2;
+        final top = baselineY - barH;
+        final rect = RRect.fromRectAndCorners(
+          Rect.fromLTWH(left, top, barWidth, barH),
+          topLeft: const Radius.circular(InstrumentTokens.r1),
+          topRight: const Radius.circular(InstrumentTokens.r1),
+        );
+        canvas.drawRRect(rect, day.isToday ? barPaintToday : barPaintDefault);
+      } else {
+        // Subtle 2dp tick at baseline for days with 0 minutes
+        final dotPaint = Paint()
+          ..color = tokens.ruleStrong
+          ..strokeWidth = 2.0;
+        canvas.drawCircle(
+          Offset(slotCenterX, baselineY - 2),
+          1.5,
+          dotPaint,
+        );
+      }
+
+      // Draw day label
+      final textSpan = TextSpan(
+        text: day.label,
+        style: day.isToday
+            ? textStyle.copyWith(
+                color: tokens.accent,
+                fontWeight: FontWeight.bold,
+              )
+            : textStyle,
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      textPainter.paint(
+        canvas,
+        Offset(
+          slotCenterX - textPainter.width / 2,
+          baselineY + 4,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BarChartPainter oldDelegate) {
+    return oldDelegate.days != days || oldDelegate.tokens != tokens;
   }
 }

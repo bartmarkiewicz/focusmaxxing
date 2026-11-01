@@ -76,7 +76,7 @@ class ScheduleConfigSection extends StatelessWidget {
                 ),
                 subtitle: Text(
                   isEnabled
-                      ? 'Active ${schedule.formattedTimeRange}${schedule.isOvernight ? ' (Overnight 🌙)' : ''}'
+                      ? 'Active ${schedule.formattedTimeRange}${schedule.isOvernight ? ' (Overnight)' : ''}'
                       : 'Automatically block social feeds during work/study hours',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,

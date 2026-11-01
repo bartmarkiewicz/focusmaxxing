@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/sheet.dart';
 import 'package:focusmaxxing/core/utils/color_utils.dart';
 import 'package:focusmaxxing/features/backlog/domain/entities/backlog_task_entity.dart';
 import 'package:focusmaxxing/features/backlog/presentation/notifiers/backlog_notifier.dart';
@@ -52,9 +54,9 @@ class MultiTargetPickerSheet extends StatefulWidget {
   final List<SessionTargetAllocation> initialTargets;
 
   static const List<String> targetPalette = [
-    '#00E5FF', // Cyan
-    '#FF4081', // Pink
-    '#FFD700', // Gold
+    '#E5A93C', // Brass
+    '#2BB872', // Signal
+    '#4E8B71', // Moss
   ];
 
   static Future<MultiTargetPickerResult?> show(
@@ -62,10 +64,8 @@ class MultiTargetPickerSheet extends StatefulWidget {
     required int durationMinutes,
     List<SessionTargetAllocation> initialTargets = const [],
   }) {
-    return showModalBottomSheet<MultiTargetPickerResult>(
+    return Sheet.show<MultiTargetPickerResult>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (ctx) => MultiTargetPickerSheet(
         durationMinutes: durationMinutes,
         initialTargets: initialTargets,
@@ -241,6 +241,7 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = context.tokens;
     final colorScheme = theme.colorScheme;
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
 
@@ -266,11 +267,13 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
             bottom: viewInsetsBottom + 16,
           ),
           decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: tokens.surface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(InstrumentTokens.r3),
+            ),
             border: Border(
               top: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: tokens.rule,
               ),
             ),
           ),
@@ -296,7 +299,7 @@ class _MultiTargetPickerSheetState extends State<MultiTargetPickerSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '🎯 What are you locking in on?',
+                      'What are you working on?',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: colorScheme.onSurface,
                         fontWeight: FontWeight.bold,

@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/theme/accent_finish.dart';
 
+export 'package:focusmaxxing/core/theme/accent_finish.dart';
+
+/// Legacy enum adapter forwarding to [AccentFinish].
 enum ProAccentVariant {
   electricEmerald(
-    id: 'electric_emerald',
-    displayName: 'Electric Emerald',
-    subtitle: 'Default Focus',
-    color: Color(0xFF00E676),
-    isProOnly: false,
-  ),
-  cyberAmber(
-    id: 'cyber_amber',
-    displayName: 'Cyber Amber',
-    subtitle: 'High Intensity',
-    color: Color(0xFFFFAB00),
+    id: 'signal',
+    displayName: 'Signal',
+    subtitle: 'High Visibility',
+    color: Color(0xFFFF5A1F),
     isProOnly: true,
   ),
+  cyberAmber(
+    id: 'brass',
+    displayName: 'Brass',
+    subtitle: 'Classic Instrument',
+    color: Color(0xFFC9A227),
+    isProOnly: false,
+  ),
   hyperViolet(
-    id: 'hyper_violet',
-    displayName: 'Hyper Violet',
-    subtitle: 'Deep Meditative Flow',
-    color: Color(0xFFB388FF),
+    id: 'ink',
+    displayName: 'Ink',
+    subtitle: 'Muted Technical Slate',
+    color: Color(0xFF8FA3BF),
     isProOnly: true,
   ),
   glacierBlue(
-    id: 'glacier_blue',
-    displayName: 'Glacier Blue',
-    subtitle: 'Rest Mode Standard',
-    color: Color(0xFF38B6FF),
+    id: 'moss',
+    displayName: 'Moss',
+    subtitle: 'Calm Field Tone',
+    color: Color(0xFF8DA67A),
     isProOnly: true,
   );
 
@@ -44,13 +48,30 @@ enum ProAccentVariant {
   final Color color;
   final bool isProOnly;
 
-  static ProAccentVariant fromId(String? id) {
-    if (id == null) return ProAccentVariant.electricEmerald;
-    for (final variant in ProAccentVariant.values) {
-      if (variant.id == id) {
-        return variant;
-      }
+  AccentFinish get finish {
+    switch (this) {
+      case ProAccentVariant.electricEmerald:
+        return AccentFinish.signal;
+      case ProAccentVariant.cyberAmber:
+        return AccentFinish.brass;
+      case ProAccentVariant.hyperViolet:
+        return AccentFinish.ink;
+      case ProAccentVariant.glacierBlue:
+        return AccentFinish.moss;
     }
-    return ProAccentVariant.electricEmerald;
+  }
+
+  static ProAccentVariant fromId(String? id) {
+    final finish = AccentFinish.fromId(id);
+    switch (finish) {
+      case AccentFinish.signal:
+        return ProAccentVariant.electricEmerald;
+      case AccentFinish.brass:
+        return ProAccentVariant.cyberAmber;
+      case AccentFinish.ink:
+        return ProAccentVariant.hyperViolet;
+      case AccentFinish.moss:
+        return ProAccentVariant.glacierBlue;
+    }
   }
 }

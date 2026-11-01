@@ -369,15 +369,13 @@ class FocusmaxxingApp extends StatelessWidget {
         builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
           return Consumer<ThemeNotifier>(
             builder: (context, themeNotifier, _) {
-              final accentColor = themeNotifier.currentAccent.color;
+              final finish = themeNotifier.currentFinish;
               return MaterialApp(
                 title: 'Focusmaxxing',
                 debugShowCheckedModeBanner: false,
-                themeMode: ThemeMode.dark,
-                theme: AppTheme.buildDarkTheme(darkDynamic,
-                    accentColor: accentColor),
-                darkTheme: AppTheme.buildDarkTheme(darkDynamic,
-                    accentColor: accentColor),
+                themeMode: themeNotifier.themeMode,
+                theme: AppTheme.buildLightTheme(lightDynamic, finish: finish),
+                darkTheme: AppTheme.buildDarkTheme(darkDynamic, finish: finish),
                 home: const MainScaffold(),
               );
             },

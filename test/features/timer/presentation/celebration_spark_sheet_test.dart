@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/app_theme.dart';
 import 'package:focusmaxxing/features/timer/presentation/widgets/celebration_spark_sheet.dart';
 
 void main() {
@@ -11,6 +13,7 @@ void main() {
     void Function(CelebrationResult? result)? onResult,
   }) {
     return MaterialApp(
+      theme: AppTheme.buildDarkTheme(null),
       home: Scaffold(
         body: Builder(
           builder: (context) {
@@ -32,7 +35,7 @@ void main() {
   }
 
   group('CelebrationSparkSheet Widget Tests', () {
-    testWidgets('renders duration minutes, momentum badge, and goal anchor text',
+    testWidgets('renders duration minutes, session receipt, and goal text',
         (tester) async {
       await tester.pumpWidget(
         buildSheetHarness(
@@ -44,17 +47,14 @@ void main() {
       await tester.tap(find.text('Open Sheet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('+45m MOMENTUM SECURED'), findsOneWidget);
-      expect(find.text('"Ship Core Engine"'), findsOneWidget);
-      expect(
-        find.text('Flow state recorded · Every lock-in builds stamina'),
-        findsOneWidget,
-      );
-      expect(find.text('ROLL INTO NEXT BLOCK 🚀'), findsOneWidget);
-      expect(find.text('TAKE A 5M BREATHER ☕'), findsOneWidget);
+      expect(find.text('45:00'), findsOneWidget);
+      expect(find.text('Ship Core Engine'), findsOneWidget);
+      expect(find.text(AppStrings.howDidItGo), findsOneWidget);
+      expect(find.text(AppStrings.startAnother25), findsOneWidget);
+      expect(find.text(AppStrings.break5Min), findsOneWidget);
     });
 
-    testWidgets('tapping ROLL INTO NEXT BLOCK returns rollIntoNext true',
+    testWidgets('tapping start another returns rollIntoNext true',
         (tester) async {
       CelebrationResult? capturedResult;
 
@@ -76,7 +76,7 @@ void main() {
       expect(capturedResult!.rollIntoNext, isTrue);
     });
 
-    testWidgets('tapping TAKE A 5M BREATHER returns rollIntoNext false',
+    testWidgets('tapping take break returns rollIntoNext false',
         (tester) async {
       CelebrationResult? capturedResult;
 

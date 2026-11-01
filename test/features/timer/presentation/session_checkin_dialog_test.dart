@@ -38,11 +38,11 @@ void main() {
       await tester.tap(find.text('SHOW DIALOG'));
       await tester.pumpAndSettle();
 
-      expect(find.text('🎉 25m Complete'), findsOneWidget);
-      expect(find.text('"Refactor Session"'), findsOneWidget);
-      expect(find.text('DERAILED 💀'), findsOneWidget);
-      expect(find.text('LOCKED IN 🚀'), findsOneWidget);
-      expect(find.text('LOCKED IN & END ALL SESSIONS'), findsOneWidget);
+      expect(find.text('Refactor Session'), findsOneWidget);
+      expect(find.text('Did you lock in?'), findsOneWidget);
+      expect(find.text('Locked in'), findsOneWidget);
+      expect(find.text('Derailed'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
     });
 
     testWidgets('tapping LOCKED IN returns true', (tester) async {
@@ -58,7 +58,7 @@ void main() {
       await tester.tap(find.text('SHOW DIALOG'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('LOCKED IN 🚀'));
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
 
       expect(dialogResult, isTrue);
@@ -77,7 +77,10 @@ void main() {
       await tester.tap(find.text('SHOW DIALOG'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('DERAILED 💀'));
+      await tester.tap(find.text('Derailed'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
 
       expect(dialogResult, isFalse);

@@ -102,7 +102,7 @@ void main() {
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
-      expect(fakePlugin.lastShownTitle, '🚀 Locking In');
+      expect(fakePlugin.lastShownTitle, 'Focus block');
       expect(fakePlugin.lastShownBody, 'Deep Work');
 
       final android = fakePlugin.lastShownDetails?.android;
@@ -154,7 +154,7 @@ void main() {
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
-      expect(fakePlugin.lastShownTitle, '🚀 Locking In · 24:35');
+      expect(fakePlugin.lastShownTitle, 'Focus block · 24:35');
       expect(fakePlugin.lastShownBody, 'Fallback Goal');
 
       final android = fakePlugin.lastShownDetails?.android;
@@ -179,7 +179,7 @@ void main() {
       );
 
       expect(fakePlugin.lastShownId, NotificationService.ongoingNotificationId);
-      expect(fakePlugin.lastShownTitle, '☕ Recharging');
+      expect(fakePlugin.lastShownTitle, 'Recharging');
       expect(fakePlugin.lastShownBody, contains('Feeds remain locked'));
       expect(fakePlugin.lastShownDetails?.android?.subText, 'Recharging');
     });
@@ -202,7 +202,7 @@ void main() {
 
       expect(fakePlugin.lastScheduledId,
           NotificationService.sessionCompletionNotificationId);
-      expect(fakePlugin.lastScheduledTitle, '🎉 Focus Block Complete!');
+      expect(fakePlugin.lastScheduledTitle, 'Focus block complete');
       expect(fakePlugin.lastScheduledBody, contains('Write Architecture Spec'));
       expect(fakePlugin.lastScheduledDate, isNotNull);
     });
@@ -220,8 +220,8 @@ void main() {
 
       expect(fakePlugin.lastScheduledId,
           NotificationService.sessionCompletionNotificationId);
-      expect(fakePlugin.lastScheduledTitle, '⚡ Recharge Complete!');
-      expect(fakePlugin.lastScheduledBody, contains('Ready to lock back into "Draft PRD"?'));
+      expect(fakePlugin.lastScheduledTitle, 'Recharge complete');
+      expect(fakePlugin.lastScheduledBody, contains('Ready to continue "Draft PRD"?'));
     });
 
     test(

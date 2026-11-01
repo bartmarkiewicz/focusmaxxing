@@ -32,7 +32,7 @@ void main() {
       expect(controller.isMaxFocusActive, isFalse);
       expect(
         controller.roastAffirmation,
-        '⚡ Caught you scrolling. Reclaim your focus.',
+        'App is blocked during active focus.',
       );
     });
 
@@ -68,7 +68,7 @@ void main() {
       expect(controller.isSessionFinished, isFalse);
       expect(
         controller.roastAffirmation,
-        '🛡️ Scheduled deep work hours. Protect your future.',
+        'Scheduled focus shield is active.',
       );
     });
 

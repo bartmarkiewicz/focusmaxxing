@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 
 class TargetPercentageSlider extends StatelessWidget {
   const TargetPercentageSlider({
@@ -8,6 +9,7 @@ class TargetPercentageSlider extends StatelessWidget {
     required this.totalMinutes,
     required this.color,
     required this.onChanged,
+    this.index = 1,
     this.maxPercentage = 98,
     this.enabled = true,
   });
@@ -17,18 +19,20 @@ class TargetPercentageSlider extends StatelessWidget {
   final int totalMinutes;
   final Color color;
   final ValueChanged<int> onChanged;
+  final int index;
   final int maxPercentage;
   final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final allocatedMinutes = (totalMinutes * (percentage / 100.0)).round();
 
     final maxVal = maxPercentage.clamp(2, 99).toDouble();
     final clampedValue = percentage.toDouble().clamp(1.0, maxVal);
     final divisionsCount = (maxVal - 1.0).round();
+
+    final monoIndex = index.toString().padLeft(2, '0');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -37,12 +41,14 @@ class TargetPercentageSlider extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
+              Text(
+                monoIndex,
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: tokens.inkMuted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 8),
@@ -51,40 +57,35 @@ class TargetPercentageSlider extends StatelessWidget {
                   targetName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: tokens.ink,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  '$percentage% (${allocatedMinutes}m)',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                '$percentage% · ${allocatedMinutes}m',
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: tokens.inkMuted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
           ),
           SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: color,
-              inactiveTrackColor: color.withValues(alpha: 0.2),
-              thumbColor: color,
-              overlayColor: color.withValues(alpha: 0.15),
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+            data: SliderThemeData(
+              activeTrackColor: tokens.accent,
+              inactiveTrackColor: tokens.rule,
+              thumbColor: tokens.accent,
+              trackHeight: 2.0,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
             ),
             child: Slider(
               value: clampedValue,
@@ -92,9 +93,7 @@ class TargetPercentageSlider extends StatelessWidget {
               max: maxVal,
               divisions: divisionsCount > 0 ? divisionsCount : null,
               onChanged: enabled
-                  ? (val) {
-                      onChanged(val.round());
-                    }
+                  ? (newVal) => onChanged(newVal.round())
                   : null,
             ),
           ),

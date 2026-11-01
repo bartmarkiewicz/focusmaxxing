@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 abstract final class ColorUtils {
   static Color fromHex(
     String hex, {
-    Color defaultColor = const Color(0xFF00E5FF),
+    Color defaultColor = const Color(0xFFE5A93C),
   }) {
     final clean = hex.replaceAll('#', '').trim();
     if (clean.length == 6) {

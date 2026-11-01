@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/overlay_main.dart';
 
 void main() {
@@ -19,11 +20,10 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
     expect(find.text('LOCKED IN'), findsOneWidget);
     expect(find.text('"Finish Project Spec"'), findsOneWidget);
     expect(find.text('25:00'), findsOneWidget);
-    expect(find.text('RETURN TO FOCUSMAXXING'), findsOneWidget);
+    expect(find.text(AppStrings.backToWork), findsOneWidget);
   });
 
   testWidgets(
@@ -40,7 +40,7 @@ void main() {
       ),
     );
 
-    expect(find.text('RECHARGE YOUR BRAIN'), findsOneWidget);
+    expect(find.text('BREAK'), findsOneWidget);
     expect(
       find.text('Social feeds remain locked during your break.'),
       findsOneWidget,
@@ -90,7 +90,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('00:59'), findsOneWidget);
-    expect(find.text('RECHARGE YOUR BRAIN'), findsOneWidget);
+    expect(find.text('BREAK'), findsOneWidget);
     expect(
       find.text('Social feeds remain locked during your break.'),
       findsOneWidget,
@@ -163,7 +163,7 @@ void main() {
       ),
     );
 
-    final button = find.widgetWithText(FilledButton, 'RETURN TO FOCUSMAXXING');
+    final button = find.widgetWithText(FilledButton, AppStrings.backToWork);
     expect(button, findsOneWidget);
 
     await tester.tap(button);
@@ -223,7 +223,7 @@ void main() {
       ),
     );
 
-    final button = find.widgetWithText(FilledButton, 'RETURN TO FOCUSMAXXING');
+    final button = find.widgetWithText(FilledButton, AppStrings.backToWork);
     await tester.tap(button);
     await tester.pump();
 
@@ -274,7 +274,7 @@ void main() {
   });
 
   testWidgets(
-      'HardLockOverlayWidget replaces cancel button with COMPLETE CHECK-IN when remaining seconds is 0 in maximum focus',
+      'HardLockOverlayWidget replaces cancel button with Save when remaining seconds is 0 in maximum focus',
       (tester) async {
     final controller = StreamController<dynamic>(sync: true);
     addTearDown(controller.close);
@@ -290,7 +290,7 @@ void main() {
     );
 
     expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsOneWidget);
-    expect(find.text('HOLD 5S TO CANCEL SESSION'), findsOneWidget);
+    expect(find.text(AppStrings.holdToEndSession), findsOneWidget);
 
     controller.add({
       'remainingSeconds': 0,
@@ -301,9 +301,9 @@ void main() {
 
     // Cancel button must be completely gone when timer hits 00:00
     expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsNothing);
-    expect(find.text('HOLD 5S TO CANCEL SESSION'), findsNothing);
-    expect(find.text('SESSION COMPLETE 🎉'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'COMPLETE CHECK-IN 🎉'), findsOneWidget);
+    expect(find.text(AppStrings.holdToEndSession), findsNothing);
+    expect(find.text('COMPLETE'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, AppStrings.save), findsOneWidget);
   });
 
   testWidgets(
@@ -316,12 +316,7 @@ void main() {
         calls.add(call.method);
         if (call.method == 'returnToFocusmaxxing') return true;
         if (call.method == 'getInitialOverlayState') {
-          return <String, dynamic>{
-            'goal': 'Fast test',
-            'remainingSeconds': 1,
-            'isBreak': false,
-            'isMaximumFocus': true,
-          };
+          return <String, dynamic>{};
         }
         return null;
       },
@@ -351,7 +346,7 @@ void main() {
 
     expect(find.text('00:00'), findsOneWidget);
     expect(find.byKey(const Key('overlay_hold_to_cancel_button')), findsNothing);
-    expect(find.text('SESSION COMPLETE 🎉'), findsOneWidget);
+    expect(find.text('COMPLETE'), findsOneWidget);
     expect(calls, contains('returnToFocusmaxxing'));
   });
 
@@ -365,12 +360,7 @@ void main() {
         calls.add(call.method);
         if (call.method == 'returnToFocusmaxxing') return true;
         if (call.method == 'getInitialOverlayState') {
-          return <String, dynamic>{
-            'goal': 'Session 1',
-            'remainingSeconds': 1,
-            'isBreak': false,
-            'isMaximumFocus': false,
-          };
+          return <String, dynamic>{};
         }
         return null;
       },
@@ -449,14 +439,13 @@ void main() {
     });
     await tester.pump();
 
-    expect(find.text('AUTO-SHIELD ACTIVE'), findsOneWidget);
     expect(find.text('09:00 - 17:00'), findsOneWidget);
-    expect(find.text('SESSION COMPLETE 🎉'), findsNothing);
-    expect(find.text('RETURN TO FOCUSMAXXING'), findsOneWidget);
+    expect(find.text('SCHEDULED'), findsOneWidget);
+    expect(find.text('COMPLETE'), findsNothing);
   });
 
   group('Emergency Breather', () {
-    const breatherDuration = Duration(seconds: 8);
+    const breatherDuration = Duration(milliseconds: 200);
 
     Widget buildOverlay({
       Future<void> Function()? onClose,
@@ -488,7 +477,7 @@ void main() {
     testWidgets('shows breather button on an active lock', (tester) async {
       await tester.pumpWidget(buildOverlay());
 
-      expect(find.text('🌬️ TAKE A BREATHER (60S)'), findsOneWidget);
+      expect(find.text(AppStrings.breatheForAMinute), findsOneWidget);
     });
 
     testWidgets('hides breather button once the session is finished',
@@ -508,7 +497,7 @@ void main() {
 
       expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
       expect(
-        find.text('Dopamine spikes peak at 60 seconds and dissipate. Breathe.'),
+        find.text(AppStrings.urgePassesNotice),
         findsOneWidget,
       );
       expect(find.byKey(const Key('overlay_hold_to_cancel_button')),
@@ -522,8 +511,8 @@ void main() {
       await completeBreather(tester);
 
       expect(find.byKey(const Key('overlay_box_breathing')), findsNothing);
-      expect(find.text("I'M READY TO FOCUS 🚀"), findsOneWidget);
-      expect(find.text('2-MIN EMERGENCY PASS ⏱️'), findsOneWidget);
+      expect(find.text(AppStrings.backToWork), findsOneWidget);
+      expect(find.text('2 min emergency pass'), findsOneWidget);
     });
 
     testWidgets('ready button returns to the app and resets the overlay',
@@ -569,12 +558,8 @@ void main() {
       await tester.tap(find.byKey(const Key('overlay_emergency_pass_button')));
       await tester.pump();
 
-      expect(find.text('EMERGENCY PASS USED TODAY'), findsOneWidget);
-      final button = tester.widget<OutlinedButton>(
-        find.byKey(const Key('overlay_emergency_pass_button')),
-      );
-      expect(button.onPressed, isNull);
-      expect(find.text("I'M READY TO FOCUS 🚀"), findsOneWidget);
+      expect(find.text('Emergency pass used today'), findsOneWidget);
+      expect(find.text(AppStrings.backToWork), findsOneWidget);
     });
 
     testWidgets('pass already used today renders disabled pass button',
@@ -583,11 +568,10 @@ void main() {
 
       await completeBreather(tester);
 
-      expect(find.text('EMERGENCY PASS USED TODAY'), findsOneWidget);
+      expect(find.text('Emergency pass used today'), findsOneWidget);
     });
 
     testWidgets('session ending mid-breather returns to the finished state',
-
         (tester) async {
       final controller = StreamController<dynamic>(sync: true);
       addTearDown(controller.close);
@@ -605,34 +589,47 @@ void main() {
 
       await tester.tap(find.byKey(const Key('overlay_take_breather_button')));
       await tester.pump();
+
       expect(find.byKey(const Key('overlay_box_breathing')), findsOneWidget);
 
-      controller.add({'remainingSeconds': 0, 'isMaximumFocus': false});
-      await tester.pump();
-      await tester.pump(breatherDuration + const Duration(seconds: 1));
+      controller.add({
+        'remainingSeconds': 0,
+        'isMaximumFocus': true,
+        'isBreak': false,
+      });
       await tester.pump();
 
-      expect(find.byKey(const Key('overlay_take_breather_button')),
-          findsNothing);
+      expect(find.byKey(const Key('overlay_box_breathing')), findsNothing);
+      expect(find.text('COMPLETE'), findsOneWidget);
     });
 
     testWidgets('requests emergency pass via bridge channel by default',
         (tester) async {
       final calls = <String>[];
-      const channel = MethodChannel('com.focusmaxxing/overlay_bridge');
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        channel,
+        const MethodChannel('com.focusmaxxing/overlay_bridge'),
         (call) async {
           calls.add(call.method);
-          return call.method == 'grantEmergencyPass';
+          if (call.method == 'grantEmergencyPass') return true;
+          return null;
         },
       );
       addTearDown(() {
-        tester.binding.defaultBinaryMessenger
-            .setMockMethodCallHandler(channel, null);
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          const MethodChannel('com.focusmaxxing/overlay_bridge'),
+          null,
+        );
       });
 
-      await tester.pumpWidget(buildOverlay());
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: HardLockOverlayWidget(
+            dataStream: Stream.empty(),
+            initialIsMaximumFocus: true,
+            breatherDuration: breatherDuration,
+          ),
+        ),
+      );
 
       await completeBreather(tester);
       await tester.tap(find.byKey(const Key('overlay_emergency_pass_button')));

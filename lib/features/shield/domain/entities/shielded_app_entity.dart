@@ -4,54 +4,45 @@ import 'package:equatable/equatable.dart';
 class ShieldPreset extends Equatable {
   final String packageName;
   final String appName;
-  final String emoji;
 
   const ShieldPreset({
     required this.packageName,
     required this.appName,
-    required this.emoji,
   });
 
   static const List<ShieldPreset> defaults = [
     ShieldPreset(
       packageName: 'com.instagram.android',
       appName: 'Instagram',
-      emoji: '📸',
     ),
     ShieldPreset(
       packageName: 'com.zhiliaoapp.musically',
       appName: 'TikTok',
-      emoji: '🎵',
     ),
     ShieldPreset(
       packageName: 'com.twitter.android',
       appName: 'Twitter / X',
-      emoji: '🐦',
     ),
     ShieldPreset(
       packageName: 'com.reddit.frontpage',
       appName: 'Reddit',
-      emoji: '🤖',
     ),
     ShieldPreset(
       packageName: 'com.google.android.youtube',
       appName: 'YouTube Shorts',
-      emoji: '▶️',
     ),
     ShieldPreset(
       packageName: 'com.android.chrome',
       appName: 'Web Browsers',
-      emoji: '🌐',
     ),
     ShieldPreset(
       packageName: 'com.roblox.client',
       appName: 'Mobile Games',
-      emoji: '🎮',
     ),
   ];
 
   @override
-  List<Object?> get props => [packageName, appName, emoji];
+  List<Object?> get props => [packageName, appName];
 }
 
 class ShieldedAppEntity extends Equatable {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_target_allocation.dart';
 import 'package:focusmaxxing/features/timer/domain/utils/target_allocation_balancer.dart';
 
@@ -19,15 +20,14 @@ class GoalAnchorPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     final String displayText;
     if (targets.isNotEmpty) {
       displayText = TargetAllocationBalancer.formatAnchorPillText(targets);
     } else {
       final trimmed = goal.trim();
-      displayText = trimmed.isNotEmpty ? trimmed : 'Set Single Focus Anchor';
+      displayText = trimmed.isNotEmpty ? trimmed : 'Set focus target';
     }
 
     final hasTarget = targets.isNotEmpty || goal.trim().isNotEmpty;
@@ -37,50 +37,54 @@ class GoalAnchorPill extends StatelessWidget {
       label: hasTarget
           ? 'Active anchors: $displayText'
           : 'No anchor set. Tap to set targets.',
-      child: InkWell(
-        onTap: isIdle ? onTap : null,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isIdle ? onTap : null,
+          borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: InstrumentTokens.s12,
+              vertical: InstrumentTokens.s6,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.anchor_rounded,
-                size: 16,
-                color: colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 280),
-                child: Text(
-                  displayText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: hasTarget
-                        ? colorScheme.onSurface
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+              border: Border.all(color: tokens.ruleStrong, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.adjust_outlined,
+                  size: 16,
+                  color: hasTarget ? tokens.accent : tokens.inkMuted,
+                ),
+                const SizedBox(width: InstrumentTokens.s8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 240),
+                  child: Text(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontUi,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: hasTarget ? tokens.ink : tokens.inkMuted,
+                    ),
                   ),
                 ),
-              ),
-              if (isIdle) ...[
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.edit_outlined,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                if (isIdle) ...[
+                  const SizedBox(width: InstrumentTokens.s4),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: tokens.inkMuted,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

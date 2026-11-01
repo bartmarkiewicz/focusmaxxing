@@ -167,19 +167,19 @@ class NotificationService {
 
     if (isBreak) {
       title = useNativeChronometer
-          ? '☕ Recharging'
-          : '☕ Recharging · $formattedTimeRemaining';
+          ? 'Recharging'
+          : 'Recharging · $formattedTimeRemaining';
       contentText = 'Feeds remain locked · Recharge stamina';
       subText = 'Recharging';
     } else if (isPaused) {
-      title = '⏸ Paused ($formattedTimeRemaining) · Lock In';
-      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay locked in';
+      title = 'Paused ($formattedTimeRemaining)';
+      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay focused';
       subText = 'Paused';
     } else {
       title = useNativeChronometer
-          ? '🚀 Locking In'
-          : '🚀 Locking In · $formattedTimeRemaining';
-      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay locked in';
+          ? 'Focus block'
+          : 'Focus block · $formattedTimeRemaining';
+      contentText = taskGoal.isNotEmpty ? taskGoal : 'Stay focused';
       subText = 'Active Focus';
     }
 
@@ -275,15 +275,15 @@ class NotificationService {
     );
 
     final cleanGoal = goal.trim().isNotEmpty ? goal.trim() : 'Focus Block';
-    final alertTitle = isBreak ? '⚡ Recharge Complete!' : '🎉 Focus Block Complete!';
+    final alertTitle = isBreak ? 'Recharge complete' : 'Focus block complete';
     final hasCustomGoal = cleanGoal.isNotEmpty &&
         cleanGoal != 'Focus Block' &&
         cleanGoal != '5-Minute Recharge Break';
     final alertBody = isBreak
         ? (hasCustomGoal
-            ? 'Ready to lock back into "$cleanGoal"?'
-            : 'Ready to lock back into your next block?')
-        : 'Great job locking in on "$cleanGoal". Tap to recharge.';
+            ? 'Ready to continue "$cleanGoal"?'
+            : 'Ready for your next focus block?')
+        : 'Session on "$cleanGoal" completed.';
 
     try {
       await _notificationsPlugin.zonedSchedule(
@@ -349,7 +349,7 @@ class NotificationService {
   Future<void> scheduleDailyReminder({
     required int hour,
     required int minute,
-    String title = 'Time to Lock In 🚀',
+    String title = 'Time to focus',
     String body = 'Start your daily focus block and crush your goals.',
   }) async {
     if (!isSupportedPlatform || !_isInitialized) return;

@@ -1,14 +1,17 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
 import 'package:focusmaxxing/core/errors/failures.dart';
 import 'package:focusmaxxing/core/notifications/notification_service.dart';
+import 'package:focusmaxxing/core/theme/app_theme.dart';
 import 'package:focusmaxxing/features/insights/domain/entities/daily_summary_entity.dart';
 import 'package:focusmaxxing/features/insights/domain/repositories/i_insights_repository.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/pages/insights_page.dart';
+import 'package:focusmaxxing/features/settings/presentation/pages/settings_page.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -78,10 +81,11 @@ void main() {
   });
 
   Widget buildWidget() {
-    return MaterialApp(
-      home: ChangeNotifierProvider<InsightsNotifier>.value(
-        value: notifier,
-        child: const InsightsPage(),
+    return ChangeNotifierProvider<InsightsNotifier>.value(
+      value: notifier,
+      child: MaterialApp(
+        theme: AppTheme.buildDarkTheme(null),
+        home: const InsightsPage(),
       ),
     );
   }
@@ -98,25 +102,27 @@ void main() {
     await tester.pumpWidget(buildWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Insights & Settings'), findsOneWidget);
-    expect(find.text("TODAY'S MOMENTUM"), findsOneWidget);
-    expect(find.text('75 MINS'), findsOneWidget);
-    expect(find.text('Locked In Today'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
-    expect(find.text('Sessions Finished'), findsOneWidget);
+    expect(find.text(AppStrings.insightsTitle), findsOneWidget);
+    expect(find.text('TODAY'), findsWidgets);
+    expect(find.text('1h 15m'), findsNWidgets(2));
+    expect(find.text('THIS WEEK'), findsOneWidget);
+    expect(find.text('STREAK'), findsOneWidget);
+    expect(find.text('4 days'), findsOneWidget);
 
-    expect(find.text('CURRENT STREAK'), findsOneWidget);
-    expect(find.text('CURRENT STREAK: 4 DAYS'), findsOneWidget);
+    expect(find.text('ACTIVITY'), findsOneWidget);
+    expect(find.text('7D'), findsOneWidget);
 
     expect(find.text('RECENT SESSIONS'), findsOneWidget);
     expect(find.text('Implement Insights Page'), findsOneWidget);
 
-    expect(find.text('CONFIG & PREFERENCES'), findsOneWidget);
-    expect(find.text('Daily Focus Reminder'), findsOneWidget);
-    expect(find.text('Ambient Audio'), findsNothing);
-    expect(find.text('Timer Intervals'), findsNothing);
+    // Settings icon navigates to SettingsPage
+    expect(find.byKey(const Key('settings_button')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('settings_button')));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Unlock Lifetime Pro — \$9.99'), findsOneWidget);
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(find.text('Daily notification'), findsOneWidget);
+    expect(find.text('Version'), findsOneWidget);
   });
 
   testWidgets('renders error state with retry button when initial load fails',
@@ -127,16 +133,16 @@ void main() {
     await tester.pumpWidget(buildWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Unable to load insights'), findsOneWidget);
+    expect(find.text('UNABLE TO LOAD INSIGHTS'), findsOneWidget);
     expect(find.text('Database connection lost'), findsOneWidget);
-    expect(find.text('RETRY'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
 
     // Tapping retry re-fetches
     repository.failureToReturn = null;
-    await tester.tap(find.text('RETRY'));
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
 
-    expect(find.text("TODAY'S MOMENTUM"), findsOneWidget);
-    expect(find.text('75 MINS'), findsOneWidget);
+    expect(find.text('TODAY'), findsWidgets);
+    expect(find.text('1h 15m'), findsNWidgets(2));
   });
 }

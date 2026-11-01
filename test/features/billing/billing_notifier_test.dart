@@ -298,30 +298,30 @@ void main() {
     test('ThemeNotifier validates Pro access when entitlement stream emits locked',
         () async {
       await themeNotifier.setAccent(
-        ProAccentVariant.cyberAmber,
+        ProAccentVariant.electricEmerald,
         isLifetimePro: true,
       );
-      expect(themeNotifier.currentAccent, ProAccentVariant.cyberAmber);
+      expect(themeNotifier.currentAccent, ProAccentVariant.electricEmerald);
 
       final notifier = createNotifier();
       addTearDown(notifier.dispose);
       await notifier.initialize();
       await Future<void>.delayed(Duration.zero);
 
-      expect(themeNotifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(themeNotifier.currentAccent, ProAccentVariant.cyberAmber);
     });
 
     test('ThemeNotifier does not reset Pro accent before initialize runs',
         () async {
       await themeNotifier.setAccent(
-        ProAccentVariant.cyberAmber,
+        ProAccentVariant.electricEmerald,
         isLifetimePro: true,
       );
 
       final notifier = createNotifier();
       addTearDown(notifier.dispose);
 
-      expect(themeNotifier.currentAccent, ProAccentVariant.cyberAmber);
+      expect(themeNotifier.currentAccent, ProAccentVariant.electricEmerald);
     });
   });
 }

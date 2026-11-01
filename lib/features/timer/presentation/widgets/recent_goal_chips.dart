@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/ui/tag.dart';
 
-/// Displays quick-select chips for recently used focus goals when the timer is idle.
+/// Displays quick-select tags for recently used focus goals when the timer is idle.
 class RecentGoalChips extends StatelessWidget {
   const RecentGoalChips({
     super.key,
@@ -21,8 +22,6 @@ class RecentGoalChips extends StatelessWidget {
   Widget build(BuildContext context) {
     if (recentGoals.isEmpty) return const SizedBox.shrink();
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final normalizedCurrent = currentGoal.trim().toLowerCase();
 
     return Padding(
@@ -33,32 +32,11 @@ class RecentGoalChips extends StatelessWidget {
         alignment: WrapAlignment.center,
         children: [
           for (final goal in recentGoals)
-            ActionChip(
-              avatar: const Icon(Icons.bolt_rounded, size: 14),
-              label: Text(
-                goal,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: goal.toLowerCase() == normalizedCurrent
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
-              ),
-              backgroundColor: goal.toLowerCase() == normalizedCurrent
-                  ? colorScheme.primary.withValues(alpha: 0.15)
-                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              side: BorderSide(
-                color: goal.toLowerCase() == normalizedCurrent
-                    ? colorScheme.primary.withValues(alpha: 0.5)
-                    : colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              onPressed: () {
-                try {
-                  unawaited(HapticFeedback.selectionClick());
-                } catch (_) {}
+            Tag(
+              label: goal,
+              isSelected: goal.toLowerCase() == normalizedCurrent,
+              onTap: () {
+                unawaited(HapticFeedback.selectionClick());
                 final isAlreadyActive = goal.toLowerCase() == normalizedCurrent;
                 onSelectGoal(goal);
                 if (isAlreadyActive) {

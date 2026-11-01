@@ -1,180 +1,158 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
+import 'package:focusmaxxing/core/ui/readout_row.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:provider/provider.dart';
 
-/// High-contrast Lifetime Pro banner card showcasing the one-time $9.99 unlock
-/// when locked, and transitioning to the active Lifetime Pro badge when unlocked.
+/// Clean spec sheet style Lifetime Pro banner matching "The Instrument" aesthetic.
 class LifetimeProBanner extends StatelessWidget {
-  final BillingNotifier? notifier;
-
   const LifetimeProBanner({
     super.key,
     this.notifier,
   });
 
+  final BillingNotifier? notifier;
+
   @override
   Widget build(BuildContext context) {
     final billingNotifier = notifier ?? context.read<BillingNotifier?>();
     if (billingNotifier == null) {
-      return const _LockedProBanner(notifier: null);
+      return const _LockedProSpecSheet(notifier: null);
     }
 
     return ListenableBuilder(
       listenable: billingNotifier,
       builder: (context, _) {
         if (billingNotifier.isProUnlocked) {
-          return _UnlockedProBanner(notifier: billingNotifier);
+          return const _UnlockedProBadge();
         }
-        return _LockedProBanner(notifier: billingNotifier);
+        return _LockedProSpecSheet(notifier: billingNotifier);
       },
     );
   }
 }
 
-class _LockedProBanner extends StatelessWidget {
-  final BillingNotifier? notifier;
+class _LockedProSpecSheet extends StatelessWidget {
+  const _LockedProSpecSheet({required this.notifier});
 
-  const _LockedProBanner({required this.notifier});
+  final BillingNotifier? notifier;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final formattedPrice = notifier?.productDetails.price ?? r'$9.99';
     final isLoading = notifier?.isLoading ?? false;
     final errorMessage = notifier?.errorMessage;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.accentStreakGold.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+        border: Border.all(color: tokens.ruleStrong, width: 1),
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(InstrumentTokens.gutter),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.accentStreakGold.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.workspace_premium_rounded,
-                  color: AppColors.accentStreakGold,
-                  size: 26,
+              Text(
+                AppStrings.proTitle,
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontUi,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.ink,
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Unlock Unlimited Shielding & Audio for $formattedPrice',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: AppColors.textHighContrast,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'One-time flat payment · No recurring subscriptions',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+                  border: Border.all(color: tokens.accent, width: 1),
+                ),
+                child: Text(
+                  AppStrings.proTag,
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontMono,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: tokens.accent,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const _FeatureBulletItem(
-            text: 'Unlimited app blocking (lifts the 2-app free cap)',
+          const SizedBox(height: InstrumentTokens.s16),
+          const ReadoutRow(
+            label: 'Physical finishes',
+            value: 'Brass · Signal · Ink · Moss',
+            showDivider: true,
           ),
-          const SizedBox(height: 6),
-          const _FeatureBulletItem(
-            text: 'Full neurodivergent audio engine (Brown noise, 40Hz, Rain)',
+          const ReadoutRow(
+            label: 'Brainrot Shield',
+            value: 'Unlimited apps',
+            showDivider: true,
           ),
-          const SizedBox(height: 6),
-          const _FeatureBulletItem(
-            text: 'Scheduled auto-shielding & offline privacy forever',
+          const ReadoutRow(
+            label: 'Automated schedules',
+            value: 'Enabled',
+            showDivider: true,
           ),
+          const ReadoutRow(
+            label: 'Ambient soundscapes',
+            value: 'Full library',
+            showDivider: false,
+          ),
+          const SizedBox(height: InstrumentTokens.s16),
           if (errorMessage != null) ...[
-            const SizedBox(height: 14),
-            _BillingErrorMessage(
-              message: errorMessage,
-              onDismiss: () => notifier?.clearError(),
-            ),
-          ],
-          const SizedBox(height: 18),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              key: const ValueKey('buy_lifetime_pro_button'),
-              onPressed: isLoading || notifier == null
-                  ? null
-                  : () {
-                      unawaited(notifier!.buyLifetimePro());
-                    },
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accentStreakGold,
-                foregroundColor: AppColors.surfaceMidnight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            Text(
+              errorMessage,
+              style: TextStyle(
+                fontFamily: InstrumentTokens.fontUi,
+                fontSize: 13,
+                color: tokens.danger,
               ),
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.surfaceMidnight,
-                        ),
-                      ),
-                    )
-                  : Text(
-                      'Unlock Lifetime Pro — $formattedPrice',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
+            ),
+            const SizedBox(height: InstrumentTokens.s8),
+          ],
+          InstrumentButton.primary(
+            key: const ValueKey('buy_lifetime_pro_button'),
+            label: isLoading ? 'Contacting Store...' : AppStrings.buyOnce(formattedPrice),
+            onPressed: isLoading
+                ? null
+                : () async {
+                    unawaited(HapticFeedback.selectionClick());
+                    await notifier?.buyLifetimePro();
+                  },
+          ),
+          const SizedBox(height: InstrumentTokens.s8),
+          Text(
+            AppStrings.oneTimeNotice,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontUi,
+              fontSize: 12,
+              color: tokens.inkMuted,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: InstrumentTokens.s4),
           Center(
-            child: TextButton(
+            child: InstrumentButton.text(
               key: const ValueKey('restore_purchases_button'),
-              onPressed: isLoading || notifier == null
+              label: AppStrings.restorePurchases,
+              onPressed: isLoading
                   ? null
-                  : () {
-                      unawaited(notifier!.restorePurchases());
+                  : () async {
+                      unawaited(HapticFeedback.selectionClick());
+                      await notifier?.restorePurchases();
                     },
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textMuted,
-                visualDensity: VisualDensity.compact,
-              ),
-              child: const Text(
-                'Restore Purchases',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
             ),
           ),
         ],
@@ -183,71 +161,64 @@ class _LockedProBanner extends StatelessWidget {
   }
 }
 
-class _UnlockedProBanner extends StatelessWidget {
-  final BillingNotifier? notifier;
-
-  const _UnlockedProBanner({required this.notifier});
+class _UnlockedProBadge extends StatelessWidget {
+  const _UnlockedProBadge();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final orderId = notifier?.unlockStatus.orderId;
+    final tokens = context.tokens;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.accentStreakGold,
-          width: 1.5,
-        ),
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+        border: Border.all(color: tokens.rule, width: 1),
       ),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InstrumentTokens.gutter,
+        vertical: InstrumentTokens.s16,
+      ),
       child: Row(
         children: [
-          const Text(
-            '⭐',
-            style: TextStyle(fontSize: 28),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+              border: Border.all(color: tokens.accent, width: 1),
+            ),
+            child: Text(
+              AppStrings.proTag,
+              style: TextStyle(
+                fontFamily: InstrumentTokens.fontMono,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+                color: tokens.accent,
+              ),
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: InstrumentTokens.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '⭐ Lifetime Pro Unlocked',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: AppColors.accentStreakGold,
+                  'Lifetime Pro Active',
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.ink,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  'LIFETIME PRO: ACTIVE',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: AppColors.textHighContrast,
+                  'All finishes and unlimited shields unlocked.',
+                  style: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 12,
+                    color: tokens.inkMuted,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Zero subscriptions · Unlimited blocking & offline privacy',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                if (orderId != null && orderId.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Order ID: $orderId',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppColors.textMuted,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -257,157 +228,34 @@ class _UnlockedProBanner extends StatelessWidget {
   }
 }
 
-class _FeatureBulletItem extends StatelessWidget {
-  final String text;
-
-  const _FeatureBulletItem({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.check_circle_rounded,
-          size: 16,
-          color: AppColors.accentStreakGold,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textHighContrast,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BillingErrorMessage extends StatelessWidget {
-  final String message;
-  final VoidCallback onDismiss;
-
-  const _BillingErrorMessage({
-    required this.message,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.accentHardLock.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.accentHardLock.withValues(alpha: 0.4),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            size: 18,
-            color: AppColors.accentHardLock,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textHighContrast,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 18),
-            constraints: const BoxConstraints(
-              minWidth: kMinInteractiveDimension,
-              minHeight: kMinInteractiveDimension,
-            ),
-            padding: const EdgeInsets.all(8),
-            color: AppColors.textMuted,
-            tooltip: 'Dismiss message',
-            onPressed: onDismiss,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact supporter badge rendered in app headers when Lifetime Pro is unlocked.
+/// Compact PRO supporter badge displayed in the app bar when Lifetime Pro is unlocked.
 class ProSupporterBadge extends StatelessWidget {
-  final bool? isPro;
-  final BillingNotifier? notifier;
-
-  const ProSupporterBadge({
-    super.key,
-    this.isPro,
-    this.notifier,
-  });
+  const ProSupporterBadge({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (isPro != null) {
-      return isPro! ? const _ProBadgeChip() : const SizedBox.shrink();
-    }
-
-    final billingNotifier = notifier ?? context.read<BillingNotifier?>();
-    if (billingNotifier == null) {
+    final billing = context.watch<BillingNotifier?>();
+    if (billing == null || !billing.isProUnlocked) {
       return const SizedBox.shrink();
     }
-
-    return ListenableBuilder(
-      listenable: billingNotifier,
-      builder: (context, _) => billingNotifier.isProUnlocked
-          ? const _ProBadgeChip()
-          : const SizedBox.shrink(),
-    );
-  }
-}
-
-class _ProBadgeChip extends StatelessWidget {
-  const _ProBadgeChip();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.accentStreakGold.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.accentStreakGold.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(InstrumentTokens.r1),
+        border: Border.all(color: tokens.accent, width: 1),
+      ),
+      child: Text(
+        AppStrings.proTag,
+        style: TextStyle(
+          fontFamily: InstrumentTokens.fontMono,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: tokens.accent,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.star_rounded,
-            size: 14,
-            color: AppColors.accentStreakGold,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'LIFETIME PRO',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.accentStreakGold,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
+

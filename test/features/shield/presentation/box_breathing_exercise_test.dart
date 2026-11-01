@@ -24,25 +24,13 @@ void main() {
       .widget<Text>(find.byKey(const Key('breathing_phase_label')))
       .data!;
 
-  double circleScale(WidgetTester tester) {
-    final transform = tester.widget<Transform>(
-      find
-          .ancestor(
-            of: find.byKey(const Key('breathing_circle')),
-            matching: find.byType(Transform),
-          )
-          .last,
-    );
-    return transform.transform.storage[0];
-  }
-
-  testWidgets('starts in inhale phase with a contracted circle',
+  testWidgets('starts in inhale phase with square trace painter',
       (tester) async {
     await tester.pumpWidget(buildExercise(onComplete: () {}));
 
-    expect(phaseLabel(tester), 'INHALE');
-    expect(circleScale(tester), closeTo(0.45, 0.01));
-    expect(find.text('16s'), findsOneWidget);
+    expect(phaseLabel(tester), 'IN');
+    expect(find.byType(CustomPaint), findsWidgets);
+    expect(find.text('4s In · 4s Hold · 4s Out · 4s Hold'), findsOneWidget);
   });
 
   testWidgets('cycles inhale, hold, exhale, hold across four phases',
@@ -50,19 +38,16 @@ void main() {
     await tester.pumpWidget(buildExercise(onComplete: () {}));
 
     await tester.pump(const Duration(seconds: 3));
-    expect(phaseLabel(tester), 'INHALE');
-    expect(circleScale(tester), greaterThan(0.8));
+    expect(phaseLabel(tester), 'IN');
 
     await tester.pump(const Duration(seconds: 2));
     expect(phaseLabel(tester), 'HOLD');
-    expect(circleScale(tester), closeTo(1.0, 0.001));
 
     await tester.pump(const Duration(seconds: 4));
-    expect(phaseLabel(tester), 'EXHALE');
+    expect(phaseLabel(tester), 'OUT');
 
     await tester.pump(const Duration(seconds: 4));
     expect(phaseLabel(tester), 'HOLD');
-    expect(circleScale(tester), closeTo(0.45, 0.001));
   });
 
   testWidgets('invokes onComplete exactly once after total duration',

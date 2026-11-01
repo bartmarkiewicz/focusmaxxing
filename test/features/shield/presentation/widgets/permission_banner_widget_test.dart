@@ -49,9 +49,10 @@ void main() {
         ),
       );
 
-      expect(find.text('SHIELD PERMISSIONS REQUIRED'), findsOneWidget);
-      expect(find.text('Usage Access'), findsOneWidget);
-      expect(find.text('Fix Now'), findsOneWidget);
+      expect(
+        find.text('Usage access permission needed → Fix'),
+        findsOneWidget,
+      );
 
       await tester.tap(
         find.byKey(const ValueKey('fix_permission_usageStats')),

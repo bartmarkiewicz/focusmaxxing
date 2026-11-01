@@ -199,8 +199,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(PermissionBannerWidget), findsOneWidget);
-        expect(find.text('Usage Access'), findsOneWidget);
-        expect(find.text('Fix Now'), findsOneWidget);
+        expect(find.textContaining('Usage access permission needed'), findsOneWidget);
 
         await tester.tap(
           find.byKey(const ValueKey('fix_permission_usageStats')),
@@ -235,7 +234,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(PermissionBannerWidget), findsNothing);
-        expect(find.text('Fix Now'), findsNothing);
+        expect(find.textContaining('permission needed'), findsNothing);
       },
     );
 
@@ -248,7 +247,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Shield Status: READY (0/2 Apps Selected)'),
+          find.text('APPS · 0 BLOCKED'),
           findsOneWidget,
         );
 
@@ -258,7 +257,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Shield Status: ACTIVE (1/2 Apps Selected)'),
+          find.text('APPS · 1 BLOCKED'),
           findsOneWidget,
         );
         expect(notifier.isPackageActive('com.instagram.android'), isTrue);
@@ -269,7 +268,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Shield Status: ACTIVE (2/2 Apps Selected)'),
+          find.text('APPS · 2 BLOCKED'),
           findsOneWidget,
         );
 
@@ -326,20 +325,20 @@ void main() {
         await tester.pumpWidget(buildSubject(notifier));
         await tester.pumpAndSettle();
 
-        expect(find.text('QUICK PRESETS'), findsOneWidget);
+        expect(find.text('PRESETS'), findsOneWidget);
 
         // Tap Schedule tab
         await tester.tap(find.text('Schedule'));
         await tester.pumpAndSettle();
 
-        expect(find.text('QUICK PRESETS'), findsNothing);
+        expect(find.text('PRESETS'), findsNothing);
         expect(find.byType(ScheduleConfigSection), findsOneWidget);
 
         // Tap Apps tab
-        await tester.tap(find.byIcon(Icons.shield_outlined));
+        await tester.tap(find.textContaining('Apps'));
         await tester.pumpAndSettle();
 
-        expect(find.text('QUICK PRESETS'), findsOneWidget);
+        expect(find.text('PRESETS'), findsOneWidget);
         expect(find.byType(ScheduleConfigSection), findsNothing);
       },
     );

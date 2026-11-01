@@ -8,20 +8,20 @@ void main() {
 
   group('ThemeNotifier Unit Tests', () {
     test(
-        'defaults to electricEmerald when SharedPreferences has no saved value',
+        'defaults to Brass (cyberAmber) when SharedPreferences has no saved value',
         () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
       final notifier = ThemeNotifier(sharedPreferences: prefs);
 
-      expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(notifier.currentAccent, ProAccentVariant.cyberAmber);
     });
 
     test('loads saved accent variant from SharedPreferences on initialization',
         () async {
       SharedPreferences.setMockInitialValues({
-        ThemeNotifier.prefThemeAccentColorKey: 'hyper_violet',
+        ThemeNotifier.prefThemeAccentColorKey: 'ink',
       });
       final prefs = await SharedPreferences.getInstance();
 
@@ -30,7 +30,7 @@ void main() {
       expect(notifier.currentAccent, ProAccentVariant.hyperViolet);
     });
 
-    test('falls back to electricEmerald if saved id is invalid or unknown',
+    test('falls back to Brass (cyberAmber) if saved id is invalid or unknown',
         () async {
       SharedPreferences.setMockInitialValues({
         ThemeNotifier.prefThemeAccentColorKey: 'non_existent_variant',
@@ -39,7 +39,7 @@ void main() {
 
       final notifier = ThemeNotifier(sharedPreferences: prefs);
 
-      expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(notifier.currentAccent, ProAccentVariant.cyberAmber);
     });
 
     test(
@@ -52,13 +52,14 @@ void main() {
       var notified = false;
       notifier.addListener(() => notified = true);
 
+      // Signal (electricEmerald) is Pro-only
       final result = await notifier.setAccent(
-        ProAccentVariant.cyberAmber,
+        ProAccentVariant.electricEmerald,
         isLifetimePro: false,
       );
 
       expect(result, isFalse);
-      expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(notifier.currentAccent, ProAccentVariant.cyberAmber);
       expect(notified, isFalse);
       expect(
         prefs.getString(ThemeNotifier.prefThemeAccentColorKey),
@@ -86,29 +87,31 @@ void main() {
       expect(notified, isTrue);
       expect(
         prefs.getString(ThemeNotifier.prefThemeAccentColorKey),
-        'glacier_blue',
+        'moss',
       );
     });
 
-    test('allows non-pro user to select electricEmerald without error',
+    test('allows non-pro user to select Brass (cyberAmber) without error',
         () async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({
+        ThemeNotifier.prefThemeAccentColorKey: 'moss',
+      });
       final prefs = await SharedPreferences.getInstance();
       final notifier = ThemeNotifier(sharedPreferences: prefs);
 
       final result = await notifier.setAccent(
-        ProAccentVariant.electricEmerald,
+        ProAccentVariant.cyberAmber,
         isLifetimePro: false,
       );
 
       expect(result, isTrue);
-      expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(notifier.currentAccent, ProAccentVariant.cyberAmber);
     });
 
     test('does not re-persist or notify if setting current accent variant',
         () async {
       SharedPreferences.setMockInitialValues({
-        ThemeNotifier.prefThemeAccentColorKey: 'cyber_amber',
+        ThemeNotifier.prefThemeAccentColorKey: 'brass',
       });
       final prefs = await SharedPreferences.getInstance();
       final notifier = ThemeNotifier(sharedPreferences: prefs);
@@ -126,10 +129,10 @@ void main() {
     });
 
     test(
-        'validateProAccess resets to electricEmerald and clears prefs if non-pro has pro accent',
+        'validateProAccess resets to Brass (cyberAmber) and clears prefs if non-pro has pro accent',
         () async {
       SharedPreferences.setMockInitialValues({
-        ThemeNotifier.prefThemeAccentColorKey: 'hyper_violet',
+        ThemeNotifier.prefThemeAccentColorKey: 'ink',
       });
       final prefs = await SharedPreferences.getInstance();
       final notifier = ThemeNotifier(sharedPreferences: prefs);
@@ -141,7 +144,7 @@ void main() {
 
       await notifier.validateProAccess(isLifetimePro: false);
 
-      expect(notifier.currentAccent, ProAccentVariant.electricEmerald);
+      expect(notifier.currentAccent, ProAccentVariant.cyberAmber);
       expect(notified, isTrue);
       expect(
         prefs.getString(ThemeNotifier.prefThemeAccentColorKey),
@@ -152,7 +155,7 @@ void main() {
     test('validateProAccess does nothing if user has Lifetime Pro entitlement',
         () async {
       SharedPreferences.setMockInitialValues({
-        ThemeNotifier.prefThemeAccentColorKey: 'hyper_violet',
+        ThemeNotifier.prefThemeAccentColorKey: 'ink',
       });
       final prefs = await SharedPreferences.getInstance();
       final notifier = ThemeNotifier(sharedPreferences: prefs);
@@ -166,7 +169,7 @@ void main() {
       expect(notified, isFalse);
       expect(
         prefs.getString(ThemeNotifier.prefThemeAccentColorKey),
-        'hyper_violet',
+        'ink',
       );
     });
 

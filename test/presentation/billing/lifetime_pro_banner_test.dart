@@ -108,20 +108,22 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Unlock Unlimited Shielding & Audio for \$9.99'),
+        find.text('Buy once — \$9.99'),
         findsOneWidget,
       );
-      expect(
-        find.text('Unlock Lifetime Pro — \$9.99'),
-        findsOneWidget,
-      );
-      expect(find.text('Restore Purchases'), findsOneWidget);
+      expect(find.text('Restore purchases'), findsOneWidget);
 
-      // ProSupporterBadge should not be visible when locked
-      expect(find.text('LIFETIME PRO'), findsNothing);
+      // ProSupporterBadge should not display PRO text when locked
+      expect(
+        find.descendant(
+          of: find.byType(ProSupporterBadge),
+          matching: find.text('PRO'),
+        ),
+        findsNothing,
+      );
     });
 
-    testWidgets('transitions to ⭐ Lifetime Pro Unlocked badge when purchased',
+    testWidgets('transitions to Lifetime Pro Active badge when purchased',
         (tester) async {
       await notifier.initialize();
       await tester.pumpWidget(
@@ -137,12 +139,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repo.buyCalled, isTrue);
-      expect(find.text('⭐ Lifetime Pro Unlocked'), findsOneWidget);
-      expect(find.text('LIFETIME PRO: ACTIVE'), findsOneWidget);
-      expect(find.text('Order ID: GPA.WIDGET-TEST'), findsOneWidget);
+      expect(find.text('Lifetime Pro Active'), findsOneWidget);
 
-      // ProSupporterBadge is now rendered in the AppBar
-      expect(find.text('LIFETIME PRO'), findsOneWidget);
+      // ProSupporterBadge now displays PRO tag
+      expect(
+        find.descendant(
+          of: find.byType(ProSupporterBadge),
+          matching: find.text('PRO'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping Restore Purchases invokes restore flow',
@@ -161,7 +167,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repo.restoreCalled, isTrue);
-      expect(find.text('⭐ Lifetime Pro Unlocked'), findsOneWidget);
+      expect(find.text('Lifetime Pro Active'), findsOneWidget);
     });
   });
 }

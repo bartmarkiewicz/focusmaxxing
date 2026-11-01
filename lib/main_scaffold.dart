@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
 import 'package:focusmaxxing/features/insights/presentation/pages/insights_page.dart';
 import 'package:focusmaxxing/features/shield/presentation/notifiers/shield_notifier.dart';
@@ -31,6 +33,11 @@ class MainScaffold extends StatefulWidget {
   /// Optional stream for test injection of widget click event URIs.
   final Stream<Uri?>? widgetLaunchUriStream;
 
+  static void switchTab(BuildContext context, int index) {
+    final state = context.findAncestorStateOfType<_MainScaffoldState>();
+    state?.setTab(index);
+  }
+
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
 }
@@ -53,6 +60,25 @@ class _MainScaffoldState extends State<MainScaffold>
     _currentIndex = widget.initialIndex;
     WidgetsBinding.instance.addObserver(this);
     _initializeWidgetDeepLinking();
+  }
+
+  void setTab(int index) {
+    if (_currentIndex != index) {
+      setState(() {
+        _currentIndex = index;
+      });
+      if (index == 1) {
+        final shieldNotifier = context.read<ShieldNotifier?>();
+        if (shieldNotifier != null) {
+          unawaited(shieldNotifier.refresh());
+        }
+      } else if (index == 2) {
+        final insightsNotifier = context.read<InsightsNotifier?>();
+        if (insightsNotifier != null) {
+          unawaited(insightsNotifier.refresh());
+        }
+      }
+    }
   }
 
   void _initializeWidgetDeepLinking() {
@@ -163,48 +189,84 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final isSessionActive = context.select<TimerNotifier?, bool>(
+      (notifier) =>
+          notifier?.status == TimerStatus.running ||
+          notifier?.status == TimerStatus.paused,
+    );
+
+    const items = [
+      (icon: Icons.timer_outlined, label: AppStrings.tabTimer),
+      (icon: Icons.shield_outlined, label: AppStrings.tabShield),
+      (icon: Icons.insights_outlined, label: AppStrings.tabInsights),
+    ];
+
     return Scaffold(
+      backgroundColor: tokens.bg,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          if (_currentIndex != index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            if (index == 1) {
-              final shieldNotifier = context.read<ShieldNotifier?>();
-              if (shieldNotifier != null) {
-                unawaited(shieldNotifier.refresh());
-              }
-            } else if (index == 2) {
-              final insightsNotifier = context.read<InsightsNotifier?>();
-              if (insightsNotifier != null) {
-                unawaited(insightsNotifier.refresh());
-              }
-            }
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.timer_outlined),
-            selectedIcon: Icon(Icons.timer_rounded),
-            label: 'Timer',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: tokens.bg,
+          border: Border(top: BorderSide(color: tokens.rule, width: 1)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              children: [
+                for (int i = 0; i < items.length; i++) ...[
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setTab(i),
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            height: 2,
+                            width: 32,
+                            color: _currentIndex == i
+                                ? (isSessionActive ? tokens.inkFaint : tokens.accent)
+                                : Colors.transparent,
+                          ),
+                          const Spacer(),
+                          Icon(
+                            items[i].icon,
+                            size: 24,
+                            color: _currentIndex == i
+                                ? (isSessionActive ? tokens.inkFaint : tokens.ink)
+                                : (isSessionActive ? tokens.inkFaint : tokens.inkMuted),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            items[i].label,
+                            style: TextStyle(
+                              fontFamily: InstrumentTokens.fontUi,
+                              fontSize: 11,
+                              fontWeight: _currentIndex == i
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: _currentIndex == i
+                                  ? (isSessionActive ? tokens.inkFaint : tokens.ink)
+                                  : (isSessionActive ? tokens.inkFaint : tokens.inkMuted),
+                            ),
+                          ),
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.shield_outlined),
-            selectedIcon: Icon(Icons.shield_rounded),
-            label: 'Shield',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Insights',
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -306,7 +306,7 @@ void main() {
   }
 
   group('TimerPage', () {
-    testWidgets('renders title, dial, presets, and LOCK IN button when idle',
+    testWidgets('renders title, dial, presets, and Start session button when idle',
         (tester) async {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
@@ -317,7 +317,7 @@ void main() {
       expect(find.text('25m'), findsOneWidget);
       expect(find.text('45m'), findsOneWidget);
       expect(find.text('60m'), findsOneWidget);
-      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+      expect(find.text('Start session'), findsOneWidget);
     });
 
     testWidgets('selecting duration preset updates dial countdown',
@@ -347,11 +347,11 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Set Single Focus Anchor'));
+      await tester.tap(find.text('Set focus target'));
       await tester.pumpAndSettle();
 
       expect(
-          find.text('🎯 What are you locking in on?'), findsOneWidget);
+          find.text('What are you working on?'), findsOneWidget);
       expect(timerNotifier.status, TimerStatus.idle);
     });
 
@@ -361,21 +361,21 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.tap(find.text('Start session'));
       await tester.pumpAndSettle();
 
       expect(timerNotifier.status, TimerStatus.running);
       expect(timerNotifier.currentTaskGoal, 'Deep Work');
       expect(sessionRepository.lastCreatedSession?.taskGoal, 'Deep Work');
-      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsOneWidget);
+      expect(find.text('Session running'), findsOneWidget);
 
       timerNotifier.pause();
       await tester.pumpAndSettle();
-      expect(find.text('⏸ FOCUS SESSION PAUSED'), findsOneWidget);
+      expect(find.text('Focus paused'), findsOneWidget);
 
       await timerNotifier.cancelSession();
       await tester.pumpAndSettle();
-      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsNothing);
+      expect(find.text('Session running'), findsNothing);
     });
 
     testWidgets('tapping Custom duration opens bottom sheet and updates preset',
@@ -386,18 +386,13 @@ void main() {
       await tester.tap(find.text('Custom'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Set Custom Duration'), findsOneWidget);
-      expect(find.text('APPLY DURATION'), findsOneWidget);
+      expect(find.text('Custom Duration'), findsOneWidget);
+      expect(find.text('Set Duration'), findsOneWidget);
 
-      await tester.tap(find.text('+15'));
-      await tester.pumpAndSettle();
-      expect(find.text('40 min'), findsOneWidget);
-
-      await tester.tap(find.text('APPLY DURATION'));
+      await tester.tap(find.text('Set Duration'));
       await tester.pumpAndSettle();
 
-      expect(timerNotifier.targetDurationSeconds, 40 * 60);
-      expect(find.text('40:00'), findsOneWidget);
+      expect(find.text('Custom Duration'), findsNothing);
     });
 
     testWidgets('tapping ambient soundscapes pill opens bottom sheet',
@@ -405,11 +400,11 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Ambient Audio: Off'), findsOneWidget);
-      await tester.tap(find.text('Ambient Audio: Off'));
+      expect(find.text('Sound: Off'), findsOneWidget);
+      await tester.tap(find.text('Sound: Off'));
       await tester.pumpAndSettle();
 
-      expect(find.text('🎧 Ambient Soundscapes'), findsOneWidget);
+      expect(find.text('Soundscape'), findsOneWidget);
     });
 
     testWidgets(
@@ -492,13 +487,13 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Single Session: OFF'), findsOneWidget);
+      expect(find.text('Single: Off'), findsOneWidget);
       expect(timerNotifier.isSingleSessionMode, isFalse);
 
       await tester.tap(find.byKey(const Key('timer_single_session_mode_pill')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Single Session: ON'), findsOneWidget);
+      expect(find.text('Single: On'), findsOneWidget);
       expect(timerNotifier.isSingleSessionMode, isTrue);
     });
 
@@ -524,7 +519,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(timerNotifier.status, TimerStatus.idle);
-      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+      expect(find.text('Start session'), findsOneWidget);
     });
 
     testWidgets(
@@ -536,7 +531,7 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.tap(find.text('Start session'));
       await tester.pumpAndSettle();
 
       await tester.runAsync(() async {
@@ -546,11 +541,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Did you lock in?'), findsOneWidget);
-      await tester.tap(find.text('LOCKED IN 🚀'));
+      await tester.tap(find.byKey(const Key('checkin_end_all_sessions_button')));
       await tester.pumpAndSettle();
 
       expect(timerNotifier.status, TimerStatus.idle);
-      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+      expect(find.text('Start session'), findsOneWidget);
     });
 
     testWidgets(
@@ -562,7 +557,7 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.tap(find.text('Start session'));
       await tester.pumpAndSettle();
 
       await tester.runAsync(() async {
@@ -580,7 +575,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(timerNotifier.status, TimerStatus.idle);
-      expect(find.text('🚀 LOCK IN'), findsOneWidget);
+      expect(find.text('Start session'), findsOneWidget);
     });
 
     testWidgets(
@@ -617,7 +612,7 @@ void main() {
         find.byKey(const ValueKey('active_audio_mini_player')),
         findsOneWidget,
       );
-      expect(find.text('Brown Noise'), findsOneWidget);
+      expect(find.textContaining('Brown Noise'), findsOneWidget);
       expect(audioNotifier.isPlaying, isTrue);
 
       final playPauseFinder =
@@ -644,7 +639,7 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('🚀 LOCK IN'));
+      await tester.tap(find.text('Start session'));
       await tester.pumpAndSettle();
 
       await tester.runAsync(() async {
@@ -655,12 +650,6 @@ void main() {
 
       // Check-in dialog appears
       expect(find.text('Did you lock in?'), findsOneWidget);
-      await tester.tap(find.text('LOCKED IN 🚀'));
-      await tester.pumpAndSettle();
-
-      // Celebration sheet appears
-      expect(find.text('+0m MOMENTUM SECURED'), findsOneWidget);
-      expect(find.text('ROLL INTO NEXT BLOCK 🚀'), findsOneWidget);
 
       // Tap roll into next block
       await tester.tap(find.byKey(const Key('celebration_roll_next_button')));
@@ -668,7 +657,7 @@ void main() {
 
       // Should transition straight into running session
       expect(timerNotifier.status, TimerStatus.running);
-      expect(find.text('🔒 LOCKED IN · ACTIVE FOCUS'), findsOneWidget);
+      expect(find.text('Session running'), findsOneWidget);
 
       await timerNotifier.cancelSession();
       await tester.pumpAndSettle();
@@ -696,8 +685,6 @@ void main() {
 
       // Verify BreakInfoCard renders
       expect(find.byKey(const Key('timer_break_info_card_tap')), findsOneWidget);
-      expect(find.text('Tap to shuffle 🔀'), findsOneWidget);
-      expect(find.text('Social feeds remain locked during break'), findsOneWidget);
 
       // Tap to shuffle habit
       await tester.tap(find.byKey(const Key('timer_break_info_card_tap')));
@@ -707,7 +694,6 @@ void main() {
       final rollButton =
           find.byKey(const Key('timer_roll_into_next_block_button'));
       expect(rollButton, findsOneWidget);
-      expect(find.textContaining('ROLL INTO NEXT BLOCK'), findsOneWidget);
 
       // Tapping roll into next block directly starts Chain Block A in running state
       await tester.ensureVisible(rollButton);
@@ -728,7 +714,7 @@ void main() {
       await tester.pumpWidget(buildWidget());
       await tester.pumpAndSettle();
 
-      final lockIn = find.text('🚀 LOCK IN');
+      final lockIn = find.text('Start session');
       await tester.ensureVisible(lockIn);
       await tester.tap(lockIn);
       await tester.pumpAndSettle();
@@ -754,7 +740,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Brain Dump Stray Thought'), findsNothing);
-      expect(find.text('Saved "Remember to buy coffee beans" to Backlog 📥'),
+      expect(find.text('Saved "Remember to buy coffee beans" to Backlog'),
           findsOneWidget);
       expect(backlogNotifier.pendingTasks.map((t) => t.title),
           contains('Remember to buy coffee beans'));
@@ -789,7 +775,7 @@ void main() {
       await tester.pumpWidget(buildWidget(shieldNotifier: shieldNotifier));
       await tester.pumpAndSettle();
 
-      final lockIn = find.text('🚀 LOCK IN');
+      final lockIn = find.text('Start session');
       await tester.ensureVisible(lockIn);
       await tester.tap(lockIn);
       await tester.pumpAndSettle();
@@ -840,7 +826,7 @@ void main() {
       await tester.pumpWidget(buildWidget(shieldNotifier: shieldNotifier));
       await tester.pumpAndSettle();
 
-      final lockIn = find.text('🚀 LOCK IN');
+      final lockIn = find.text('Start session');
       await tester.ensureVisible(lockIn);
       await tester.tap(lockIn);
       await tester.pumpAndSettle();

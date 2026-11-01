@@ -18,14 +18,14 @@ void main() {
       (tester) async {
     await tester.pumpWidget(buildWidget(const []));
 
-    expect(find.text('No focus sessions recorded yet'), findsOneWidget);
+    expect(find.text('NO SESSIONS RECORDED'), findsOneWidget);
     expect(
-      find.text('Complete a focus session to build your momentum.'),
+      find.text('Completed focus sessions will appear here.'),
       findsOneWidget,
     );
   });
 
-  testWidgets('renders session tiles with correct emojis and metadata',
+  testWidgets('renders session tiles with correct glyphs and metadata',
       (tester) async {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final sessions = [
@@ -64,16 +64,15 @@ void main() {
     await tester.pumpWidget(buildWidget(sessions));
 
     expect(find.text('Draft architecture docs'), findsOneWidget);
-    expect(find.text('🚀'), findsOneWidget);
-    expect(find.text('Locked In'), findsOneWidget);
-    expect(find.text('25m · '), findsOneWidget);
+    expect(find.text('✓'), findsOneWidget);
+    expect(find.text('25m'), findsOneWidget);
 
     expect(find.text('Distracted by social feed'), findsOneWidget);
-    expect(find.text('💀'), findsOneWidget);
-    expect(find.text('Derailed'), findsOneWidget);
+    expect(find.text('×'), findsOneWidget);
+    expect(find.text('20m'), findsOneWidget);
 
     expect(find.text('Cancelled early'), findsOneWidget);
-    expect(find.text('⏹️'), findsOneWidget);
-    expect(find.text('Cancelled'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('5m'), findsOneWidget);
   });
 }

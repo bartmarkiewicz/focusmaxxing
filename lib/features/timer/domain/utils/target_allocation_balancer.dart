@@ -101,12 +101,12 @@ abstract final class TargetAllocationBalancer {
       return '';
     }
     if (targets.length == 1) {
-      return '🎯 ${targets.first.targetName}';
+      return targets.first.targetName;
     }
     if (targets.length == 2) {
-      return '🎯 ${targets[0].targetName} (${targets[0].percentage}%) • ${targets[1].targetName} (${targets[1].percentage}%)';
+      return '${targets[0].targetName} (${targets[0].percentage}%) • ${targets[1].targetName} (${targets[1].percentage}%)';
     }
-    return '🎯 ${targets[0].targetName} • +${targets.length - 1} targets';
+    return '${targets[0].targetName} • +${targets.length - 1} targets';
   }
 
   /// Summarizes targets into a single string for legacy session task_goal column.

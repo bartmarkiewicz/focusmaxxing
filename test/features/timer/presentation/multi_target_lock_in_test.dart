@@ -301,7 +301,7 @@ void main() {
       await tester.tap(find.text('Equalize Split'));
       await tester.pumpAndSettle();
 
-      expect(find.text('50% (13m)'), findsNWidgets(2));
+      expect(find.text('50% · 13m'), findsNWidgets(2));
     });
   });
 
@@ -325,7 +325,7 @@ void main() {
         ),
       );
 
-      expect(find.text('🎯 Code (70%) • Review (30%)'), findsOneWidget);
+      expect(find.text('Code (70%) • Review (30%)'), findsOneWidget);
     });
 
     testWidgets('ActiveLockInBanner displays targets with percentage pills', (tester) async {
@@ -345,8 +345,10 @@ void main() {
         ),
       );
 
-      expect(find.text('Frontend (60%)'), findsOneWidget);
-      expect(find.text('Backend (40%)'), findsOneWidget);
+      expect(find.text('Frontend'), findsOneWidget);
+      expect(find.text('Backend'), findsOneWidget);
+      expect(find.textContaining('60%'), findsOneWidget);
+      expect(find.textContaining('40%'), findsOneWidget);
     });
   });
 }

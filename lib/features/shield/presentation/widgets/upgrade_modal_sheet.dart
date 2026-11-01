@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
+import 'package:focusmaxxing/core/ui/readout_row.dart';
+import 'package:focusmaxxing/core/ui/sheet.dart';
 import 'package:focusmaxxing/features/shield/domain/entities/shielded_app_entity.dart';
 
 class UpgradeModalSheet extends StatefulWidget {
@@ -34,336 +37,133 @@ class _UpgradeModalSheetState extends State<UpgradeModalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          top: BorderSide(color: AppColors.surfaceHairline),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceHairline,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (!_isSwapMode)
-              _PaywallContent(
-                candidateAppName: widget.candidateAppName,
-                onUnlockPro: widget.onUnlockPro,
-                onOpenSwapMode: () {
-                  setState(() {
-                    _isSwapMode = true;
-                  });
-                },
-              )
-            else
-              _SwapContent(
-                activeApps: widget.activeApps,
-                candidateAppName: widget.candidateAppName,
-                selectedPackageToReplace: _selectedPackageToReplace,
-                onSelectPackage: (pkg) {
-                  setState(() {
-                    _selectedPackageToReplace = pkg;
-                  });
-                },
-                onBack: () {
-                  setState(() {
-                    _isSwapMode = false;
-                  });
-                },
-                onConfirmSwap: widget.onConfirmSwap,
-              ),
-          ],
-        ),
-      ),
+    final tokens = context.tokens;
+
+    return Sheet(
+      title: _isSwapMode ? 'Swap Shielded App' : '2-App Free Cap Reached',
+      child: _isSwapMode
+          ? _buildSwapMode(tokens)
+          : _buildPaywallMode(tokens),
     );
   }
-}
 
-class _PaywallContent extends StatelessWidget {
-  const _PaywallContent({
-    required this.candidateAppName,
-    required this.onUnlockPro,
-    required this.onOpenSwapMode,
-  });
-
-  final String candidateAppName;
-  final VoidCallback onUnlockPro;
-  final VoidCallback onOpenSwapMode;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildPaywallMode(InstrumentTokens tokens) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.accentStreakGold.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.workspace_premium_rounded,
-                color: AppColors.accentStreakGold,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '2-App Free Cap Reached',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppColors.textHighContrast,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Attempting to shield $candidateAppName',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
         Text(
-          'The Free Tier shields up to 2 apps simultaneously. Unlock Lifetime Pro for unlimited app blocking with a single one-time payment — or swap one of your active apps right now for free.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textMuted,
-            height: 1.45,
+          'The Free Tier shields up to 2 apps simultaneously. Upgrade to Pro for unlimited blocking or swap one of your 2 active apps for free.',
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontUi,
+            fontSize: 14,
+            height: 20 / 14,
+            color: tokens.inkMuted,
           ),
         ),
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 52,
-          child: FilledButton(
-            key: const ValueKey('unlock_lifetime_pro_button'),
-            onPressed: onUnlockPro,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accentStreakGold,
-              foregroundColor: AppColors.surfaceMidnight,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              'Unlock Lifetime Pro — \$9.99',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-              ),
-            ),
-          ),
+        const SizedBox(height: InstrumentTokens.s16),
+        ReadoutRow(
+          label: 'Attempting to shield ${widget.candidateAppName}',
+          value: widget.candidateAppName,
+          showDivider: true,
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 48,
-          child: OutlinedButton(
-            key: const ValueKey('swap_free_app_button'),
-            onPressed: onOpenSwapMode,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textHighContrast,
-              side: const BorderSide(color: AppColors.surfaceHairline),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              'Swap Free App',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
-          ),
+        const ReadoutRow(
+          label: 'Active apps cap',
+          value: '2 apps (Free)',
+          showDivider: true,
+        ),
+        const ReadoutRow(
+          label: 'Focusmaxxing Pro',
+          value: 'Unlimited',
+          showDivider: false,
+        ),
+        const SizedBox(height: InstrumentTokens.s20),
+        InstrumentButton.primary(
+          key: const ValueKey('unlock_lifetime_pro_button'),
+          label: 'Unlock Lifetime Pro — \$9.99',
+          onPressed: widget.onUnlockPro,
+        ),
+        const SizedBox(height: InstrumentTokens.s12),
+        InstrumentButton.secondary(
+          key: const ValueKey('swap_free_app_button'),
+          label: 'Swap Free App',
+          onPressed: () {
+            setState(() {
+              _isSwapMode = true;
+            });
+          },
         ),
       ],
     );
   }
-}
 
-class _SwapContent extends StatelessWidget {
-  const _SwapContent({
-    required this.activeApps,
-    required this.candidateAppName,
-    required this.selectedPackageToReplace,
-    required this.onSelectPackage,
-    required this.onBack,
-    required this.onConfirmSwap,
-  });
-
-  final List<ShieldedAppEntity> activeApps;
-  final String candidateAppName;
-  final String? selectedPackageToReplace;
-  final ValueChanged<String> onSelectPackage;
-  final VoidCallback onBack;
-  final ValueChanged<String> onConfirmSwap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final selectedPkg = selectedPackageToReplace;
-
+  Widget _buildSwapMode(InstrumentTokens tokens) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Swap With $candidateAppName',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: AppColors.textHighContrast,
-            fontWeight: FontWeight.w800,
+          'Select which currently shielded app to replace with ${widget.candidateAppName}:',
+          style: TextStyle(
+            fontFamily: InstrumentTokens.fontUi,
+            fontSize: 14,
+            color: tokens.inkMuted,
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Select which currently shielded app to uncheck and replace:',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textMuted,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: InstrumentTokens.s16),
         RadioGroup<String>(
-          groupValue: selectedPkg,
-          onChanged: (value) {
-            if (value != null) {
-              onSelectPackage(value);
-            }
+          groupValue: _selectedPackageToReplace,
+          onChanged: (val) {
+            setState(() {
+              _selectedPackageToReplace = val;
+            });
           },
           child: Column(
             children: [
-              for (final app in activeApps)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Material(
-                    color: selectedPkg == app.packageName
-                        ? AppColors.surfaceElevated
-                        : AppColors.surfaceMidnight,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      key: ValueKey('swap_option_${app.packageName}'),
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => onSelectPackage(app.packageName),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: selectedPkg == app.packageName
-                                ? AppColors.accentLockIn
-                                : AppColors.surfaceHairline,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Radio<String>(
-                              value: app.packageName,
-                              activeColor: AppColors.accentLockIn,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    app.appName,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textHighContrast,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    app.packageName,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textMuted,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+              for (final app in widget.activeApps)
+                Material(
+                  color: Colors.transparent,
+                  child: RadioListTile<String>(
+                    key: ValueKey('swap_option_${app.packageName}'),
+                    value: app.packageName,
+                    title: Text(
+                      app.appName,
+                      style: TextStyle(
+                        fontFamily: InstrumentTokens.fontUi,
+                        fontSize: 15,
+                        color: tokens.ink,
                       ),
                     ),
+                    subtitle: Text(
+                      app.packageName,
+                      style: TextStyle(
+                        fontFamily: InstrumentTokens.fontMono,
+                        fontSize: 11,
+                        color: tokens.inkMuted,
+                      ),
+                    ),
+                    activeColor: tokens.accent,
                   ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: onBack,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    side: const BorderSide(color: AppColors.surfaceHairline),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Back'),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: SizedBox(
-                height: 48,
-                child: FilledButton(
-                  key: const ValueKey('confirm_swap_button'),
-                  onPressed: selectedPkg == null
-                      ? null
-                      : () => onConfirmSwap(selectedPkg),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accentLockIn,
-                    foregroundColor: AppColors.surfaceMidnight,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Confirm Swap',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(height: InstrumentTokens.s16),
+        InstrumentButton.primary(
+          key: const ValueKey('confirm_swap_button'),
+          label: 'Swap With ${widget.candidateAppName}',
+          onPressed: _selectedPackageToReplace != null
+              ? () => widget.onConfirmSwap(_selectedPackageToReplace!)
+              : null,
+        ),
+        const SizedBox(height: InstrumentTokens.s8),
+        InstrumentButton.text(
+          label: 'Back',
+          onPressed: () {
+            setState(() {
+              _isSwapMode = false;
+            });
+          },
         ),
       ],
     );

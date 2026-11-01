@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:focusmaxxing/core/theme/pro_accent_variant.dart';
 import 'package:focusmaxxing/features/billing/domain/entities/pro_unlock_status_entity.dart';
 import 'package:focusmaxxing/features/billing/domain/usecases/watch_pro_entitlement_usecase.dart';
@@ -11,20 +11,26 @@ class ThemeNotifier extends ChangeNotifier {
     SharedPreferences? sharedPreferences,
     this.watchProEntitlementUseCase,
   }) : _prefs = sharedPreferences {
-    _loadAccent();
+    _loadPreferences();
     _bindEntitlementStream();
   }
 
   static const String prefThemeAccentColorKey = 'theme_accent_color';
+  static const String prefThemeModeKey = 'theme_mode_preference';
 
   final WatchProEntitlementUseCase? watchProEntitlementUseCase;
   StreamSubscription<ProUnlockStatusEntity>? _entitlementSubscription;
   SharedPreferences? _prefs;
-  ProAccentVariant _currentAccent = ProAccentVariant.electricEmerald;
-  bool _hasExplicitAccent = false;
+
+  AccentFinish _currentFinish = AccentFinish.brass;
+  ThemeMode _themeMode = ThemeMode.system;
+  bool _hasExplicitFinish = false;
+  bool _hasExplicitThemeMode = false;
   bool _isDisposed = false;
 
-  ProAccentVariant get currentAccent => _currentAccent;
+  AccentFinish get currentFinish => _currentFinish;
+  ProAccentVariant get currentAccent => ProAccentVariant.fromId(_currentFinish.id);
+  ThemeMode get themeMode => _themeMode;
 
   void _bindEntitlementStream() {
     final watchEntitlement = watchProEntitlementUseCase;
@@ -42,47 +48,83 @@ class ThemeNotifier extends ChangeNotifier {
   Future<SharedPreferences> _getPrefs() async {
     if (_prefs == null) {
       _prefs = await SharedPreferences.getInstance();
-      if (!_hasExplicitAccent) {
-        _loadAccent();
+      if (!_hasExplicitFinish || !_hasExplicitThemeMode) {
+        _loadPreferences();
       }
     }
     return _prefs!;
   }
 
-  void _loadAccent() {
+  void _loadPreferences() {
     final prefs = _prefs;
-    if (prefs != null && !_hasExplicitAccent) {
+    if (prefs == null) return;
+
+    if (!_hasExplicitFinish) {
       final savedId = prefs.getString(prefThemeAccentColorKey);
-      _currentAccent = ProAccentVariant.fromId(savedId);
+      _currentFinish = AccentFinish.fromId(savedId);
+    }
+
+    if (!_hasExplicitThemeMode) {
+      final savedMode = prefs.getString(prefThemeModeKey);
+      if (savedMode == 'dark') {
+        _themeMode = ThemeMode.dark;
+      } else if (savedMode == 'light') {
+        _themeMode = ThemeMode.light;
+      } else {
+        _themeMode = ThemeMode.system;
+      }
     }
   }
 
-  Future<bool> setAccent(
-    ProAccentVariant variant, {
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (_themeMode == mode) return;
+    _hasExplicitThemeMode = true;
+    _themeMode = mode;
+    final prefs = await _getPrefs();
+    final modeString = switch (mode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+      ThemeMode.system => 'system',
+    };
+    await prefs.setString(prefThemeModeKey, modeString);
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> setFinish(
+    AccentFinish finish, {
     required bool isLifetimePro,
   }) async {
-    if (variant.isProOnly && !isLifetimePro) {
+    if (finish.isProOnly && !isLifetimePro) {
       return false;
     }
 
-    if (_currentAccent == variant) {
+    if (_currentFinish == finish) {
       return true;
     }
 
-    _hasExplicitAccent = true;
-    _currentAccent = variant;
+    _hasExplicitFinish = true;
+    _currentFinish = finish;
     final prefs = await _getPrefs();
-    await prefs.setString(prefThemeAccentColorKey, variant.id);
+    await prefs.setString(prefThemeAccentColorKey, finish.id);
     if (!_isDisposed) {
       notifyListeners();
     }
     return true;
   }
 
+  Future<bool> setAccent(
+    ProAccentVariant variant, {
+    required bool isLifetimePro,
+  }) async {
+    return setFinish(variant.finish, isLifetimePro: isLifetimePro);
+  }
+
   Future<void> validateProAccess({required bool isLifetimePro}) async {
-    if (!isLifetimePro && _currentAccent.isProOnly) {
-      _hasExplicitAccent = true;
-      _currentAccent = ProAccentVariant.electricEmerald;
+    if (!isLifetimePro && _currentFinish.isProOnly) {
+      _hasExplicitFinish = true;
+      _currentFinish = AccentFinish.brass;
       final prefs = await _getPrefs();
       await prefs.remove(prefThemeAccentColorKey);
       if (!_isDisposed) {

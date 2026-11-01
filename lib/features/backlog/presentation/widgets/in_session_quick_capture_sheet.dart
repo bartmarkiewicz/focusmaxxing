@@ -188,7 +188,7 @@ class _InSessionQuickCaptureSheetState
                     )
                   : const Icon(Icons.add_task_rounded, size: 20),
               label: Text(
-                'CAPTURE TO BACKLOG 📥',
+                'Capture to backlog',
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,

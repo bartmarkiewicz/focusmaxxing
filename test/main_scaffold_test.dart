@@ -15,6 +15,7 @@ import 'package:focusmaxxing/features/insights/domain/repositories/i_insights_re
 import 'package:focusmaxxing/features/insights/domain/usecases/get_daily_summary_usecase.dart';
 import 'package:focusmaxxing/features/insights/domain/usecases/get_recent_sessions_usecase.dart';
 import 'package:focusmaxxing/features/insights/presentation/notifiers/insights_notifier.dart';
+import 'package:focusmaxxing/features/insights/presentation/pages/insights_page.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 import 'package:focusmaxxing/features/timer/domain/repositories/i_session_repository.dart';
 import 'package:focusmaxxing/features/timer/domain/usecases/cancel_session_usecase.dart';
@@ -147,7 +148,7 @@ void main() {
     await tester.tap(find.text('Insights'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Insights & Settings'), findsOneWidget);
+    expect(find.byType(InsightsPage), findsOneWidget);
 
     await tester.tap(find.text('Timer'));
     await tester.pumpAndSettle();

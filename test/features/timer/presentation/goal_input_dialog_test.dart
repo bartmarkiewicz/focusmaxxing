@@ -92,11 +92,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-          find.text('What ONE thing are you locking in on?'), findsOneWidget);
-      expect(find.text('⚡ Deep Work'), findsOneWidget);
+          find.text('What are you working on?'), findsOneWidget);
       expect(find.text('Write Docs'), findsOneWidget);
       expect(find.text('Review PR'), findsOneWidget);
-      expect(find.text('START FOCUS (25m)'), findsOneWidget);
+      expect(find.text('Start session'), findsOneWidget);
     });
 
     testWidgets(

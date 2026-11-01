@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/hold_button.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/overlay_controller.dart';
-import 'package:focusmaxxing/features/shield/presentation/overlay/widgets/overlay_hold_to_cancel_button.dart';
 import 'package:focusmaxxing/features/shield/presentation/overlay/widgets/overlay_theme.dart';
 
-/// Primary Hard-Lock Overlay presentation view displaying session status,
-/// roast affirmation, countdown timer, and action buttons.
+/// Primary Hard-Lock Overlay presentation view designed as a calm, final wall.
 class OverlayLockView extends StatelessWidget {
   const OverlayLockView({
     super.key,
@@ -20,170 +22,125 @@ class OverlayLockView extends StatelessWidget {
     final isBreakMode = controller.isBreakMode;
     final isScheduled = controller.isScheduled;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          isSessionFinished
-              ? Icons.celebration_rounded
-              : (isMaxFocusActive
-                  ? Icons.gpp_maybe_rounded
-                  : Icons.lock_rounded),
-          size: 64,
-          color: isSessionFinished
-              ? OverlayTheme.actionGreen
-              : OverlayTheme.alertColor,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          isSessionFinished
-              ? 'SESSION COMPLETE 🎉'
-              : (isBreakMode
-                  ? 'RECHARGE YOUR BRAIN'
-                  : (isScheduled
-                      ? 'AUTO-SHIELD ACTIVE'
-                      : (isMaxFocusActive ? 'MAXIMUM FOCUS' : 'LOCKED IN'))),
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.0,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          isSessionFinished
-              ? 'Great job locking in! Tap below to check in.'
-              : (isBreakMode
-                  ? 'Social feeds remain locked during your break.'
-                  : (isScheduled
-                      ? 'Scheduled focus shield is active.'
-                      : '"${controller.taskGoal}"')),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 18,
-            color: OverlayTheme.subtextColor,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
+    final goalText = controller.taskGoal.trim().isEmpty
+        ? 'Deep Work'
+        : controller.taskGoal.trim();
+
+    final headline = isSessionFinished
+        ? 'COMPLETE'
+        : (isBreakMode
+            ? 'BREAK'
+            : (isScheduled
+                ? 'SCHEDULED'
+                : (isMaxFocusActive ? 'MAXIMUM FOCUS' : 'LOCKED IN')));
+
+    final noticeText = isSessionFinished
+        ? 'Session time has elapsed.'
+        : (isBreakMode
+            ? 'Social feeds remain locked during your break.'
+            : (isScheduled
+                ? 'Focus schedule is currently active.'
+                : 'App is blocked during active session.'));
+
+    final subheadline = isSessionFinished
+        ? 'Session completed'
+        : AppStrings.youAreWorkingOn;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 6,
+            horizontal: InstrumentTokens.gutter,
+            vertical: InstrumentTokens.s32,
           ),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
-            ),
-          ),
-          child: Text(
-            controller.roastAffirmation,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFFB0B7C3),
-            ),
-          ),
-        ),
-        if (isMaxFocusActive) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: OverlayTheme.alertColor.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: OverlayTheme.alertColor.withValues(alpha: 0.35),
-              ),
-            ),
-            child: const Text(
-              'Full phone lock active until timer finishes',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: OverlayTheme.alertColor,
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 32),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            controller.timerDisplay,
-            style: const TextStyle(
-              fontSize: 64,
-              fontWeight: FontWeight.bold,
-              fontFeatures: [FontFeature.tabularFigures()],
-              color: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 48),
-        if (isMaxFocusActive)
-          OverlayHoldToCancelButton(
-            onCancelCompleted: controller.handleCancelSession,
-          )
-        else
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: OverlayTheme.actionGreen,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                ),
-              ),
-              onPressed: controller.handleReturn,
-              child: Text(
-                isSessionFinished
-                    ? 'COMPLETE CHECK-IN 🎉'
-                    : 'RETURN TO FOCUSMAXXING',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                headline,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        if (!isSessionFinished) ...[
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton(
-              key: const Key('overlay_take_breather_button'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(26),
-                ),
-              ),
-              onPressed: controller.startBreather,
-              child: const Text(
-                '🌬️ TAKE A BREATHER (60S)',
-                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  letterSpacing: 0.8,
+                  letterSpacing: 1.2,
+                  color: OverlayTheme.alertColor,
                 ),
               ),
-            ),
+              const SizedBox(height: InstrumentTokens.s16),
+              Text(
+                noticeText,
+                style: const TextStyle(
+                  fontFamily: InstrumentTokens.fontUi,
+                  fontSize: 24,
+                  height: 30 / 24,
+                  fontWeight: FontWeight.w600,
+                  color: OverlayTheme.ink,
+                ),
+              ),
+              const SizedBox(height: InstrumentTokens.s20),
+              // Prominent digital countdown readout
+              Text(
+                controller.timerDisplay,
+                style: const TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: OverlayTheme.ink,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: InstrumentTokens.s12),
+              if (!isBreakMode) ...[
+                Text(
+                  subheadline,
+                  style: const TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 14,
+                    color: OverlayTheme.subtextColor,
+                  ),
+                ),
+                const SizedBox(height: InstrumentTokens.s4),
+                Text(
+                  '"$goalText"',
+                  style: const TextStyle(
+                    fontFamily: InstrumentTokens.fontMono,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: OverlayTheme.ink,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              // Actions in the thumb zone
+              InstrumentButton.primary(
+                key: const Key('overlay_return_button'),
+                label: isSessionFinished ? AppStrings.save : AppStrings.backToWork,
+                onPressed: controller.handleReturn,
+              ),
+              if (!isSessionFinished) ...[
+                const SizedBox(height: InstrumentTokens.s12),
+                Center(
+                  child: InstrumentButton.text(
+                    key: const Key('overlay_take_breather_button'),
+                    label: AppStrings.breatheForAMinute,
+                    onPressed: controller.startBreather,
+                  ),
+                ),
+              ],
+              if (isMaxFocusActive && !isSessionFinished) ...[
+                const SizedBox(height: InstrumentTokens.s12),
+                HoldButton(
+                  key: const Key('overlay_hold_to_cancel_button'),
+                  label: AppStrings.holdToEndSession,
+                  holdDuration: const Duration(seconds: 5),
+                  onTriggered: controller.handleCancelSession,
+                ),
+              ],
+            ],
           ),
-        ],
-      ],
+        ),
+      ),
     );
   }
 }

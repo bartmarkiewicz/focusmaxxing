@@ -99,15 +99,15 @@ class OverlayController extends ChangeNotifier {
 
   String get roastAffirmation {
     if (isSessionFinished) {
-      return '⚡ Flow state logged. Rest days build stamina.';
+      return 'Session complete.';
     }
     if (_isBreakMode) {
-      return '🧘 Rest your eyes, not your thumb. Step away from the screen.';
+      return 'Feeds remain blocked during your break.';
     }
     if (_isScheduled) {
-      return '🛡️ Scheduled deep work hours. Protect your future.';
+      return 'Scheduled focus shield is active.';
     }
-    return '⚡ Caught you scrolling. Reclaim your focus.';
+    return 'App is blocked during active focus.';
   }
 
   @override

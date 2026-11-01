@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
+import 'package:focusmaxxing/core/ui/section_header.dart';
+import 'package:focusmaxxing/core/ui/sheet.dart';
+import 'package:focusmaxxing/core/ui/tag.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
 import 'package:provider/provider.dart';
 
@@ -94,160 +100,78 @@ class _GoalInputDialogState extends State<GoalInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
     final recentGoals = context.read<TimerNotifier>().recentGoals;
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-        ),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 16,
-            bottom: viewInsetsBottom + 20,
-          ),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+    return Sheet(
+      title: AppStrings.whatAreYouWorkingOn,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: viewInsetsBottom),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontUi,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: tokens.ink,
+                ),
+                decoration: InputDecoration(
+                  hintText: AppStrings.enterGoalHint,
+                  hintStyle: TextStyle(
+                    fontFamily: InstrumentTokens.fontUi,
+                    fontSize: 18,
+                    color: tokens.inkMuted,
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: tokens.ruleStrong, width: 1),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: tokens.accent, width: 1.5),
+                  ),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(startImmediately: true),
               ),
-            ),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: ExcludeSemantics(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color:
-                            colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                Text(
-                  'What ONE thing are you locking in on?',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _controller,
-                  autofocus: true,
-                  maxLength: 60,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submit(),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Finish slides 3 and 4',
-                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    counterStyle: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Quick Anchors:',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ActionChip(
-                        label: const Text('⚡ Deep Work'),
-                        backgroundColor: colorScheme.surfaceContainerHighest,
-                        side: BorderSide(
-                          color:
-                              colorScheme.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                        labelStyle: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        onPressed: () {
-                          _controller.text = 'Deep Work';
-                          _submit();
+              if (recentGoals.isNotEmpty) ...[
+                const SizedBox(height: InstrumentTokens.s16),
+                const SectionHeader(title: AppStrings.recent),
+                const SizedBox(height: InstrumentTokens.s8),
+                Wrap(
+                  spacing: InstrumentTokens.s8,
+                  runSpacing: InstrumentTokens.s8,
+                  children: [
+                    for (final goal in recentGoals)
+                      Tag(
+                        label: goal,
+                        isSelected: _controller.text == goal,
+                        onTap: () {
+                          _controller.text = goal;
+                          _controller.selection =
+                              TextSelection.collapsed(offset: goal.length);
+                          setState(() {});
                         },
                       ),
-                      for (final goal in recentGoals) ...[
-                        const SizedBox(width: 8),
-                        ActionChip(
-                          label: Text(goal),
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          side: BorderSide(
-                            color: colorScheme.outlineVariant
-                                .withValues(alpha: 0.5),
-                          ),
-                          labelStyle: theme.textTheme.labelMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                          onPressed: () {
-                            _controller.text = goal;
-                            _controller.selection = TextSelection.fromPosition(
-                              TextPosition(offset: goal.length),
-                            );
-                            setState(() {});
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Text(
-                      'START FOCUS (${widget.durationMinutes}m)',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: colorScheme.onPrimary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ],
-            ),
+              const SizedBox(height: InstrumentTokens.s24),
+              InstrumentButton.primary(
+                label: 'Start session',
+                onPressed: () => _submit(startImmediately: true),
+              ),
+              const SizedBox(height: InstrumentTokens.s8),
+              InstrumentButton.text(
+                label: 'Save without starting',
+                onPressed: () => _submit(startImmediately: false),
+              ),
+            ],
           ),
         ),
       ),

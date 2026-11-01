@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:focusmaxxing/core/theme/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 import 'package:focusmaxxing/core/theme/pro_accent_variant.dart';
 import 'package:focusmaxxing/core/theme/theme_notifier.dart';
+import 'package:focusmaxxing/core/ui/section_header.dart';
 import 'package:focusmaxxing/features/billing/presentation/notifiers/billing_notifier.dart';
 import 'package:focusmaxxing/features/billing/presentation/widgets/lifetime_pro_banner.dart';
 import 'package:provider/provider.dart';
 
+/// Finish / Accent selector section matching "The Instrument" aesthetic.
 class ProAccentColorSection extends StatelessWidget {
   final ThemeNotifier? themeNotifier;
   final BillingNotifier? billingNotifier;
@@ -20,8 +25,7 @@ class ProAccentColorSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final activeThemeNotifier = themeNotifier ?? context.read<ThemeNotifier?>();
     final activeBillingNotifier =
         billingNotifier ?? context.watch<BillingNotifier?>();
@@ -31,45 +35,42 @@ class ProAccentColorSection extends StatelessWidget {
 
     Widget buildSection(ProAccentVariant currentAccent) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: InstrumentTokens.s8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SectionHeader(title: 'FOCUS ACCENT FINISH'),
+            const SizedBox(height: InstrumentTokens.s8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
+              padding: const EdgeInsets.symmetric(
+                horizontal: InstrumentTokens.gutter,
+                vertical: InstrumentTokens.s4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.palette_outlined,
-                    color: colorScheme.onSurface,
-                    size: 22,
+                  Text(
+                    'Focus Accent Color',
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontUi,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.ink,
+                    ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Focus Accent Color',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${currentAccent.displayName} · ${currentAccent.subtitle}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 2),
+                  Text(
+                    '${currentAccent.displayName} · ${currentAccent.subtitle}',
+                    style: TextStyle(
+                      fontFamily: InstrumentTokens.fontUi,
+                      fontSize: 13,
+                      color: tokens.inkMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: InstrumentTokens.s8),
             for (final variant in ProAccentVariant.values)
               _AccentVariantOptionTile(
                 key: ValueKey('accent_variant_${variant.id}'),
@@ -77,6 +78,7 @@ class ProAccentColorSection extends StatelessWidget {
                 isSelected: currentAccent == variant,
                 isProUnlocked: proUnlocked,
                 onTap: () async {
+                  unawaited(HapticFeedback.selectionClick());
                   if (variant.isProOnly && !proUnlocked) {
                     await showModalBottomSheet<void>(
                       context: context,
@@ -87,7 +89,7 @@ class ProAccentColorSection extends StatelessWidget {
                           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(InstrumentTokens.gutter),
                           child: LifetimeProBanner(
                             notifier: activeBillingNotifier,
                           ),
@@ -138,8 +140,7 @@ class _AccentVariantOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
     final showProBadge = variant.isProOnly && !isProUnlocked;
 
     return MergeSemantics(
@@ -147,44 +148,42 @@ class _AccentVariantOptionTile extends StatelessWidget {
         onTap: onTap,
         child: ConstrainedBox(
           constraints: const BoxConstraints(
-            minHeight: kMinInteractiveDimension,
+            minHeight: InstrumentTokens.rowHeight,
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: InstrumentTokens.gutter,
+              vertical: InstrumentTokens.s8,
+            ),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: tokens.rule, width: 1),
+              ),
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 26,
-                  height: 26,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     color: variant.color,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color:
-                          isSelected ? Colors.white : AppColors.surfaceHairline,
-                      width: isSelected ? 2.5 : 1.0,
+                      color: isSelected ? tokens.ink : tokens.ruleStrong,
+                      width: isSelected ? 2.0 : 1.0,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: variant.color.withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
                   ),
                   child: isSelected
-                      ? const Center(
-                          child: Icon(
-                            Icons.check_rounded,
-                            size: 16,
-                            color: Colors.black,
-                          ),
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: variant.color.computeLuminance() > 0.5
+                              ? Colors.black
+                              : Colors.white,
                         )
                       : null,
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: InstrumentTokens.s12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,45 +191,47 @@ class _AccentVariantOptionTile extends StatelessWidget {
                     children: [
                       Text(
                         variant.displayName,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.onSurface,
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 14,
                           fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected ? tokens.ink : tokens.ink,
                         ),
                       ),
                       Text(
                         variant.subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 12,
+                          color: tokens.inkMuted,
                         ),
                       ),
                     ],
                   ),
                 ),
                 if (showProBadge) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: InstrumentTokens.s8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                      horizontal: 6,
+                      vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.accentStreakGold.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(InstrumentTokens.r1),
                       border: Border.all(
-                        color:
-                            AppColors.accentStreakGold.withValues(alpha: 0.4),
+                        color: tokens.accent,
+                        width: 1,
                       ),
                     ),
                     child: Text(
-                      'PRO',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: AppColors.accentStreakGold,
-                        fontWeight: FontWeight.w800,
+                      AppStrings.proTag,
+                      style: TextStyle(
+                        fontFamily: InstrumentTokens.fontMono,
+                        color: tokens.accent,
+                        fontWeight: FontWeight.w600,
                         fontSize: 10,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.6,
                       ),
                     ),
                   ),

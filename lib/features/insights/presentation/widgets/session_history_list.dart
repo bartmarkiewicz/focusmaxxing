@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 import 'package:focusmaxxing/core/utils/date_utils.dart';
 import 'package:focusmaxxing/core/utils/time_formatter.dart';
 import 'package:focusmaxxing/features/timer/domain/entities/session_entity.dart';
 
+/// Renders session history as physical instrument list rows grouped by date.
 class SessionHistoryList extends StatelessWidget {
   final List<SessionEntity> sessions;
 
@@ -13,133 +16,208 @@ class SessionHistoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final tokens = context.tokens;
 
     if (sessions.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.history_toggle_off_rounded,
-                  size: 40,
-                  color: colorScheme.onSurfaceVariant,
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: InstrumentTokens.s32,
+          horizontal: InstrumentTokens.gutter,
+        ),
+        decoration: BoxDecoration(
+          color: tokens.surface,
+          borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+          border: Border.all(color: tokens.rule, width: 1),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'NO SESSIONS RECORDED',
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontMono,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: tokens.inkMuted,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'No focus sessions recorded yet',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
+              ),
+              const SizedBox(height: InstrumentTokens.s8),
+              Text(
+                AppStrings.insightsNoSessions,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: InstrumentTokens.fontUi,
+                  fontSize: 13,
+                  color: tokens.inkMuted,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Complete a focus session to build your momentum.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    return Card(
+    final grouped = _groupSessionsByDate(sessions);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+        border: Border.all(color: tokens.rule, width: 1),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (int i = 0; i < sessions.length; i++) ...[
-            if (i > 0)
-              Divider(
-                color: colorScheme.outlineVariant,
-                height: 1,
-              ),
-            _SessionHistoryTile(session: sessions[i]),
+          for (final entry in grouped.entries) ...[
+            _DateGroupHeader(label: entry.key),
+            for (int i = 0; i < entry.value.length; i++) ...[
+              _SessionInstrumentRow(session: entry.value[i]),
+              if (i < entry.value.length - 1)
+                Divider(color: tokens.rule, height: 1, thickness: 1),
+            ],
           ],
         ],
       ),
     );
   }
+
+  Map<String, List<SessionEntity>> _groupSessionsByDate(
+    List<SessionEntity> list,
+  ) {
+    final map = <String, List<SessionEntity>>{};
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    for (final session in list) {
+      final date =
+          DateTime.fromMillisecondsSinceEpoch(session.startTimeEpochMs);
+      String key;
+      if (AppDateUtils.isSameDay(date, now)) {
+        key = 'TODAY';
+      } else if (AppDateUtils.isSameDay(date, yesterday)) {
+        key = 'YESTERDAY';
+      } else {
+        key = '${_monthName(date.month)} ${date.day}'.toUpperCase();
+      }
+      map.putIfAbsent(key, () => []).add(session);
+    }
+    return map;
+  }
+
+  static String _monthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return '';
+  }
 }
 
-class _SessionHistoryTile extends StatelessWidget {
-  const _SessionHistoryTile({required this.session});
+class _DateGroupHeader extends StatelessWidget {
+  final String label;
 
-  final SessionEntity session;
+  const _DateGroupHeader({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final statusBadge = _resolveStatusBadge(session.status, colorScheme);
-    final durationText = (session.actualDurationSeconds > 0 ||
-            session.status == SessionStatus.cancelled)
-        ? TimeFormatter.formatDurationToMinutes(session.actualDurationSeconds)
-        : TimeFormatter.formatDurationToMinutes(session.targetDurationSeconds);
-    final timeStr = _formatSessionDateTime(session.startTimeEpochMs);
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: InstrumentTokens.gutter,
+        vertical: InstrumentTokens.s8,
+      ),
+      color: tokens.bg,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: InstrumentTokens.fontMono,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: tokens.inkMuted,
+        ),
+      ),
+    );
+  }
+}
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+class _SessionInstrumentRow extends StatelessWidget {
+  final SessionEntity session;
+
+  const _SessionInstrumentRow({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final timeStr = TimeFormatter.formatTimestamp(session.startTimeEpochMs);
+    final durationSeconds = (session.actualDurationSeconds > 0 ||
+            session.status == SessionStatus.cancelled)
+        ? session.actualDurationSeconds
+        : session.targetDurationSeconds;
+
+    final durationFormatted =
+        TimeFormatter.formatDurationToMinutes(durationSeconds);
+    final (statusGlyph, statusColor) = _resolveStatus(tokens);
+
+    final goal = session.taskGoal.isNotEmpty
+        ? session.taskGoal
+        : 'Focused session';
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InstrumentTokens.gutter,
+        vertical: InstrumentTokens.s12,
+      ),
       child: Row(
         children: [
-          Text(
-            statusBadge.emoji,
-            style: const TextStyle(fontSize: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  session.taskGoal.isNotEmpty
-                      ? session.taskGoal
-                      : 'Focused Session',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(
-                      '$durationText · ',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: statusBadge.color,
-                      ),
-                    ),
-                    Flexible(
-                      child: Text(
-                        statusBadge.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: statusBadge.color,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
+          // Time in mono
           Text(
             timeStr,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontMono,
+              fontSize: 12,
+              color: tokens.inkMuted,
+            ),
+          ),
+          const SizedBox(width: InstrumentTokens.s12),
+          // Goal
+          Expanded(
+            child: Text(
+              goal,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: InstrumentTokens.fontUi,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: tokens.ink,
+              ),
+            ),
+          ),
+          const SizedBox(width: InstrumentTokens.s8),
+          // Duration
+          Text(
+            durationFormatted,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontMono,
+              fontSize: 12,
+              color: tokens.inkMuted,
+            ),
+          ),
+          const SizedBox(width: InstrumentTokens.s8),
+          // Status glyph
+          Text(
+            statusGlyph,
+            style: TextStyle(
+              fontFamily: InstrumentTokens.fontMono,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: statusColor,
             ),
           ),
         ],
@@ -147,61 +225,16 @@ class _SessionHistoryTile extends StatelessWidget {
     );
   }
 
-  String _formatSessionDateTime(int epochMs) {
-    final date = DateTime.fromMillisecondsSinceEpoch(epochMs);
-    final timeStr = TimeFormatter.formatTimestamp(epochMs);
-    final now = DateTime.now();
-
-    if (AppDateUtils.isSameDay(date, now)) {
-      return timeStr;
-    }
-
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    if (AppDateUtils.isSameDay(date, yesterday)) {
-      return 'Yesterday, $timeStr';
-    }
-
-    return '${date.month}/${date.day}, $timeStr';
-  }
-
-  _StatusBadge _resolveStatusBadge(String status, ColorScheme colorScheme) {
-    switch (status) {
+  (String, Color) _resolveStatus(InstrumentTokens tokens) {
+    switch (session.status) {
       case SessionStatus.lockedIn:
-        return _StatusBadge(
-          emoji: '🚀',
-          label: 'Locked In',
-          color: colorScheme.primary,
-        );
-      case SessionStatus.derailed:
-        return _StatusBadge(
-          emoji: '💀',
-          label: 'Derailed',
-          color: colorScheme.error,
-        );
+        return ('✓', tokens.ok);
       case SessionStatus.cancelled:
-        return _StatusBadge(
-          emoji: '⏹️',
-          label: 'Cancelled',
-          color: colorScheme.onSurfaceVariant,
-        );
+        return ('—', tokens.inkMuted);
+      case SessionStatus.derailed:
+        return ('×', tokens.danger);
       default:
-        return _StatusBadge(
-          emoji: '⏹️',
-          label: 'Session',
-          color: colorScheme.onSurfaceVariant,
-        );
+        return ('✓', tokens.ok);
     }
   }
-}
-
-class _StatusBadge {
-  const _StatusBadge({
-    required this.emoji,
-    required this.label,
-    required this.color,
-  });
-
-  final String emoji;
-  final String label;
-  final Color color;
 }

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/copy/strings.dart';
+import 'package:focusmaxxing/core/ui/hold_button.dart';
+import 'package:focusmaxxing/core/ui/instrument_button.dart';
 import 'package:focusmaxxing/features/timer/presentation/notifiers/timer_notifier.dart';
-import 'package:focusmaxxing/features/timer/presentation/widgets/hold_to_cancel_button.dart';
 
 /// Renders the primary timer action controls corresponding to the current [TimerStatus].
 class TimerControlActions extends StatelessWidget {
@@ -19,139 +21,62 @@ class TimerControlActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     switch (timerNotifier.status) {
       case TimerStatus.idle:
-        return SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: onStartLockIn,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: Text(
-              '🚀 LOCK IN',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
+        return InstrumentButton.primary(
+          label: AppStrings.startSession,
+          onPressed: onStartLockIn,
+          icon: const Icon(Icons.play_arrow_rounded, size: 20),
         );
 
       case TimerStatus.running:
-        return SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: timerNotifier.pause,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              foregroundColor: colorScheme.onSurface,
-              elevation: 0,
-              side: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                width: 1.5,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InstrumentButton.secondary(
+              label: 'Pause',
+              onPressed: timerNotifier.pause,
+              icon: const Icon(Icons.pause_outlined, size: 20),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.pause_rounded, size: 22),
-                const SizedBox(width: 8),
-                Text(
-                  'PAUSE FOCUS',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 12),
+            HoldButton(
+              label: AppStrings.holdToStop,
+              progress: timerNotifier.cancelHoldProgress,
+              progressListenable: timerNotifier.cancelHoldProgressNotifier,
+              onHoldStart: timerNotifier.startHoldToCancel,
+              onHoldEnd: timerNotifier.releaseHoldToCancel,
+              onCancelImmediate: timerNotifier.cancelSession,
+              holdDuration: const Duration(seconds: 5),
             ),
-          ),
+          ],
         );
 
       case TimerStatus.paused:
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: timerNotifier.resume,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.play_arrow_rounded, size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      'RESUME FOCUS',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: colorScheme.onPrimary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            InstrumentButton.primary(
+              label: 'Resume focus',
+              onPressed: timerNotifier.resume,
+              icon: const Icon(Icons.play_arrow_outlined, size: 20),
             ),
             const SizedBox(height: 12),
-            HoldToCancelButton(
+            HoldButton(
+              label: AppStrings.holdToStop,
               progress: timerNotifier.cancelHoldProgress,
               progressListenable: timerNotifier.cancelHoldProgressNotifier,
               onHoldStart: timerNotifier.startHoldToCancel,
               onHoldEnd: timerNotifier.releaseHoldToCancel,
               onCancelImmediate: timerNotifier.cancelSession,
+              holdDuration: const Duration(seconds: 5),
             ),
           ],
         );
 
       case TimerStatus.completed:
-        return SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: onTriggerCheckIn,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: Text(
-              'COMPLETE CHECK-IN 🎉',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
+        return InstrumentButton.primary(
+          label: AppStrings.save,
+          onPressed: onTriggerCheckIn,
         );
 
       case TimerStatus.breakRunning:
@@ -159,71 +84,23 @@ class TimerControlActions extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                key: const Key('timer_roll_into_next_block_button'),
-                onPressed: () async {
-                  unawaited(
-                    HapticFeedback.heavyImpact().catchError((Object _) {}),
-                  );
-                  await timerNotifier.startNextFocusFromBreak();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                child: Text(
-                  '🚀 ROLL INTO NEXT BLOCK (${timerNotifier.focusDurationMinutes}m)',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
+            InstrumentButton.primary(
+              key: const Key('timer_roll_into_next_block_button'),
+              label: 'Start another ${timerNotifier.focusDurationMinutes} min',
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              onPressed: () async {
+                unawaited(HapticFeedback.heavyImpact());
+                await timerNotifier.startNextFocusFromBreak();
+              },
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: OutlinedButton.icon(
-                key: const Key('timer_end_all_sessions_button'),
-                onPressed: () {
-                  unawaited(
-                    HapticFeedback.mediumImpact().catchError((Object _) {}),
-                  );
-                  timerNotifier.endAllSessions();
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colorScheme.onSurface,
-                  side: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                    width: 1.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                icon: Icon(
-                  Icons.stop_circle_outlined,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                label: Text(
-                  'END ALL SESSIONS',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
+            InstrumentButton.text(
+              key: const Key('timer_end_all_sessions_button'),
+              label: AppStrings.done,
+              onPressed: () {
+                unawaited(HapticFeedback.selectionClick());
+                timerNotifier.endAllSessions();
+              },
             ),
           ],
         );

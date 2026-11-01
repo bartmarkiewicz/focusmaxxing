@@ -86,7 +86,8 @@ class _HardLockOverlayWidgetState extends State<HardLockOverlayWidget> {
       listenable: _controller,
       builder: (context, _) {
         final isBreatherActive =
-            _controller.breatherStage != OverlayBreatherStage.none;
+            _controller.breatherStage != OverlayBreatherStage.none &&
+                !_controller.isSessionFinished;
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, _) {},

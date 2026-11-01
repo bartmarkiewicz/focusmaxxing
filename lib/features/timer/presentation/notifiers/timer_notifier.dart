@@ -399,7 +399,7 @@ class TimerNotifier extends ChangeNotifier {
   }
 
   void startHoldToCancel() {
-    if (_status != TimerStatus.paused) return;
+    if (_status != TimerStatus.running && _status != TimerStatus.paused) return;
 
     _cancelHoldStartTime = DateTime.now();
     cancelHoldProgressNotifier.value = 0.0;
@@ -441,8 +441,7 @@ class TimerNotifier extends ChangeNotifier {
       return;
     }
 
-    if (cancelHoldProgressNotifier.value > 0.0 &&
-        cancelHoldProgressNotifier.value < 1.0) {
+    if (cancelHoldProgressNotifier.value > 0.0) {
       cancelHoldProgressNotifier.value = 0.0;
     }
   }

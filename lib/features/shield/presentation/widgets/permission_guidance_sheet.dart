@@ -146,7 +146,7 @@ class PermissionGuidanceSheet extends StatelessWidget {
               ),
               icon: const Icon(Icons.settings_outlined, size: 20),
               label: Text(
-                'OPEN SETTINGS ⚙️',
+                'Open settings',
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,

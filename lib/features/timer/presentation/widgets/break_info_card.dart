@@ -1,41 +1,42 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:focusmaxxing/core/theme/instrument_tokens.dart';
 
-/// Displays rotating restorative micro-habits during a break session.
+/// Displays rotating restorative micro-habits during a break session with zero emojis.
 class BreakInfoCard extends StatefulWidget {
   const BreakInfoCard({super.key});
 
-  static const List<({String icon, String title, String action})> habits = [
+  static const List<({IconData icon, String title, String action})> habits = [
     (
-      icon: '👁️',
+      icon: Icons.visibility_outlined,
       title: '20-20-20 Rule',
       action:
           'Look at an object 20 feet away for 20 seconds to relax ciliary eye muscles.',
     ),
     (
-      icon: '💧',
+      icon: Icons.water_drop_outlined,
       title: 'Hydration Check',
       action:
-          'Drink 1 full glass of cold water now. Dehydration degrades prefrontal focus.',
+          'Drink a glass of water. Dehydration degrades prefrontal cortex focus.',
     ),
     (
-      icon: '🧘',
+      icon: Icons.accessibility_new_outlined,
       title: 'Physical Reset',
       action:
           'Roll shoulders back 5 times, unclench your jaw, and stand up from your chair.',
     ),
     (
-      icon: '🫁',
+      icon: Icons.air_outlined,
       title: 'Oxygen Surge',
       action:
           'Inhale deeply for 4 seconds, hold for 4, and exhale slowly for 7 seconds.',
     ),
     (
-      icon: '🌿',
+      icon: Icons.park_outlined,
       title: 'Mental Reset',
       action:
-          'Step away from screens. Open a window or step outside for fresh air and daylight.',
+          'Step away from screens. Open a window or step outside for daylight.',
     ),
   ];
 
@@ -61,78 +62,69 @@ class _BreakInfoCardState extends State<BreakInfoCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final habit = BreakInfoCard.habits[_currentIndex];
+    final tokens = context.tokens;
+    final currentHabit = BreakInfoCard.habits[_currentIndex];
 
     return Semantics(
       button: true,
       label:
-          'Restorative habit: ${habit.title}. ${habit.action}. Double tap to shuffle habit.',
-      child: InkWell(
-        key: const Key('timer_break_info_card_tap'),
-        onTap: _nextHabit,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          'Restorative tip: ${currentHabit.title}. ${currentHabit.action} Tap to see another tip.',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('timer_break_info_card_tap'),
+          onTap: _nextHabit,
+          borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+          child: Container(
+            padding: const EdgeInsets.all(InstrumentTokens.s16),
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              borderRadius: BorderRadius.circular(InstrumentTokens.r2),
+              border: Border.all(color: tokens.rule, width: 1),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(habit.icon, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      habit.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Tap to shuffle 🔀',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color:
-                          colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                habit.action,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.35,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  currentHabit.icon,
+                  size: 24,
+                  color: tokens.inkMuted,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    size: 14,
-                    color: colorScheme.outline,
+                const SizedBox(width: InstrumentTokens.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentHabit.title,
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.ink,
+                        ),
+                      ),
+                      const SizedBox(height: InstrumentTokens.s4),
+                      Text(
+                        currentHabit.action,
+                        style: TextStyle(
+                          fontFamily: InstrumentTokens.fontUi,
+                          fontSize: 13,
+                          height: 18 / 13,
+                          color: tokens.inkMuted,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Social feeds remain locked during break',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: InstrumentTokens.s8),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: tokens.inkFaint,
+                ),
+              ],
+            ),
           ),
         ),
       ),
