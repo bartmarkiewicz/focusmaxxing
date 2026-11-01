@@ -1,6 +1,12 @@
 # Focusmaxxing - Technical Scoping Document
 
-**Document Version:** 1.1.0  
+> [!WARNING]
+> **DEPRECATED & ARCHIVED DOCUMENTATION (v1.1.0)**  
+> This specification represents the early technical architecture baseline and is **superseded** by the comprehensive, modular architecture specifications in [`docs/architecture/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/architecture).  
+> For current architectural documentation, see [`docs/architecture/system_overview.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/architecture/system_overview.md).
+
+**Document Version:** 1.1.0 (Archived)  
+**Status:** Superseded by [`docs/architecture/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/architecture)  
 **Target Platform:** Android (API 26+ / Android 8.0 through Android 14+), iOS (Phase 2)  
 **Framework:** Flutter (Dart 3.x)  
 **Architecture:** Classic Flutter Clean Architecture (`core/`, `features/{feature}/{data, domain, presentation}`)  

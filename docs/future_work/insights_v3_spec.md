@@ -1,7 +1,16 @@
 # Focusmaxxing Enhancement Specification: Granular Actionable Focus Insights (V3 Hardened)
 
-**Status:** Approved & Finalized (Strict Binary Lock-In Architecture)  
-**Target Area:** `lib/core/database/`, `lib/features/timer/data/`, `lib/features/insights/`  
+> [!IMPORTANT]
+> **Approved Specification — Insights V3 Milestone**  
+> This document is the approved, canonical specification for the upcoming Insights V3 milestone.  
+> **Key Architecture Deliverables**:
+> - **Strict Binary Attribution ("Lock In or Bust")**: Zero partial credit for derailed or early cancelled sessions.
+> - **SQLite `MigrationV3`**: Introduces transactional `daily_focus_metrics` table with 24-hour hourly distribution JSON.
+> - **Multi-Horizon SQL Aggregations**: Rolling `7D`, scrubbable `30D`, monthly `1Y`, and adaptive `ALL` query pipelines.
+> - **Presentation Components**: `FocusTrendCard` with "Could've Locked In" ghost bars, and `InsightsHighlightsGrid` with the statistical "Powerhouse Pattern".
+
+**Status:** Approved Specification (Upcoming Milestone)  
+**Target Area:** [`lib/core/database/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/core/database), [`lib/features/timer/data/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/timer/data), [`lib/features/insights/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/lib/features/insights)  
 **Database Impact:** SQLite `MigrationV3` (`DatabaseHelper.databaseVersion = 3` — introduces `daily_focus_metrics` with full 24-hour hourly breakdown, deep work records, and transactional synchronization)
 
 ---

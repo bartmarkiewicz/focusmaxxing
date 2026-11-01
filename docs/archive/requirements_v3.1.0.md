@@ -1,10 +1,15 @@
 # Focusmaxxing - Product Requirements Document (PRD)
 
-**Document Version:** 3.1.0  
-**Status:** Approved Specification  
+> [!WARNING]
+> **DEPRECATED & ARCHIVED DOCUMENTATION (v3.1.0)**  
+> This specification represents the historical MVP 1.0 product baseline and is **superseded** by the canonical, modular product specifications located in [`docs/product/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/product).  
+> For current production specifications, see [`docs/product/overview.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/product/overview.md).
+
+**Document Version:** 3.1.0 (Archived)  
+**Status:** Superseded by [`docs/product/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/product)  
 **Target Platforms:** Android (Primary, Phase 1), iOS (Phase 2 via Screen Time API)  
 **Positioning:** The Anti-Brainrot App Blocker & ADHD "Lock-In" Engine  
-**Technical Companion:** See [technical_scoping.md](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/technical_scoping.md) for engineering architecture, database schemas, and native Android implementation.
+**Technical Companion:** See [`docs/archive/technical_scoping_v1.1.0.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/archive/technical_scoping_v1.1.0.md) for historical engineering architecture.
 
 ---
 

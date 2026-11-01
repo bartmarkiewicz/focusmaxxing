@@ -1,7 +1,14 @@
 # Focusmaxxing: Exhaustive Codebase & Architectural Review
 
+> [!WARNING]
+> **SUPERSEDED & ARCHIVED REPORT (v1.0.0)**  
+> This early architectural review report is **superseded** by the comprehensive, master audit report:  
+> [`docs/CODEBASE_REVIEW_EXHAUSTIVE_REPORT.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/CODEBASE_REVIEW_EXHAUSTIVE_REPORT.md).  
+> All remediation phases (Phases 1 through 4) and living technical roadmap tracking reside in the canonical master report.
+
 **Conducted by:** 10x Principal Flutter & Android Systems Engineer  
-**Document Version:** 1.0.0  
+**Document Version:** 1.0.0 (Archived)  
+**Status:** Superseded by [`docs/CODEBASE_REVIEW_EXHAUSTIVE_REPORT.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/CODEBASE_REVIEW_EXHAUSTIVE_REPORT.md)  
 **Target Project:** Focusmaxxing (`C:\Users\darkn\IdeaProjects\focusmaxxing`)  
 **Specification Baseline:**
 - [`docs/requirements.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/requirements.md) (PRD v3.1.0)

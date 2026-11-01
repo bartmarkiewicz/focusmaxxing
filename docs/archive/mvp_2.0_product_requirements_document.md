@@ -1,10 +1,16 @@
 # Focusmaxxing MVP 2.0: Product Requirements Document (PRD)
 ## The ADHD "Zero-Friction Lock-In & Dopamine Defense" Engine
 
-**Document Version:** 2.0.0  
+> [!NOTE]
+> **ARCHIVED RELEASE PRD (MVP 2.0)**  
+> This specification documents the historic MVP 2.0 release scope.  
+> - **Shipped Features (~65%)**: Formally documented in the canonical product specifications in [`docs/product/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/product).  
+> - **Deferred & Future Features (E4, E5, E8, E13, E14, E15)**: Documented with technical specifications and acceptance criteria in [`docs/future_work/deferred_features_roadmap.md`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/future_work/deferred_features_roadmap.md).
+
+**Document Version:** 2.0.0 (Archived)  
 **Target Release:** Focusmaxxing MVP 2.0  
 **Target Platforms:** Android (Primary API 26–34+), iOS (Phase 2 Companion)  
-**Status:** Approved Product Specification  
+**Status:** Archived (Shipped to [`docs/product/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/product); Backlog to [`docs/future_work/`](file:///C:/Users/darkn/IdeaProjects/focusmaxxing/docs/future_work))  
 **Architecture Alignment:** Clean Architecture (Domain, Data, Presentation) + Flutter 3.24+ / Dart 3.5+  
 
 ---
